@@ -1,0 +1,32 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Inventory tests
+        run: python -I method/test_inventory.py
+      - name: Ledger tests
+        run: python -I method/test_ledger.py
+      - name: Run stats tests
+        run: python -I method/test_run_stats.py
+      - name: Benchmark tests
+        run: python -I evals/test_benchmark.py
+      - name: CVSS calculator selftest
+        run: python -I report/cvss31.py --selftest

@@ -140,7 +140,7 @@ Findings must come from the code at the reviewed commit, so a review shows what 
 - This doesn't limit dependency checks: advisories for third-party packages (`npm audit`, OSV, CISA KEV) and
   reading a dependency's source for its locked version ("Library behaviour" below) are still part of the review.
 - Earlier ledgers from this skill may be reused as `method/coverage-ledger.md` says, except in a benchmark run,
-  which starts with the old ledger moved aside (SKILL.md "Benchmark after changes").
+  which starts with the old ledger moved aside (`CONTRIBUTING.md` "Benchmark after changes").
 
 ## Library behaviour
 

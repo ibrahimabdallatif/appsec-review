@@ -42,7 +42,7 @@ The method files in `method/` are not checklists; they define how the review run
 | `method/verifier.md` | Verification per mode: an inline disproof pass, plus fresh verifier subagents that try to disprove candidates |
 | `method/run_stats.py` | Run timer and token totals for the run summary (`test_run_stats.py` holds its tests) |
 | `method/inventory.py` | Lists entry points and sinks by script, so every run seeds the same ledger units (`inventory_patterns.py` holds the per-stack patterns, `test_inventory.py` the tests) |
-| `evals/benchmark.py` | Not used during a review. Scores one run's ledger, or several runs' for stability, against a benchmark of known findings, to check the skill after changes ("Maintaining the skill") |
+| `evals/benchmark.py` | Not used during a review. Scores one run's ledger, or several runs' for stability, against a benchmark of known findings, to check the skill after changes (`CONTRIBUTING.md`) |
 
 ## Review modes
 
@@ -241,52 +241,5 @@ and follow it exactly:
 
 ## Maintaining the skill
 
-This skill is self-contained (`SKILL.md`, `rules/`, `method/`, `report/`) and is versioned in its own git
-repository (https://github.com/ibrahimabdallatif/appsec-review).
-`disable-model-invocation: true` keeps it manual.
-
-Edit the checks in `rules/`. Keep the `paths` front matter on every category file and the `detect` front matter on
-every stack file in `rules/stacks/`; step 4 uses them to pick rules. Keep category files framework-neutral and put
-framework APIs in the stack files; add a new stack file rather than framework detail in a category file.
-Keep the `parent` and `when` front matter on every playbook in `rules/deep/`; step 4 uses them in `deep` mode. A
-playbook adds depth to its parent category and is not a ledger area of its own.
-When you adapt material from another project, credit it at the end of the file that uses it and add it to
-`NOTICE.md` with its copyright line and license.
-Edit the report structure, scoring and design in `report/` (`REPORT.md`, `cvss31.py`, `report-template.html`),
-not in `rules/`, so step 4 never loads them as checklist files. Run `python -I report/cvss31.py --selftest` after
-changing the calculator.
-Edit how the review runs (coverage ledger, hunters, verification) in `method/`, also outside `rules/`. Run
-`python -I method/test_ledger.py` after changing `ledger.py`, `python -I method/test_run_stats.py` after changing
-`run_stats.py`, and `python -I method/test_inventory.py` after changing `inventory.py` or `inventory_patterns.py`,
-and update their tests with them. The ledger's allowed
-areas come from the file names in `rules/`, so a new category file needs no validator change.
-The inventory's per-stack entry point and sink patterns live in `method/inventory_patterns.py`, keyed by the
-`rules/stacks/` file stems. A new stack file needs a matching entry there (`test_inventory.py` checks that the two
-lists agree), and a sink pattern must name a category file as its area. Add a sample line to `SAMPLES` in
-`test_inventory.py` for each new pattern. When the sink tracer reports a sink under "uncovered", add a pattern
-for it.
-### Benchmark after changes
-
-After changing `rules/`, `method/` or the steps, check that the skill still finds what it used to:
-
-1. Benchmarks live in `~/.appsec-review/benchmarks/<repo>.json`, outside the skill, because they list a
-   repository's vulnerabilities. Each names the repository, the commit, and the expected findings with a minimum
-   severity and a matcher (path substrings and a key/title regex). Set `human_confirmed: true` on findings a
-   person has checked in the code; set `expect_confirmed: true` where "needs confirmation" counts as a miss.
-2. Check out the benchmark's commit, run `/appsec-review whole repo` (or `deep`, matching the benchmark), and
-   score the run: `python -I <skill folder>/evals/benchmark.py ~/.appsec-review/benchmarks/<repo>.json
-   ~/.appsec-review/<repo>/coverage-ledger.json`. To score a fresh run on its own, move the old ledger aside
-   first; otherwise findings carried from earlier runs count too.
-3. Every expected finding should be `FOUND`. `MISSED`, `REJECTED` or `DOWNGRADED` means the change lost recall:
-   fix it before keeping the change. Review the extra findings it lists, and add the real ones to the benchmark.
-4. **Stability.** One run proves little, because runs vary. After a significant change, run the same mode three
-   to five times on the benchmark commit, each from a fresh start: move the ledger aside before each run and copy
-   it out afterwards (`~/.appsec-review/<repo>/runs/run-<n>.json`). Score them together:
-   `python -I <skill folder>/evals/benchmark.py ~/.appsec-review/benchmarks/<repo>.json
-   ~/.appsec-review/<repo>/runs/run-*.json`. Each expected finding is `STABLE` (found in every run), `FLAKY` or
-   `LOST`. Fix what makes a finding flaky (a missing sink pattern, an unclear rule, a hunter prompt) before
-   keeping the change. Extras that only some runs report are either noise or real findings the other runs
-   missed; check them.
-5. Run `python -I evals/test_benchmark.py` after changing `benchmark.py`.
-
-Don't move the rules back under `.codecanary/rules/`: CodeCanary applies anything there to every PR automatically.
+Changing the skill (rules, stacks, inventory patterns, scripts, benchmarks) is covered in `CONTRIBUTING.md` in the
+skill folder. Don't read it during a review.

@@ -1,0 +1,15 @@
+# Python bytecode (the scripts run with -I and dont_write_bytecode, but a plain run can still create these)
+__pycache__/
+*.py[cod]
+
+# Review output never belongs in this repository: ledgers, inventories and reports hold attack details
+coverage-ledger*.json
+inventory*.json
+*-review.txt
+
+# Editor and OS files
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

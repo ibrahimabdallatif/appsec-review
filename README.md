@@ -5,7 +5,9 @@ mobile code, in any language or framework. It reviews a diff, branch, PR, file, 
 every repository under a directory, and reports verified findings with attack scenarios, impact and concrete fixes.
 
 The skill runs only when invoked explicitly (`disable-model-invocation: true`); it is never triggered
-automatically or as part of a PR check.
+automatically. You can invoke it interactively in Claude Code, or headless in a CI pipeline (for example a
+nightly Jenkins job) with a gate that fails the build on findings at or above a chosen severity; see
+[docs/ci-pipeline.md](docs/ci-pipeline.md).
 
 ## Standards covered
 
@@ -26,6 +28,17 @@ git clone https://github.com/ibrahimabdallatif/appsec-review.git ~/.claude/skill
 ```
 
 The skill is then available in every Claude Code session. Python 3 is needed for the helper scripts.
+
+New to the skill? Start with [docs/getting-started.md](docs/getting-started.md).
+
+## Documentation
+
+| Guide | For |
+|---|---|
+| [Getting started](docs/getting-started.md) | Installing, a first review, reading the result, fixing and re-checking |
+| [How it works](docs/how-it-works.md) | The inventory, hunters, verifiers and coverage ledger, with a diagram |
+| [CI pipeline](docs/ci-pipeline.md) | Running the skill on a schedule and failing builds on serious findings |
+| [Contributing](CONTRIBUTING.md) | Adding rules, stacks and patterns; tests; benchmarking the skill after changes |
 
 ## Usage
 
@@ -80,7 +93,9 @@ Secret values, card numbers, OTPs and tokens are never printed.
 | `rules/deep/*.md` | `deep`-mode playbooks: object-level authorization, payment callbacks, payment state and idempotency, race conditions, business-logic flaws |
 | `method/` | Coverage ledger, hunter and verifier prompts, `inventory.py` (entry points and sinks by script), `ledger.py` validator and `run_stats.py` timer |
 | `report/` | Report structure (`REPORT.md`), CVSS 3.1 calculator (`cvss31.py`) and HTML template |
+| `docs/` | Getting started, how it works, and the CI pipeline guide |
 | `evals/` | `benchmark.py`, which scores one run, or several runs for stability, against known findings |
+| `.github/workflows/tests.yml` | Runs every test suite on Linux and Windows on each push and pull request |
 
 ## Reports
 
@@ -101,9 +116,12 @@ Exit codes: `0` pass, `3` a finding at or above the given severity (`critical`, 
 "needs confirmation" findings count by their severity if confirmed), `1` invalid ledger or missing coverage,
 `2` bad arguments.
 
+For a full pipeline setup (agent requirements, a Jenkins example, permissions, keeping findings private, and when
+to run which mode), see [docs/ci-pipeline.md](docs/ci-pipeline.md).
+
 ## Development
 
-Run the tests after changing the helper scripts:
+Run the tests after changing the helper scripts (GitHub Actions runs the same commands on every push):
 
 ```sh
 python -I method/test_ledger.py
@@ -115,9 +133,14 @@ python -I report/cvss31.py --selftest
 
 After changing `rules/`, `method/` or the steps, re-run the skill against a benchmark repository and score it
 with `evals/benchmark.py` to make sure no known finding is lost. Pass several fresh runs' ledgers to see which
-findings are found in every run and which only sometimes. See "Maintaining the skill" in `SKILL.md`.
+findings are found in every run and which only sometimes. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Credits
 
 Parts of this skill are adapted from MIT-licensed projects by Cloudflare, Vasiliy Uvarov, Riyan Dhiman and
 Mohamed AboElKheir, with ideas inspired by Trail of Bits. See [NOTICE.md](NOTICE.md) for details.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Adapted third-party material keeps its own copyright notices in
+[NOTICE.md](NOTICE.md).
