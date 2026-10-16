@@ -38,10 +38,11 @@ The method files in `method/` are not checklists; they define how the review run
 |---|---|
 | `method/coverage-ledger.md` | The coverage ledger: units (entry point × category), statuses, later runs |
 | `method/ledger.py` | Ledger validator and coverage summary (`test_ledger.py` holds its tests) |
-| `method/hunters.md` | Wildcard and obvious-things hunter prompts, and when to run them as subagents |
+| `method/hunters.md` | Wildcard, obvious-things and sink-trace hunter prompts, and when to run them as subagents |
 | `method/verifier.md` | Verification per mode: an inline disproof pass, plus fresh verifier subagents that try to disprove candidates |
 | `method/run_stats.py` | Run timer and token totals for the run summary (`test_run_stats.py` holds its tests) |
-| `evals/benchmark.py` | Not used during a review. Scores a run's ledger against a benchmark of known findings, to check the skill after changes ("Maintaining the skill") |
+| `method/inventory.py` | Lists entry points and sinks by script, so every run seeds the same ledger units (`inventory_patterns.py` holds the per-stack patterns, `test_inventory.py` the tests) |
+| `evals/benchmark.py` | Not used during a review. Scores one run's ledger, or several runs' for stability, against a benchmark of known findings, to check the skill after changes ("Maintaining the skill") |
 
 ## Review modes
 
@@ -51,7 +52,7 @@ Pick the mode once, before step 4, and state it at the top of the result. **Neve
 |---|---|---|---|
 | `diff` | Default when the user names nothing, or names a diff, branch, PR or files | None, except one verifier if a `critical` candidate survives the disproof pass | None |
 | `standard` | The user asks for a whole repository, an endpoint, or several repositories | At most two: one combined hunter (`model: sonnet`), and one verifier for all `critical`, `bug` and `warning` candidates in one batch (session's model) | Module × category |
-| `deep` | **Only** when the user explicitly says "deep" (`/appsec-review deep`, "deep review", "deep mode") | Two hunters and one verifier per `critical`/`bug` candidate, on the session's model; adds the `rules/deep/` playbooks | Entry point × category |
+| `deep` | **Only** when the user explicitly says "deep" (`/appsec-review deep`, "deep review", "deep mode") | Two hunters (wildcard and obvious-things, and a backward sink tracer) and one verifier per `critical`/`bug` candidate, on the session's model; adds the `rules/deep/` playbooks | Entry point × category |
 
 Modes change how many subagents run and how detailed the ledger is, **never how much code is read**. Every mode
 reads every in-scope module and follows its inputs to their sinks. Never skip or defer in-scope code to save time
@@ -80,7 +81,11 @@ never selects `deep` mode.
    review).
 2. **Identify the stack.** For each repository, read its manifests and record languages, frameworks, versions and
    layer (back end, web front end, mobile app, or several), as `00-overview.md` describes. Pick the stack files
-   whose `detect` front matter matches; a repository can match several.
+   whose `detect` front matter matches; a repository can match several. In `standard` and `deep`, then build the
+   inventory: `python -I <skill folder>/method/inventory.py <repo> --out ~/.appsec-review/<repo>/inventory.json`
+   (add `--only <path>` for an endpoint or files review). Compare the stacks it detected with yours and re-run it
+   with `--stack <name>` for any it missed. Its entry points and sinks are the fixed starting list for steps 5
+   and 6; the stack files' entry point lists still apply to what the patterns can't see.
 3. **Scope.** Use what the user named. If they named nothing, review the current branch's changes against its base
    branch (`git merge-base HEAD <base>`; use `develop` when it exists, else `main`) plus uncommitted changes. A
    multi-repository review covers each whole repository unless the user narrowed it. For a whole-repo or
@@ -96,11 +101,12 @@ never selects `deep` mode.
    that category. If no stack file fits, use the framework's own documentation and say so.
    Read a method file only when its step runs: `method/coverage-ledger.md` at step 5 (not in `diff` mode),
    `method/hunters.md` at step 6, `method/verifier.md` at step 8. Read `report/` only when a report is asked for.
-5. **Seed the coverage ledger** (`standard` and `deep` only). Map the entry points and trust boundaries, then
-   write the ledger units at the mode's granularity, plus the two hunter units, as `method/coverage-ledger.md`
-   describes. If a ledger from an earlier run exists, start from it and follow its "Later runs" rules.
-6. **Assess, with the hunters in parallel.** Start the wildcard and obvious-things hunters as `method/hunters.md`
-   says for the mode (inline in `diff`, one subagent in `standard`, two in `deep`). Meanwhile follow `00-overview.md`: identify
+5. **Seed the coverage ledger** (`standard` and `deep` only). Seed the units from the inventory, map the trust
+   boundaries and any entry points the inventory missed, then write the ledger units at the mode's granularity,
+   plus the hunter units, as `method/coverage-ledger.md` describes. If a ledger from an earlier run exists, start from it and follow its "Later runs" rules.
+6. **Assess, with the hunters in parallel.** Start the hunters as `method/hunters.md` says for the mode (wildcard
+   and obvious-things inline in `diff` and as one subagent in `standard`; in `deep`, one subagent for those two
+   and one sink-trace subagent working back from the inventory's sinks). Meanwhile follow `00-overview.md`: identify
    trust boundaries and data classes, run the STRIDE pass, then check each matching rule against the code. Read
    the helpers, middleware, filters, guards, interceptors and config the code depends on before deciding. Don't
    judge a diff hunk in isolation. For changed code, also run the history, callers and tests checks in
@@ -121,7 +127,8 @@ never selects `deep` mode.
    become findings, `needs_confirmation` is reported with the exact missing fact, `rejected` is dropped. Never
    verify your own candidates in the same pass that found them.
 9. **Close the ledger** (`standard` and `deep` only). Link the verified findings, run the gap pass, and validate with
-   `python -I <skill folder>/method/ledger.py <ledger>`. Fix every error before writing the result. A candidate
+   `python -I <skill folder>/method/ledger.py <ledger> --inventory <inventory>`. Fix every error before writing
+   the result. A candidate
    the gap pass turns up goes through step 8 before it is reported.
 
 ## Multi-repository reviews
@@ -239,9 +246,15 @@ Edit the report structure, scoring and design in `report/` (`REPORT.md`, `cvss31
 not in `rules/`, so step 4 never loads them as checklist files. Run `python -I report/cvss31.py --selftest` after
 changing the calculator.
 Edit how the review runs (coverage ledger, hunters, verification) in `method/`, also outside `rules/`. Run
-`python -I method/test_ledger.py` after changing `ledger.py`, and `python -I method/test_run_stats.py` after changing
-`run_stats.py`, and update their tests with them. The ledger's allowed
+`python -I method/test_ledger.py` after changing `ledger.py`, `python -I method/test_run_stats.py` after changing
+`run_stats.py`, and `python -I method/test_inventory.py` after changing `inventory.py` or `inventory_patterns.py`,
+and update their tests with them. The ledger's allowed
 areas come from the file names in `rules/`, so a new category file needs no validator change.
+The inventory's per-stack entry point and sink patterns live in `method/inventory_patterns.py`, keyed by the
+`rules/stacks/` file stems. A new stack file needs a matching entry there (`test_inventory.py` checks that the two
+lists agree), and a sink pattern must name a category file as its area. Add a sample line to `SAMPLES` in
+`test_inventory.py` for each new pattern. When the sink tracer reports a sink under "uncovered", add a pattern
+for it.
 ### Benchmark after changes
 
 After changing `rules/`, `method/` or the steps, check that the skill still finds what it used to:
@@ -256,6 +269,14 @@ After changing `rules/`, `method/` or the steps, check that the skill still find
    first; otherwise findings carried from earlier runs count too.
 3. Every expected finding should be `FOUND`. `MISSED`, `REJECTED` or `DOWNGRADED` means the change lost recall:
    fix it before keeping the change. Review the extra findings it lists, and add the real ones to the benchmark.
-4. Run `python -I evals/test_benchmark.py` after changing `benchmark.py`.
+4. **Stability.** One run proves little, because runs vary. After a significant change, run the same mode three
+   to five times on the benchmark commit, each from a fresh start: move the ledger aside before each run and copy
+   it out afterwards (`~/.appsec-review/<repo>/runs/run-<n>.json`). Score them together:
+   `python -I <skill folder>/evals/benchmark.py ~/.appsec-review/benchmarks/<repo>.json
+   ~/.appsec-review/<repo>/runs/run-*.json`. Each expected finding is `STABLE` (found in every run), `FLAKY` or
+   `LOST`. Fix what makes a finding flaky (a missing sink pattern, an unclear rule, a hunter prompt) before
+   keeping the change. Extras that only some runs report are either noise or real findings the other runs
+   missed; check them.
+5. Run `python -I evals/test_benchmark.py` after changing `benchmark.py`.
 
 Don't move the rules back under `.codecanary/rules/`: CodeCanary applies anything there to every PR automatically.

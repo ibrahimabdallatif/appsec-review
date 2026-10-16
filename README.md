@@ -45,7 +45,7 @@ The skill is then available in every Claude Code session. Python 3 is needed for
 |---|---|---|---|
 | `diff` | Default; a diff, branch, PR or files | None, except one verifier for a surviving `critical` | None |
 | `standard` | A whole repository, an endpoint, or several repositories | One combined hunter and one batch verifier | Module × category |
-| `deep` | Only when the user explicitly asks for "deep" | Two hunters, one verifier per `critical`/`bug` candidate, plus the deep playbooks | Entry point × category |
+| `deep` | Only when the user explicitly asks for "deep" | Two hunters (wildcard/obvious-things and a backward sink tracer), one verifier per `critical`/`bug` candidate, plus the deep playbooks | Entry point × category |
 
 Every mode reads all in-scope code and follows each input to its sinks; modes only change how many subagents run
 and how detailed the ledger is. `deep` takes several times longer and uses much more tokens than `standard`.
@@ -54,13 +54,15 @@ and how detailed the ledger is. `deep` takes several times longer and uses much 
 
 1. Start a run timer and note the token budget.
 2. Pick the repositories (single or multi-repository review).
-3. Identify the stack from manifests and pick matching stack rules.
+3. Identify the stack from manifests, pick matching stack rules, and build a scripted inventory of entry points
+   and sinks (`method/inventory.py`), so every run starts from the same list.
 4. Set the scope and load the category rules whose `paths` match files in scope.
 5. Seed the coverage ledger (`standard` and `deep`).
-6. Assess the code (trust boundaries, STRIDE, rule checks) while wildcard and obvious-things hunters run in parallel.
+6. Assess the code (trust boundaries, STRIDE, rule checks) forward from each entry point, while hunters run in
+   parallel: wildcard and obvious-things, and in `deep` a sink tracer working backward from every sink.
 7. Optionally run installed tools: gitleaks, trivy/osv-scanner, ecosystem audits, semgrep.
 8. Verify every candidate with a disproof pass and, depending on the mode, independent verifier subagents.
-9. Close and validate the ledger, then report.
+9. Close the ledger and validate it against the inventory (every entry point has a unit, every sink file was read), then report.
 
 Findings are ordered by severity (`critical`, `bug`, `warning`, `suggestion`), each with `file:line`, the attack,
 the impact and a fix that uses the codebase's own helpers. Rejected candidates are listed with the verifier's
@@ -76,9 +78,9 @@ Secret values, card numbers, OTPs and tokens are never printed.
 | `rules/*.md` | Framework-neutral category checklists: access control, authentication and sessions, injection, cryptography and data protection, business logic, configuration and supply chain, logging, client side, AI/LLM agents, web protocol and identity |
 | `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, .NET, Go |
 | `rules/deep/*.md` | `deep`-mode playbooks: object-level authorization, payment callbacks, payment state and idempotency, race conditions, business-logic flaws |
-| `method/` | Coverage ledger, hunter and verifier prompts, `ledger.py` validator and `run_stats.py` timer |
+| `method/` | Coverage ledger, hunter and verifier prompts, `inventory.py` (entry points and sinks by script), `ledger.py` validator and `run_stats.py` timer |
 | `report/` | Report structure (`REPORT.md`), CVSS 3.1 calculator (`cvss31.py`) and HTML template |
-| `evals/` | `benchmark.py`, which scores a run's ledger against known findings |
+| `evals/` | `benchmark.py`, which scores one run, or several runs for stability, against known findings |
 
 ## Reports
 
@@ -93,12 +95,14 @@ Run the tests after changing the helper scripts:
 ```sh
 python -I method/test_ledger.py
 python -I method/test_run_stats.py
+python -I method/test_inventory.py
 python -I evals/test_benchmark.py
 python -I report/cvss31.py --selftest
 ```
 
 After changing `rules/`, `method/` or the steps, re-run the skill against a benchmark repository and score it
-with `evals/benchmark.py` to make sure no known finding is lost. See "Maintaining the skill" in `SKILL.md`.
+with `evals/benchmark.py` to make sure no known finding is lost. Pass several fresh runs' ledgers to see which
+findings are found in every run and which only sometimes. See "Maintaining the skill" in `SKILL.md`.
 
 ## Credits
 

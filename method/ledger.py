@@ -1,8 +1,12 @@
 """Coverage ledger validator for appsec-review.
 
 Usage:
-    python -I ledger.py <coverage-ledger.json>     validate and print a coverage summary
+    python -I ledger.py <coverage-ledger.json> [--inventory <inventory.json>]
+                                                   validate and print a coverage summary
     python -I test_ledger.py                       run the unit tests
+
+With --inventory (written by inventory.py), every listed entry point must have a unit and every listed sink file
+must have been read under the sink's category, so coverage no longer depends on what a run happened to notice.
 """
 import json
 import os
@@ -11,7 +15,7 @@ import sys
 
 SCOPES = ("diff", "repo", "endpoint", "files")
 PROFILES = ("standard", "deep")
-HUNTER_AREAS = ("wildcard", "obvious-things")
+HUNTER_AREAS = ("wildcard", "obvious-things", "sink-trace")
 DECISIONS = ("confirmed", "needs_confirmation", "rejected", "hardening")
 SEVERITIES = ("critical", "bug", "warning", "suggestion")
 HARDENING_SEVERITIES = ("warning", "suggestion")
@@ -19,6 +23,9 @@ NO_SEVERITY = ("needs_confirmation", "rejected")
 REQUIRED_TOP = ("repo", "source_ref", "profile", "scope", "units", "findings")
 REQUIRED_UNIT = ("id", "surface", "area", "status", "reviewed_paths", "checks", "finding_keys", "unresolved")
 REQUIRED_FINDING = ("key", "title", "decision", "severity", "paths")
+
+EVIDENCE_STATES = ("covered", "finding", "blocked")
+EXCUSED_STATES = ("not_applicable", "out_of_scope")
 
 # status -> (evidence required, finding keys required, unresolved required); None means "may be either"
 STATES = {
@@ -37,7 +44,7 @@ RULES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "rule
 
 
 def allowed_areas(rules_dir=RULES_DIR):
-    """Category file stems in rules/ (except the overview) plus the two hunters."""
+    """Category file stems in rules/ (except the overview) plus the hunter areas."""
     names = os.listdir(rules_dir) if os.path.isdir(rules_dir) else []
     stems = [n[:-3] for n in names if n.endswith(".md") and n != "00-overview.md"]
     return set(stems) | set(HUNTER_AREAS)
@@ -224,15 +231,82 @@ def summary(ledger):
     return {"units": units, "findings": findings, "root_causes": len(reported), "locations": locations}
 
 
+def entry_surface(entry, profile):
+    """The ledger surface an inventory entry point needs: its module in standard, its own surface in deep."""
+    return entry["path"] if profile == "standard" else entry["surface"]
+
+
+def check_inventory_ref(ledger, inventory):
+    ref = inventory.get("source_ref")
+    if ref and ref != ledger.get("source_ref"):
+        return ["inventory: built at %s but the ledger is at %s; re-run inventory.py"
+                % (ref, ledger.get("source_ref"))]
+    return []
+
+
+def check_entry_coverage(ledger, inventory):
+    """Every inventory entry point has a unit that is no longer planned."""
+    done = {u.get("surface") for u in ledger["units"] if u.get("status") != "planned"}
+    needed = sorted({entry_surface(e, ledger["profile"]) for e in inventory.get("entry_points", [])})
+    return ["inventory: entry point '%s' has no unit beyond planned" % s for s in needed if s not in done]
+
+
+def sink_reviewers(units):
+    """(area -> paths read under that area, (surface, area) pairs excused as not applicable or out of scope)."""
+    read, excused = {}, set()
+    for unit in units:
+        if unit.get("status") in EVIDENCE_STATES:
+            read.setdefault(unit.get("area"), set()).update(unit.get("reviewed_paths") or [])
+        elif unit.get("status") in EXCUSED_STATES:
+            excused.add((unit.get("surface"), unit.get("area")))
+    return read, excused
+
+
+def check_sink_coverage(ledger, inventory):
+    """Every inventory sink file was read by a unit of the sink's category, or excused for that category."""
+    read, excused = sink_reviewers(ledger["units"])
+    errors = []
+    for sink in inventory.get("sinks", []):
+        path, area = sink["path"], sink["area"]
+        if path not in read.get(area, set()) and (path, area) not in excused:
+            errors.append("inventory: sink %s:%s (%s) not read by any %s unit"
+                          % (path, sink["line"], sink["kind"], area))
+    return errors
+
+
+def check_inventory(ledger, inventory):
+    """Errors for inventory entry points and sinks the ledger does not cover."""
+    return (check_inventory_ref(ledger, inventory) + check_entry_coverage(ledger, inventory)
+            + check_sink_coverage(ledger, inventory))
+
+
+def load_json(path):
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def parse_args(args):
+    """(ledger path, inventory path or None), or None for bad usage."""
+    if len(args) == 1:
+        return args[0], None
+    if len(args) == 3 and args[1] == "--inventory":
+        return args[0], args[2]
+    return None
+
+
 def main(args):
-    if len(args) != 1:
+    parsed = parse_args(args)
+    if parsed is None:
         print(__doc__)
         return 2
-    with open(args[0], encoding="utf-8") as handle:
-        ledger = json.load(handle)
+    ledger = load_json(parsed[0])
     errors = validate(ledger)
+    if not errors and parsed[1]:
+        errors = check_inventory(ledger, load_json(parsed[1]))
     for error in errors[:100]:
         print("ERROR " + error)
+    if len(errors) > 100:
+        print("... and %d more" % (len(errors) - 100))
     if errors:
         return 1
     print(json.dumps(summary(ledger), indent=2, sort_keys=True))

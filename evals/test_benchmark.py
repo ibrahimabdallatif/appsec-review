@@ -133,6 +133,47 @@ class FormatReportTest(unittest.TestCase):
         self.assertIn("Extra findings not in the benchmark (0)", text)
 
 
+def scored_run(statuses, extras=()):
+    results = [{"id": "e%d" % i, "status": st, "min_severity": "bug", "human_confirmed": False}
+               for i, st in enumerate(statuses)]
+    return {"results": results, "extras": list(extras)}
+
+
+class StabilityTest(unittest.TestCase):
+    def setUp(self):
+        self.runs = [scored_run(["found", "found", "missed"], ["x", "y"]),
+                     scored_run(["found", "missed", "missed"], ["x"]),
+                     scored_run(["needs_confirmation", "found", "rejected"], ["x"])]
+
+    def test_is_hit(self):
+        self.assertTrue(benchmark.is_hit({"status": "needs_confirmation"}))
+        self.assertFalse(benchmark.is_hit({"status": "downgraded"}))
+
+    def test_hit_counts(self):
+        counts = benchmark.hit_counts(self.runs)
+        self.assertEqual([counts[k]["hits"] for k in ("e0", "e1", "e2")], [3, 2, 0])
+        self.assertEqual(counts["e2"]["statuses"], {"missed": 2, "rejected": 1})
+
+    def test_extra_counts(self):
+        self.assertEqual(benchmark.extra_counts(self.runs), {"x": 3, "y": 1})
+
+    def test_stability_label(self):
+        self.assertEqual([benchmark.stability_label(h, 3) for h in (3, 1, 0)], ["STABLE", "FLAKY", "LOST"])
+
+    def test_misses_text(self):
+        self.assertEqual(benchmark.misses_text({"found": 2, "missed": 1}), " (missed 1)")
+        self.assertEqual(benchmark.misses_text({"found": 3}), "")
+
+    def test_format_stability(self):
+        text = benchmark.format_stability(self.runs)
+        self.assertIn("STABLE  e0", text)
+        self.assertIn("FLAKY   e1                         2/3 runs (missed 1)", text)
+        self.assertIn("LOST    e2", text)
+        self.assertIn("Found in every run: 1/3", text)
+        self.assertIn("Mean recall per run: 1.7/3", text)
+        self.assertIn("Extras reported by some runs only (1): y 1/3", text)
+
+
 class MainTest(unittest.TestCase):
     def write(self, data):
         handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8")
@@ -154,6 +195,16 @@ class MainTest(unittest.TestCase):
 
     def test_missed_returns_1(self):
         self.assertEqual(self.run_main([self.write({"expected": [expected()]}), self.write({"findings": []})]), 1)
+
+    def test_stable_runs_return_0(self):
+        bench = self.write({"expected": [expected()]})
+        run = self.write({"findings": [finding()]})
+        self.assertEqual(self.run_main([bench, run, run]), 0)
+
+    def test_flaky_runs_return_1(self):
+        bench = self.write({"expected": [expected()]})
+        self.assertEqual(self.run_main([bench, self.write({"findings": [finding()]}),
+                                        self.write({"findings": []})]), 1)
 
     def test_bad_benchmark_returns_2(self):
         self.assertEqual(self.run_main([self.write({"expected": []}), self.write({"findings": []})]), 2)

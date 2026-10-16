@@ -1,5 +1,7 @@
 """Unit tests for ledger.py. Run: python -I test_ledger.py"""
+import contextlib
 import copy
+import io
 import json
 import os
 import sys
@@ -40,7 +42,7 @@ class AllowedAreasTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             for name in ("00-overview.md", "access-control.md", "notes.txt"):
                 open(os.path.join(tmp, name), "w").close()
-            self.assertEqual(ledger.allowed_areas(tmp), {"access-control", "wildcard", "obvious-things"})
+            self.assertEqual(ledger.allowed_areas(tmp), {"access-control", "wildcard", "obvious-things", "sink-trace"})
 
     def test_missing_dir_gives_hunters_only(self):
         self.assertEqual(ledger.allowed_areas("/no/such/dir"), set(ledger.HUNTER_AREAS))
@@ -299,6 +301,93 @@ class SummaryTest(unittest.TestCase):
         self.assertEqual((result["root_causes"], result["locations"]), (1, 3))
 
 
+def inventory_with(entries=(), sinks=(), source_ref="abc123"):
+    return {"source_ref": source_ref, "entry_points": list(entries), "sinks": list(sinks)}
+
+
+def entry(path="src/api/Cards.java", surface="src/api/Cards.java#GET /cards/{id}"):
+    return {"path": path, "surface": surface, "line": 10, "kind": "route"}
+
+
+def sink(path="src/api/Cards.java", area="access-control", kind="outbound-http"):
+    return {"path": path, "area": area, "kind": kind, "line": 20}
+
+
+class EntrySurfaceTest(unittest.TestCase):
+    def test_standard_uses_module(self):
+        self.assertEqual(ledger.entry_surface(entry(), "standard"), "src/api/Cards.java")
+
+    def test_deep_uses_entry_surface(self):
+        self.assertEqual(ledger.entry_surface(entry(), "deep"), "src/api/Cards.java#GET /cards/{id}")
+
+
+class CheckInventoryRefTest(unittest.TestCase):
+    def test_same_ref(self):
+        self.assertEqual(ledger.check_inventory_ref(ledger_with([]), inventory_with()), [])
+
+    def test_stale_inventory(self):
+        self.assertTrue(ledger.check_inventory_ref(ledger_with([]), inventory_with(source_ref="old")))
+
+    def test_inventory_without_ref(self):
+        self.assertEqual(ledger.check_inventory_ref(ledger_with([]), inventory_with(source_ref=None)), [])
+
+
+class CheckEntryCoverageTest(unittest.TestCase):
+    def test_covered_deep_entry(self):
+        self.assertEqual(ledger.check_entry_coverage(ledger_with([unit()]), inventory_with([entry()])), [])
+
+    def test_missing_entry(self):
+        errors = ledger.check_entry_coverage(ledger_with([]), inventory_with([entry()]))
+        self.assertIn("src/api/Cards.java#GET /cards/{id}", errors[0])
+
+    def test_planned_unit_does_not_count(self):
+        planned = unit(status="planned", reviewed_paths=[], checks=[])
+        self.assertTrue(ledger.check_entry_coverage(ledger_with([planned]), inventory_with([entry()])))
+
+    def test_standard_module_unit(self):
+        module_unit = unit(surface="src/api/Cards.java")
+        data = ledger_with([module_unit], profile="standard")
+        self.assertEqual(ledger.check_entry_coverage(data, inventory_with([entry()])), [])
+
+
+class SinkReviewersTest(unittest.TestCase):
+    def test_read_and_excused(self):
+        units = [unit(), unit(status="not_applicable", area="injection-input", surface="src/x.py",
+                              reviewed_paths=[], checks=[], unresolved=["no input"]),
+                 unit(status="planned", area="client-side", reviewed_paths=[], checks=[])]
+        read, excused = ledger.sink_reviewers(units)
+        self.assertEqual(read, {"access-control": {"src/api/Cards.java"}})
+        self.assertEqual(excused, {("src/x.py", "injection-input")})
+
+
+class CheckSinkCoverageTest(unittest.TestCase):
+    def test_read_under_matching_area(self):
+        self.assertEqual(ledger.check_sink_coverage(ledger_with([unit()]), inventory_with(sinks=[sink()])), [])
+
+    def test_read_under_other_area_fails(self):
+        errors = ledger.check_sink_coverage(ledger_with([unit()]), inventory_with(sinks=[sink(area="injection-input")]))
+        self.assertIn("src/api/Cards.java:20 (outbound-http) not read by any injection-input unit", errors[0])
+
+    def test_excused_sink(self):
+        excused = unit(status="out_of_scope", surface="src/api/Cards.java", reviewed_paths=[], checks=[],
+                       unresolved=["user narrowed scope"])
+        self.assertEqual(ledger.check_sink_coverage(ledger_with([excused]), inventory_with(sinks=[sink()])), [])
+
+
+class CheckInventoryTest(unittest.TestCase):
+    def test_combines_checks(self):
+        errors = ledger.check_inventory(ledger_with([]), inventory_with([entry()], [sink()], source_ref="old"))
+        self.assertEqual(len(errors), 3)
+
+
+class ParseArgsTest(unittest.TestCase):
+    def test_forms(self):
+        self.assertEqual(ledger.parse_args(["l.json"]), ("l.json", None))
+        self.assertEqual(ledger.parse_args(["l.json", "--inventory", "i.json"]), ("l.json", "i.json"))
+        self.assertIsNone(ledger.parse_args(["l.json", "--other", "i.json"]))
+        self.assertIsNone(ledger.parse_args([]))
+
+
 class MainTest(unittest.TestCase):
     def write(self, data):
         handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8")
@@ -307,15 +396,29 @@ class MainTest(unittest.TestCase):
         self.addCleanup(os.remove, handle.name)
         return handle.name
 
+    def run_main(self, args):
+        with contextlib.redirect_stdout(io.StringIO()):
+            return ledger.main(args)
+
     def test_usage(self):
-        self.assertEqual(ledger.main([]), 2)
+        self.assertEqual(self.run_main([]), 2)
+
+    def test_inventory_gap_returns_1(self):
+        data = ledger_with([unit(area="wildcard")])
+        other = entry(surface="src/api/Cards.java#POST /cards")
+        self.assertEqual(self.run_main([self.write(data), "--inventory", self.write(inventory_with([other]))]), 1)
+
+    def test_inventory_covered_returns_0(self):
+        data = ledger_with([unit()])
+        inv = inventory_with([entry()], [sink()])
+        self.assertEqual(self.run_main([self.write(data), "--inventory", self.write(inv)]), 0)
 
     def test_invalid_returns_1(self):
-        self.assertEqual(ledger.main([self.write({"repo": "x"})]), 1)
+        self.assertEqual(self.run_main([self.write({"repo": "x"})]), 1)
 
     def test_valid_returns_0(self):
         data = ledger_with([unit(area="wildcard")])
-        self.assertEqual(ledger.main([self.write(data)]), 0)
+        self.assertEqual(self.run_main([self.write(data)]), 0)
 
 
 if __name__ == "__main__":

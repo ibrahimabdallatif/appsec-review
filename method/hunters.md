@@ -1,7 +1,9 @@
-# Hunters: wildcard and obvious things
+# Hunters: wildcard, obvious things and sink trace
 
-The category files find what is on the checklist. These two hunters find what isn't. They run alongside the main
-assessment (SKILL.md step 6), not instead of it.
+The category files find what is on the checklist. The wildcard and obvious-things hunters find what isn't. The
+sink-trace hunter works in the opposite direction to the main assessment: the main review follows each entry point
+forward to its sinks, the sink tracer starts at each sink in the inventory and works back to its callers. The two
+directions miss different things. Hunters run alongside the main assessment (SKILL.md step 6), not instead of it.
 
 ## When and how to run them
 
@@ -9,7 +11,7 @@ assessment (SKILL.md step 6), not instead of it.
 |---|---|
 | `diff` | Run both lists **inline yourself**, limited to the changed files and the code they call. No subagents. |
 | `standard` | **One** hunter subagent gets both prompts below, one after the other, and returns one result. Start it in parallel with your own assessment. Claude Code: Agent tool, `general-purpose`, `model: sonnet`. |
-| `deep` | **Two** hunter subagents in parallel, one per prompt, on the session's model. |
+| `deep` | **Two** hunter subagents in parallel, on the session's model: one gets the wildcard and obvious-things prompts one after the other, the other gets the sink-trace prompt with the inventory's `sinks` list. |
 | No subagent tool available | Run both lists inline and say so in the result (report 3.2). |
 
 Context block to put before each hunter prompt:
@@ -18,6 +20,8 @@ Context block to put before each hunter prompt:
 - the entry points and trust boundaries you mapped in steps 2–5;
 - the coverage ledger units assigned to the hunter (`method/coverage-ledger.md`), so it reports against them
   (`standard` and `deep` only);
+- for the sink-trace hunter, the path of the inventory file (`method/inventory.py`) and the instruction to read
+  its `sinks` list from there;
 - the instruction to read code only: no builds, no tests, no network, no installs, no edits;
 - the instruction to read only what it needs: start from the entry points given, open files on demand, and don't
   re-read the rule files (they are not part of its task).
@@ -25,7 +29,7 @@ Context block to put before each hunter prompt:
 Hunters return **candidates**, not findings. Every candidate goes to independent verification
 (`method/verifier.md`) like your own.
 
-## Return format (both hunters)
+## Return format (all hunters)
 
 Return one JSON object and nothing else:
 
@@ -107,4 +111,36 @@ checked. Be thorough and literal: check every item and report each result in "ch
 A flag is not a finding. Trace the impact before proposing a candidate: if a cookie lacks HttpOnly,
 check whether it holds anything sensitive and whether scripts must read it by design; if an error
 contains a field name, check whether sensitive data ever reaches it.
+```
+
+## Sink-trace hunter prompt
+
+```text
+Other reviewers start at entry points and follow inputs forward. You start at the other end. The
+inventory file lists every dangerous sink the patterns found (path, line, kind, category). Work
+through every sink in it, in order, and report each one in "checks" as
+"<path>:<line> <kind>: <result>", so nothing on the list goes unanswered.
+
+For each sink:
+1. Read the sink line and name the argument that matters (the query string, command, URL, file
+   path, HTML, deserialized bytes, redirect target, key or algorithm).
+2. Trace that argument backwards: its local definition, the function parameters it comes from,
+   then every caller of that function (search for the function name across the repository,
+   including other modules, jobs, consumers and generated clients). Keep going until you reach
+   a constant, server-side configuration, or an entry point a lower-trust caller can reach.
+3. Note every transformation on the way: validation, allow-lists, encoding, parameter binding,
+   type conversion, ownership checks. A check on one caller path does not protect another.
+4. Decide one result per sink:
+   - candidate: attacker-influenced data reaches the sink through some caller path with no
+     control that stops it. Report it in "candidates" with the full trace from entry point to
+     sink.
+   - safe: every path into the argument is constant, server-controlled or effectively
+     controlled; cite the controlling path:line.
+   - unreachable: no caller reaches the sink from an entry point; cite how you searched.
+   - blocked: one fact outside the repository decides it; name the fact.
+
+Also report, under "uncovered", any sink you meet while tracing that is not in the inventory
+list, with its path:line and why it is dangerous; the inventory patterns missed it.
+
+Don't skip any sink: an unanswered sink is a coverage gap.
 ```

@@ -14,7 +14,8 @@ A later run may switch profile; the new run re-seeds units at its own granularit
 
 ## Where it lives
 
-`~/.appsec-review/<repo-name>/coverage-ledger.json`, outside the reviewed repository. It holds attack details,
+`~/.appsec-review/<repo-name>/coverage-ledger.json`, outside the reviewed repository, next to the run's
+`inventory.json`. It holds attack details,
 so never commit it or copy it into the repository. One ledger per repository; a multi-repository review keeps one
 per repository.
 
@@ -63,9 +64,9 @@ per repository.
   (`#GET /x`, `#consumer card-events`, `#screen Login`, `#deep link app://pay`), or `<path>` for config files, CI
   and manifests. Never contains `::`.
 - **area**: a category file stem from `rules/` (`access-control`, `web-protocol-identity`, …) or a hunter
-  (`wildcard`, `obvious-things`). The validator reads the allowed list from `rules/`.
+  (`wildcard`, `obvious-things`, `sink-trace`). The validator reads the allowed list from `rules/`.
 - **id**: `<surface>::<area>`. No line numbers, dates or agent names, so it stays the same across runs.
-- **owner**: `main` (you), `wildcard`, `obvious-things`, or `verifier`.
+- **owner**: `main` (you), `wildcard`, `obvious-things`, `sink-trace`, or `verifier`.
 - **finding key**: a stable root-cause key such as `cards/reveal-without-step-up`. No line numbers or severities.
   One root cause seen from several entry points is one finding linked from several units.
 
@@ -91,26 +92,33 @@ validator enforces both. Keep rejected findings so later runs don't repeat them.
 
 ## How to build it
 
-1. **Seed** after mapping the stack and entry points (SKILL.md step 5). For each module (`standard`) or entry
-   point (`deep`), add one unit per category file loaded in SKILL.md step 4 whose `paths` match its files, and skip categories that plainly
-   don't apply rather than writing `not_applicable` units for them, plus one unit per repository-wide category (configuration and
-   supply chain, logging) on the manifests, CI and container files. Add one `wildcard` and one
-   `obvious-things` unit with the surface `<repo>` (`deep`: one per subsystem in a large repository). For a
-   review narrowed to an endpoint or files, seed only those surfaces.
+1. **Seed** from the inventory (SKILL.md step 2, `method/inventory.py`), then add what the mapping found that the
+   inventory missed. For each module in the inventory's `modules` (`standard`) or each entry point `surface` in
+   its `entry_points` (`deep`, used verbatim as the unit surface), add one unit per category file loaded in
+   SKILL.md step 4 whose `paths` match its files, and skip categories that plainly don't apply rather than
+   writing `not_applicable` units for them, plus one unit per repository-wide category (configuration and supply
+   chain, logging) on the manifests, CI and container files. Every file in the inventory's `sinks` must end up in
+   the `reviewed_paths` of a unit of the sink's `area`, or be excused by a `not_applicable` or `out_of_scope`
+   unit of that area whose surface is the sink's path. Add one `wildcard` and one `obvious-things` unit with the
+   surface `<repo>` (`deep`: one per subsystem in a large repository), and in `deep` one `sink-trace` unit with
+   the surface `<repo>`. For a review narrowed to an endpoint or files, build the inventory with `--only` and seed
+   only those surfaces.
 2. **Close units** as you and the hunters work: write the paths read and one short line per check. Keep checks
    terse; the ledger is a record, not the write-up.
 3. **Link findings** after verification, and set each unit's status from the verdicts.
 4. **Gap pass.** Before writing the result, read the ledger once as a critic (yourself, no subagent): entry points in the stack file's
    list with no unit, parallel paths to the same effect (batch, legacy, mobile, admin, retry) with no unit, units
    closed without real checks. Add what is missing and review it now.
-5. **Validate**: `python -I <skill folder>/method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json`. Fix
-   every error before reporting. The summary it prints gives the counts for the result and report sections 3.2
+5. **Validate**: `python -I <skill folder>/method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json
+   --inventory ~/.appsec-review/<repo>/inventory.json`. Fix every error before reporting: an inventory error
+   means an entry point without a unit or a sink file nobody read under its category. The summary it prints gives the counts for the result and report sections 3.2
    and 4.1.
 
 ## Later runs on the same repository
 
 If a ledger already exists, read it first:
 
+- Rebuild the inventory for the current commit; new entry points and sinks become new units.
 - Run `git -C <repo> diff --name-only <old source_ref> HEAD`. A unit whose `reviewed_paths` didn't change keeps its
   status but stays visible; a unit whose paths changed goes back to `planned`.
 - Re-verify every earlier `confirmed` and `needs_confirmation` finding against the current code before reporting it

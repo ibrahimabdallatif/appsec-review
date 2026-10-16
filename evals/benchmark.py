@@ -2,11 +2,16 @@
 
 Usage:
     python -I benchmark.py <benchmark.json> <coverage-ledger.json>
+    python -I benchmark.py <benchmark.json> <run-1.json> <run-2.json> ...    stability across fresh runs
     python -I test_benchmark.py                     run the unit tests
 
 A benchmark lists the findings a review of one repository at one commit must find. Each expected finding has
 an id, a minimum severity, and a matcher: substrings for its file paths and a regex for its key and title.
 The scorer reports which expected findings the run found, missed or downgraded, and its extra findings.
+
+Given several ledgers from fresh runs of the same commit, it reports how often each expected finding was found
+(STABLE in every run, FLAKY in some, LOST in none) and which extra findings only some runs produced. A flaky
+finding points at the rule, prompt or inventory pattern that needs work.
 """
 import json
 import re
@@ -122,20 +127,83 @@ def format_report(scored):
     return "\n".join(lines)
 
 
+def is_hit(result):
+    return result["status"] in ("found", "needs_confirmation")
+
+
+def hit_counts(scored_runs):
+    """Per expected id: runs that found it, and how often each status occurred."""
+    counts = {}
+    for scored in scored_runs:
+        for r in scored["results"]:
+            entry = counts.setdefault(r["id"], {"hits": 0, "statuses": {}, "min_severity": r["min_severity"]})
+            entry["hits"] += 1 if is_hit(r) else 0
+            entry["statuses"][r["status"]] = entry["statuses"].get(r["status"], 0) + 1
+    return counts
+
+
+def extra_counts(scored_runs):
+    """Per extra finding key: the number of runs that reported it."""
+    counts = {}
+    for scored in scored_runs:
+        for key in set(scored["extras"]):
+            counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def stability_label(hits, runs):
+    if hits == runs:
+        return "STABLE"
+    return "LOST" if hits == 0 else "FLAKY"
+
+
+def misses_text(statuses):
+    misses = ["%s %d" % (status, n) for status, n in sorted(statuses.items()) if status not in ("found",
+              "needs_confirmation")]
+    return " (%s)" % ", ".join(misses) if misses else ""
+
+
+def format_stability(scored_runs):
+    runs = len(scored_runs)
+    counts = hit_counts(scored_runs)
+    lines = ["%-7s %-26s %d/%d runs%s" % (stability_label(c["hits"], runs), id_, c["hits"], runs,
+                                           misses_text(c["statuses"])) for id_, c in counts.items()]
+    stable = sum(1 for c in counts.values() if c["hits"] == runs)
+    mean = sum(recall(s["results"])[0] for s in scored_runs) / float(runs)
+    lines.append("Found in every run: %d/%d expected findings" % (stable, len(counts)))
+    lines.append("Mean recall per run: %.1f/%d" % (mean, len(counts)))
+    partial = sorted((k, n) for k, n in extra_counts(scored_runs).items() if n < runs)
+    lines.append("Extras reported by some runs only (%d): %s"
+                 % (len(partial), ", ".join("%s %d/%d" % (k, n, runs) for k, n in partial)))
+    return "\n".join(lines)
+
+
+def run_single(benchmark, ledger):
+    scored = score(benchmark, ledger)
+    print(format_report(scored))
+    missed = [r for r in scored["results"] if r["status"] in ("missed", "rejected", "downgraded")]
+    return 1 if missed else 0
+
+
+def run_many(benchmark, ledgers):
+    scored_runs = [score(benchmark, ledger) for ledger in ledgers]
+    print(format_stability(scored_runs))
+    unstable = [c for c in hit_counts(scored_runs).values() if c["hits"] < len(ledgers)]
+    return 1 if unstable else 0
+
+
 def main(args):
-    if len(args) != 2:
+    if len(args) < 2:
         print(__doc__)
         return 2
-    benchmark, ledger = load_json(args[0]), load_json(args[1])
+    benchmark = load_json(args[0])
     errors = check_benchmark(benchmark)
     for error in errors:
         print("ERROR " + error)
     if errors:
         return 2
-    scored = score(benchmark, ledger)
-    print(format_report(scored))
-    missed = [r for r in scored["results"] if r["status"] in ("missed", "rejected", "downgraded")]
-    return 1 if missed else 0
+    ledgers = [load_json(path) for path in args[1:]]
+    return run_single(benchmark, ledgers[0]) if len(ledgers) == 1 else run_many(benchmark, ledgers)
 
 
 if __name__ == "__main__":
