@@ -2,6 +2,7 @@
 paths:
   - "**/*.{java,kt,scala,groovy,ts,tsx,js,jsx,mjs,cjs,vue,svelte,py,go,cs,rb,php,rs,dart,swift}"
   - "**/*.{properties,yml,yaml,json,xml,toml,ini,config}"
+  - "**/*.{sql,rules}"
 ---
 
 # Access control and authorization

@@ -16,9 +16,11 @@ browser parts are in `web-frontend.md`.
 - Express/Koa/Fastify/Hono: `app.METHOD`/`router.METHOD`/`fastify.route`, `app.use` order (routes mounted before
   auth middleware are public), Fastify hooks (`onRequest`, `preHandler`).
 - Full-stack frameworks: Next.js route handlers (`app/**/route.ts`), API routes (`pages/api`), server actions
-  (`'use server'`), `middleware.ts`, `getServerSideProps`; Nuxt `server/api`; Remix and SvelteKit loaders and
-  actions; Astro endpoints. Server actions are public POST endpoints: each needs its own auth and authorization.
+  (`'use server'`), `middleware.ts` (`proxy.ts` from Next.js 16), `getServerSideProps`; Nuxt `server/api`; Remix
+  and SvelteKit loaders and actions; Astro endpoints. Server actions are public POST endpoints: each needs its own
+  auth and authorization.
 - Next.js `middleware.ts` alone is not authorization: re-check in each handler and data function.
+- Supabase and Firebase called from this code: see `baas.md`.
 
 ## Access control
 - NestJS: `@UseGuards` with `AuthGuard`, roles guards and `Reflector` metadata; global guards via `APP_GUARD`.

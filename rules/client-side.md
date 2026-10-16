@@ -29,7 +29,8 @@ server code: apply the other category files to it as well. The stack file names 
 - Flag secrets in client code or in build-time variables exposed to the bundle (`NEXT_PUBLIC_*`, `REACT_APP_*`,
   `VITE_*`, `EXPO_PUBLIC_*`, `NG_APP_*`, Angular `environment.ts`, Flutter `--dart-define`, mobile resource and
   plist files): API secrets, signing keys, private service tokens, database or admin credentials. Public client ids
-  and publishable keys are fine. (CWE-540, CWE-798)
+  and publishable keys are fine, including the Supabase anon or publishable key and the Firebase web `apiKey`;
+  the Supabase `service_role` or `sb_secret_` key and Firebase service-account JSON are not. (CWE-540, CWE-798)
 - Client-side validation is for usability only. Report the missing server check, not the client code, when only
   the client validates.
 

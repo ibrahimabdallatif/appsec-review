@@ -32,7 +32,8 @@ Step 4 of `SKILL.md` loads files from `rules/` as checklists, so anything that i
 1. Add `rules/stacks/<name>.md` with `detect` front matter and the stack's entry points, constructs and unsafe
    APIs.
 2. Add a matching `<name>` entry to `STACKS` in `method/inventory_patterns.py`: manifest detection, source file
-   extensions, entry point patterns and sink patterns. Each sink names the category file that reviews it as its
+   extensions, entry point patterns (`entry_if` for ones that depend on the whole file, such as exports of a
+   `'use server'` module) and sink patterns. Each sink names the category file that reviews it as its
    area. `test_inventory.py` fails if the stack names in the two places disagree.
 3. Add one sample line per new pattern to `SAMPLES` in `method/test_inventory.py`.
 4. When a sink-trace hunter reports a sink under "uncovered", the inventory missed it: add a pattern and a sample.

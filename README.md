@@ -33,7 +33,7 @@
     <td width="50%"><b>Coverage is checked by script.</b><br>A scripted inventory lists every entry point and dangerous sink. The ledger validator fails the run if any of them was skipped, so every run covers the same ground.</td>
   </tr>
   <tr>
-    <td><b>It knows your framework.</b><br>Rules for Spring, Node, Python, .NET, Go, web front ends and mobile apps, plus deep playbooks for object-level authorization, payment callbacks, idempotency and race conditions.</td>
+    <td><b>It knows your framework.</b><br>Rules for Spring, Node, Python, .NET, Go, web front ends, mobile apps and Supabase/Firebase, plus deep playbooks for object-level authorization, payment callbacks, idempotency and race conditions.</td>
     <td><b>Audit-ready output.</b><br>Each finding gives <code>file:line</code>, the attack, the impact and a fix using your own helpers, mapped to OWASP, ASVS, MASVS, CWE and PCI DSS, with CVSS 3.1 computed by script, never estimated.</td>
   </tr>
 </table>
@@ -146,7 +146,7 @@ The full picture, with a diagram: [docs/how-it-works.md](docs/how-it-works.md).
 | `SKILL.md` | The skill definition: modes, steps, output and report rules |
 | `rules/00-overview.md` | Method, STRIDE pass, severity scale and reporting format |
 | `rules/*.md` | Framework-neutral category checklists: access control, authentication and sessions, injection, cryptography and data protection, business logic, configuration and supply chain, logging, client side, AI/LLM agents, web protocol and identity |
-| `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, .NET, Go |
+| `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, .NET, Go, Supabase and Firebase |
 | `rules/deep/*.md` | `deep`-mode playbooks: object-level authorization, payment callbacks, payment state and idempotency, race conditions, business-logic flaws |
 | `method/` | Coverage ledger, hunter and verifier prompts, `inventory.py`, `ledger.py` validator and CI gate, `run_stats.py` |
 | `report/` | Report structure (`REPORT.md`), CVSS 3.1 calculator (`cvss31.py`) and HTML template |

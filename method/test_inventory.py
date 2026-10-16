@@ -17,7 +17,8 @@ import inventory_patterns as patterns  # noqa: E402
 
 RULES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "rules")
 
-# One line per stack that each listed entry or sink kind must match: guards against broken patterns.
+# One line per stack that each listed entry or sink kind must match: guards against broken patterns. An optional
+# fourth item is the file path, for patterns limited to some files.
 SAMPLES = {
     "java-spring": [
         ('@GetMapping("/cards/{id}")', "entry", "route"),
@@ -31,6 +32,8 @@ SAMPLES = {
         ("router.post('/login', handler)", "entry", "route"),
         ("@Get(':id')", "entry", "route"),
         ("export async function POST(req) {", "entry", "route"),
+        ("  'use server'", "entry", "server-action"),
+        ("'use server'\nexport async function deleteCard(id) {", "entry", "server-action"),
         ("exec(`ls ${dir}`)", "sink", "command"),
         ("db.query(`select * from users where id = ${id}`)", "sink", "sql"),
         ("const r = await fetch(url)", "sink", "outbound-http"),
@@ -74,6 +77,28 @@ SAMPLES = {
         ("AsyncStorage.setItem('token', t)", "sink", "storage"),
         ("<key>NSAllowsArbitraryLoads</key>", "sink", "network"),
     ],
+    "baas": [
+        ("create table if not exists public.profiles (", "entry", "table", "a.sql"),
+        ('CREATE OR REPLACE VIEW public."CardSummary" AS', "entry", "view", "a.sql"),
+        ("create or replace function public.transfer(amount int)", "entry", "rpc", "a.sql"),
+        ("insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);", "entry",
+         "storage-bucket", "a.sql"),
+        ("    match /users/{userId} {", "entry", "rules-match", "firestore.rules"),
+        ("export const addCredits = onCall(async (request) => {", "entry", "cloud-function"),
+        ("exports.api = functions.https.onRequest(app);", "entry", "cloud-function"),
+        ("alter table public.cards disable row level security;", "sink", "rls-disabled"),
+        ('create policy "own rows" on public.cards for select using (true);', "sink", "policy"),
+        ("security definer set search_path = ''", "sink", "security-definer"),
+        ("grant all on table public.cards to anon;", "sink", "grant"),
+        ("using ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin')", "sink", "user-metadata"),
+        ("const admin = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!)", "sink", "service-key"),
+        ("      allow read, write: if true;", "sink", "open-rule"),
+        ("      allow read: if request.auth != null;", "sink", "open-rule"),
+        ('    ".write": true,', "sink", "open-rule"),
+        ("await supabase.storage.createBucket('docs', { public: true })", "sink", "storage-bucket"),
+        ("const { data: { session } } = await supabase.auth.getSession()", "sink", "unverified-session"),
+        ("verify_jwt = false", "sink", "unverified-session"),
+    ],
 }
 
 
@@ -101,6 +126,9 @@ class PatternsTest(unittest.TestCase):
                 re.compile(regex)
                 if path_regex:
                     re.compile(path_regex)
+            for _, regex, text_regex in spec.get("entry_if", ()):
+                re.compile(regex)
+                re.compile(text_regex)
             for _, regex in spec["entry_files"]:
                 re.compile(regex)
             for _, _, regex in spec["sinks"]:
@@ -115,11 +143,11 @@ class PatternsTest(unittest.TestCase):
     def test_samples_match(self):
         for stack, samples in SAMPLES.items():
             spec = patterns.STACKS[stack]
-            for line, side, kind in samples:
+            for line, side, kind, path in ((sample + ("x",))[:4] for sample in samples):
                 if side == "entry":
-                    found = {h["kind"] for h in inventory.entry_hits("x", line, stack, spec)}
+                    found = {h["kind"] for h in inventory.entry_hits(path, line, stack, spec)}
                 else:
-                    found = {h["kind"] for h in inventory.sink_hits("x", line, stack, spec)}
+                    found = {h["kind"] for h in inventory.sink_hits(path, line, stack, spec)}
                 self.assertIn(kind, found, "%s: %s" % (stack, line))
 
 
@@ -141,6 +169,12 @@ class ExclusionTest(unittest.TestCase):
         for path in ("src/main/java/CardController.java", "app/api/route.ts", "server/main.go"):
             self.assertFalse(inventory.is_excluded(path), path)
 
+    def test_only_supabase_migrations_kept(self):
+        self.assertFalse(inventory.is_excluded("supabase/migrations/001_init.sql"))
+        self.assertFalse(inventory.is_excluded("apps/db/supabase/migrations/001_init.sql"))
+        for path in ("migrations/0001_initial.py", "app/migrations/0001_initial.py", "prisma/migrations/1/m.sql"):
+            self.assertTrue(inventory.is_excluded(path), path)
+
     def test_in_scope(self):
         self.assertTrue(inventory.in_scope("src/a.py", ()))
         self.assertTrue(inventory.in_scope("src/a.py", ["src/"]))
@@ -152,6 +186,11 @@ class FilesTest(TempRepo):
         write(self.root, "src/app.js", "")
         write(self.root, "node_modules/x/i.js", "")
         self.assertEqual(inventory.walk_files(self.root), ["src/app.js"])
+
+    def test_walk_files_skips_by_full_path(self):
+        write(self.root, "supabase/migrations/001.sql", "")
+        write(self.root, "app/migrations/0001.py", "")
+        self.assertEqual(inventory.walk_files(self.root), ["supabase/migrations/001.sql"])
 
     def test_list_files_filters_tests_and_scope(self):
         write(self.root, "src/app.js", "")
@@ -183,6 +222,19 @@ class DetectTest(TempRepo):
         files = inventory.list_files(self.root)
         self.assertEqual(inventory.detect_stacks(self.root, files), ["go", "node-backend"])
 
+    def test_detect_baas(self):
+        write(self.root, "web/package.json", '{"dependencies": {"@supabase/supabase-js": "2"}}')
+        files = inventory.list_files(self.root)
+        self.assertEqual(inventory.detect_stacks(self.root, files), ["baas"])
+
+    def test_detect_baas_from_migrations_and_rules(self):
+        write(self.root, "supabase/migrations/001.sql", "alter table t enable row level security;")
+        self.assertEqual(inventory.detect_stacks(self.root, inventory.list_files(self.root)), ["baas"])
+        other = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, other, ignore_errors=True)
+        write(other, "firestore.rules", "rules_version = '2';")
+        self.assertEqual(inventory.detect_stacks(other, inventory.list_files(other)), ["baas"])
+
     def test_stack_detected_glob(self):
         write(self.root, "Api.csproj", '<Project Sdk="Microsoft.NET.Sdk.Web"/>')
         self.assertTrue(inventory.stack_detected(self.root, ["Api.csproj"], patterns.STACKS["dotnet"]))
@@ -193,6 +245,18 @@ class LineHelpersTest(unittest.TestCase):
         self.assertFalse(inventory.is_code_line("  import os"))
         self.assertFalse(inventory.is_code_line("using System.Net;"))
         self.assertTrue(inventory.is_code_line("os.system(x)"))
+
+    def test_is_code_line_imports(self):
+        for line in ("from os.path import join", "from . import views", "package main", "#include <stdio.h>",
+                     "using static System.Math;", "global using System;", "using Json = System.Text.Json;",
+                     "import { createClient } from '@supabase/supabase-js'"):
+            self.assertFalse(inventory.is_code_line(line), line)
+
+    def test_is_code_line_sql_and_using_declarations(self):
+        for line in ("  using ((select auth.uid()) = user_id)", "  from public.members m",
+                     "using var conn = new SqlConnection(cs);", "using (var r = cmd.ExecuteReader())",
+                     "const m = await import('./x.js')"):
+            self.assertTrue(inventory.is_code_line(line), line)
 
     def test_clean(self):
         self.assertEqual(inventory.clean("  a   b::c ", 10), "a b:c")
@@ -224,6 +288,47 @@ class HitsTest(unittest.TestCase):
         hits = inventory.file_entries("pages/api/pay.js", "node-backend", patterns.NODE_BACKEND)
         self.assertEqual([h["kind"] for h in hits], ["route-file"])
         self.assertEqual(inventory.file_entries("lib/pay.js", "node-backend", patterns.NODE_BACKEND), [])
+
+    def test_next_middleware_and_proxy_files(self):
+        for path in ("middleware.ts", "src/middleware.ts", "apps/web/proxy.ts"):
+            hits = inventory.file_entries(path, "node-backend", patterns.NODE_BACKEND)
+            self.assertEqual([h["kind"] for h in hits], ["middleware"], path)
+
+    def test_edge_function_files(self):
+        hits = inventory.file_entries("supabase/functions/pay/index.ts", "baas", patterns.BAAS)
+        self.assertEqual([h["kind"] for h in hits], ["edge-function"])
+        self.assertEqual(inventory.file_entries("supabase/functions/_shared/index.ts", "baas", patterns.BAAS), [])
+
+    def test_entry_hit(self):
+        match = re.search(r"(?P<label>\w+)", "pay")
+        self.assertEqual(inventory.entry_hit("a.ts", 3, "node-backend", "route", match),
+                         {"path": "a.ts", "line": 3, "stack": "node-backend", "kind": "route", "label": "pay"})
+
+    def test_server_module_exports_are_actions(self):
+        text = ("// actions\n'use server'\n\nimport { db } from './db'\n"
+                "export async function deleteCard(id) {}\nexport const renameCard = async (id, n) => {}\n")
+        hits = inventory.conditional_entry_hits("app/actions.ts", text, "node-backend", patterns.NODE_BACKEND)
+        self.assertEqual([(h["kind"], h["label"], h["line"]) for h in hits],
+                         [("server-action", "deleteCard", 5), ("server-action", "renameCard", 6)])
+
+    def test_exports_without_use_server_are_not_actions(self):
+        text = "import x from 'y'\nexport async function helper() {}\nconst s = 'use server'\n"
+        self.assertEqual(inventory.conditional_entry_hits("lib/a.ts", text, "node-backend", patterns.NODE_BACKEND),
+                         [])
+
+    def test_inline_use_server_is_one_action(self):
+        text = "export default function Page() {\n  async function save(f) {\n    'use server'\n  }\n}\n"
+        hits = inventory.entry_hits("app/page.tsx", text, "node-backend", patterns.NODE_BACKEND)
+        self.assertEqual([(h["kind"], h["line"]) for h in hits], [("server-action", 3)])
+
+    def test_conditional_entries_optional(self):
+        self.assertEqual(inventory.conditional_entry_hits("a.go", "x", "go", patterns.GO), [])
+
+    def test_sql_policy_lines_are_scanned(self):
+        text = ("create policy p on public.cards for update\n"
+                "  using ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');\n")
+        hits = inventory.sink_hits("supabase/migrations/1.sql", text, "baas", patterns.BAAS)
+        self.assertEqual([(h["kind"], h["line"]) for h in hits], [("policy", 1), ("user-metadata", 2)])
 
     def test_sink_hits_area(self):
         hits = inventory.sink_hits("a.py", "os.system(cmd)", "python", patterns.PYTHON)

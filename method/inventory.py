@@ -27,6 +27,7 @@ LABEL_CAP = 80
 TEXT_CAP = 160
 SKIP_PATH = re.compile(patterns.SKIP_PATH)
 TEST_PATH = re.compile(patterns.TEST_PATH)
+IMPORT_LINE = re.compile(patterns.IMPORT_LINE)
 
 
 def run_git(repo, *args):
@@ -47,9 +48,10 @@ def walk_files(repo):
     """Repository-relative paths when repo is not a git work tree."""
     found = []
     for root, dirs, names in os.walk(repo):
-        dirs[:] = sorted(d for d in dirs if not SKIP_PATH.search(d + "/"))
-        rel = os.path.relpath(root, repo)
-        found += [n if rel == "." else "%s/%s" % (rel.replace(os.sep, "/"), n) for n in names]
+        rel = os.path.relpath(root, repo).replace(os.sep, "/")
+        prefix = "" if rel == "." else rel + "/"
+        dirs[:] = sorted(d for d in dirs if not SKIP_PATH.search(prefix + d + "/"))
+        found += [prefix + n for n in names]
     return found
 
 
@@ -98,7 +100,7 @@ def detect_stacks(repo, files):
 
 
 def is_code_line(line):
-    return not line.lstrip().startswith(patterns.IMPORT_PREFIXES)
+    return IMPORT_LINE.match(line) is None
 
 
 def clean(text, cap):
@@ -120,13 +122,25 @@ def matching_lines(text, regex):
             yield number, line, match
 
 
+def entry_hit(path, number, stack, kind, match):
+    return {"path": path, "line": number, "stack": stack, "kind": kind, "label": label_for(match)}
+
+
 def entry_hits(path, text, stack, spec):
     hits = []
     for kind, regex, path_regex in spec["entry"]:
         if path_regex and not re.search(path_regex, path):
             continue
-        hits += [{"path": path, "line": n, "stack": stack, "kind": kind, "label": label_for(m)}
-                 for n, _, m in matching_lines(text, regex)]
+        hits += [entry_hit(path, n, stack, kind, m) for n, _, m in matching_lines(text, regex)]
+    return hits + conditional_entry_hits(path, text, stack, spec)
+
+
+def conditional_entry_hits(path, text, stack, spec):
+    """Entries listed only in files whose whole text matches a condition (exports of a 'use server' module)."""
+    hits = []
+    for kind, regex, text_regex in spec.get("entry_if", ()):
+        if re.search(text_regex, text):
+            hits += [entry_hit(path, n, stack, kind, m) for n, _, m in matching_lines(text, regex)]
     return hits
 
 

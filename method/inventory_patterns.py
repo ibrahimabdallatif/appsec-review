@@ -6,6 +6,8 @@ Each stack has:
 - extensions: the source files the entry and sink patterns run on.
 - entry: (kind, regex, path regex or None). A named group 'label' names the entry point (route, topic, class).
 - entry_files: (kind, path regex); a matching file is itself an entry point (Next.js API routes, pages).
+- entry_if (optional): (kind, regex, text regex); like entry, but only in files whose whole text matches the text
+  regex (exported functions of a Next.js 'use server' module).
 - sinks: (kind, area, regex). 'area' is the rules/ category file that reviews the sink.
 
 Keep the stack names equal to the rules/stacks/ file stems. Patterns favour recall: a false hit costs a short
@@ -52,7 +54,7 @@ JAVA_SPRING = {
 NODE_BACKEND = {
     "detect": [("package.json", ('"express"', '"@nestjs/core"', '"fastify"', '"koa"', '"@hapi/hapi"', '"hono"',
                                  '"next"', '"nuxt"', '"@remix-run/', '"@sveltejs/kit"', '"astro"'))],
-    "extensions": (".js", ".mjs", ".cjs", ".ts"),
+    "extensions": (".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx"),
     "entry": [
         ("route", r"\b(?:app|router|server|api|fastify|routes)\.(?:get|post|put|patch|delete|all|options|route)"
                   r"\s*\(\s*(?P<label>['\"`][^'\"`]*['\"`])", None),
@@ -61,8 +63,14 @@ NODE_BACKEND = {
          None),
         ("job", r"@(?:Cron|Interval|Timeout)\s*\((?P<label>[^)]*)\)", None),
         ("route", r"^\s*export\s+(?:async\s+)?(?:function|const)\s+(?P<label>GET|POST|PUT|PATCH|DELETE)\b", None),
+        ("server-action", r"^\s+['\"]use server['\"]", None),
     ],
-    "entry_files": [("route-file", r"(?:^|/)pages/api/")],
+    "entry_if": [
+        ("server-action", r"^\s*export\s+(?:default\s+)?(?:async\s+function\s*\*?\s*|const\s+)(?P<label>\w+)",
+         r"\A(?:\s|//[^\n]*|/\*[\s\S]*?\*/)*['\"]use server['\"]"),
+    ],
+    "entry_files": [("route-file", r"(?:^|/)pages/api/"),
+                    ("middleware", r"(?:^|/)(?:middleware|proxy)\.(?:js|mjs|ts)$")],
     "sinks": [
         ("command", "injection-input",
          r"(?<![\w.])(?:exec|execSync|spawn|spawnSync|execFile|execFileSync)\s*\(|\bchild_process\b"),
@@ -251,6 +259,43 @@ MOBILE = {
     ],
 }
 
+BAAS = {
+    "detect": [("package.json", ('"@supabase/supabase-js"', '"@supabase/ssr"', '"firebase"', '"firebase-admin"',
+                                 '"firebase-functions"')),
+               ("config.toml", ("supabase",)),
+               ("*.sql", ("auth.uid()", "auth.jwt()", "row level security", "ROW LEVEL SECURITY")),
+               ("firebase.json", ()), ("firestore.rules", ()), ("storage.rules", ()), ("database.rules.json", ()),
+               ("pubspec.yaml", ("supabase_flutter", "cloud_firestore", "firebase_"))],
+    "extensions": (".sql", ".rules", ".json", ".toml", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".dart"),
+    "entry": [
+        ("table", r"(?i)^\s*create\s+table\s+(?:if\s+not\s+exists\s+)?(?P<label>[\w.\"]+)", r"\.sql$"),
+        ("view", r"(?i)^\s*create\s+(?:or\s+replace\s+)?(?:materialized\s+)?view\s+(?:if\s+not\s+exists\s+)?"
+                 r"(?P<label>[\w.\"]+)", r"\.sql$"),
+        ("rpc", r"(?i)^\s*create\s+(?:or\s+replace\s+)?function\s+(?P<label>[\w.\"]+)", r"\.sql$"),
+        ("storage-bucket", r"(?i)\binsert\s+into\s+storage\.buckets\b", r"\.sql$"),
+        ("rules-match", r"^\s*match\s+(?P<label>/[^\s{]+)", r"\.rules$"),
+        ("cloud-function", r"^\s*(?:export\s+const\s+|exports\.)(?P<label>\w+)\s*=\s*(?:functions\.|"
+                           r"on(?:Call|Request|Document\w+|Object\w+|Schedule|Value\w+|Message\w+|TaskDispatched)\b|"
+                           r"before\w+\s*\()", None),
+    ],
+    "entry_files": [("edge-function", r"(?:^|/)supabase/functions/[^/_][^/]*/index\.(?:ts|js)$")],
+    "sinks": [
+        ("rls-disabled", "access-control", r"(?i)\bdisable\s+row\s+level\s+security\b|\bbypassrls\b"),
+        ("policy", "access-control", r"(?i)^\s*(?:create|alter)\s+policy\b"),
+        ("security-definer", "access-control", r"(?i)\bsecurity\s+definer\b"),
+        ("grant", "access-control", r"(?i)\bgrant\b.*\bto\s+(?:anon|authenticated|public)\b"),
+        ("user-metadata", "access-control", r"\buser_metadata\b|\braw_user_meta_data\b"),
+        ("service-key", "access-control",
+         r"(?i)\bservice_role\b|SERVICE_ROLE_KEY|\bsb_secret_|\bfirebase-admin\b|\badmin\.initializeApp\s*\(|"
+         r"\"private_key\"\s*:"),
+        ("open-rule", "access-control",
+         r"\bif\s+true\b|\bif\s+request\.auth\s*!=\s*null\s*;|request\.time\s*<\s*timestamp\.date|"
+         r"\"\.(?:read|write)\"\s*:\s*(?:true|\"true\"|\"auth\s*!=\s*null\")"),
+        ("storage-bucket", "access-control", r"\.(?:createBucket|updateBucket)\s*\("),
+        ("unverified-session", "authentication-session", r"\.auth\.getSession\s*\(|\bverify_jwt\s*=\s*false\b"),
+    ],
+}
+
 STACKS = {
     "java-spring": JAVA_SPRING,
     "node-backend": NODE_BACKEND,
@@ -259,15 +304,20 @@ STACKS = {
     "dotnet": DOTNET,
     "web-frontend": WEB_FRONTEND,
     "mobile": MOBILE,
+    "baas": BAAS,
 }
 
-# Paths never scanned: dependencies, build output and generated code.
+# Paths never scanned: dependencies, build output and generated code. Supabase migrations are kept: they hold the
+# RLS policies that are the API's access control.
 SKIP_PATH = (r"(?:^|/)(?:node_modules|vendor|dist|build|out|target|bin|obj|\.next|\.nuxt|\.svelte-kit|coverage|"
-             r"Pods|\.gradle|\.git|venv|\.venv|site-packages|__pycache__|migrations)/|\.min\.js$|\.d\.ts$")
+             r"Pods|\.gradle|\.git|venv|\.venv|site-packages|__pycache__)/|(?:^|/)(?<!supabase/)migrations/|"
+             r"\.min\.js$|\.d\.ts$")
 
 # Test code is reviewed only through the tests check in rules/00-overview.md, not as attack surface.
 TEST_PATH = (r"(?:^|/)(?:tests?|__tests__|__mocks__|specs?|testdata|fixtures|mocks?|e2e|cypress)/|"
              r"(?:^|/)src/test/|[._-](?:test|spec)\.\w+$|_test\.go$|(?:^|/)test_[^/]*\.py$|Tests?\.(?:cs|java|kt)$")
 
-# Lines skipped before matching: imports name an API without using it.
-IMPORT_PREFIXES = ("import ", "package ", "using ", "from ", "#include", "@import")
+# Lines skipped before matching: imports name an API without using it. Narrow enough that SQL lines starting with
+# "using (" or "from" and C# using declarations ("using var x = ...") still count as code.
+IMPORT_LINE = (r"^\s*(?:import\s|package\s|#include\b|@import\b|from\s+\S+\s+import\b|"
+               r"(?:global\s+)?using\s+(?:static\s+)?[\w.]+\s*(?:=\s*[\w.<>]+\s*)?;)")

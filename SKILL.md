@@ -27,7 +27,7 @@ that skill folder, not to the reviewed repository. The checklist is in `rules/`.
 | `ai-llm-agents.md` | LLM, agent and MCP features: dangerous capability combinations, tool authorization and argument validation, MCP identity, RAG and memory tenant isolation, model output handling, prompts and traces, model supply chain, spend limits. Loaded only when its `detect` front matter matches |
 | `web-protocol-identity.md` | Request smuggling, cache poisoning and deception, host and forwarded-header trust, header injection, session and cookie edges, SAML, WebAuthn/passkeys, MFA enrollment and downgrade, recovery and account linking, API keys, mTLS |
 | `deep/*.md` | `deep` mode only: in-depth playbooks for object-level authorization, payment callback integrity, payment state and idempotency, race conditions and business-logic flaws. Each extends one category file (`parent` front matter) and loads when its `when` front matter matches code in scope |
-| `stacks/*.md` | Framework add-ons, chosen by their `detect` front matter: `java-spring`, `node-backend`, `web-frontend`, `mobile`, `python`, `dotnet`, `go` |
+| `stacks/*.md` | Framework add-ons, chosen by their `detect` front matter: `java-spring`, `node-backend`, `web-frontend`, `mobile`, `python`, `dotnet`, `go`, `baas` (Supabase, Firebase) |
 
 The category files are framework-neutral; the stack files name each framework's entry points, constructs and
 unsafe APIs.
