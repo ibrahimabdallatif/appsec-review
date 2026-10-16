@@ -88,6 +88,19 @@ Ask for a report and the skill builds an HTML page from `report/report-template.
 the standards used, CVSS 3.1 scored findings (computed by `report/cvss31.py`, never estimated) and
 recommendations. Reports are published privately, since they contain attack details for open issues.
 
+## CI gate
+
+The review always runs to completion. To fail a pipeline on its results, check the finished ledger afterwards:
+
+```sh
+python -I method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json \
+  --inventory ~/.appsec-review/<repo>/inventory.json --fail-on critical
+```
+
+Exit codes: `0` pass, `3` a finding at or above the given severity (`critical`, `bug`, `warning`, `suggestion`;
+"needs confirmation" findings count by their severity if confirmed), `1` invalid ledger or missing coverage,
+`2` bad arguments.
+
 ## Development
 
 Run the tests after changing the helper scripts:

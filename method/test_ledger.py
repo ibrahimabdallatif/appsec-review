@@ -381,11 +381,59 @@ class CheckInventoryTest(unittest.TestCase):
 
 
 class ParseArgsTest(unittest.TestCase):
-    def test_forms(self):
-        self.assertEqual(ledger.parse_args(["l.json"]), ("l.json", None))
-        self.assertEqual(ledger.parse_args(["l.json", "--inventory", "i.json"]), ("l.json", "i.json"))
-        self.assertIsNone(ledger.parse_args(["l.json", "--other", "i.json"]))
-        self.assertIsNone(ledger.parse_args([]))
+    def test_ledger_only(self):
+        self.assertEqual(ledger.parse_args(["l.json"]), {"ledger": "l.json", "inventory": None, "fail_on": None})
+
+    def test_all_options_any_order(self):
+        parsed = ledger.parse_args(["l.json", "--fail-on", "bug", "--inventory", "i.json"])
+        self.assertEqual(parsed, {"ledger": "l.json", "inventory": "i.json", "fail_on": "bug"})
+
+    def test_bad_usage(self):
+        for args in ([], ["l.json", "--other", "x"], ["l.json", "--inventory"], ["l.json", "--fail-on", "high"],
+                     ["l.json", "--inventory", "a", "--inventory", "b"]):
+            self.assertIsNone(ledger.parse_args(args), args)
+
+
+class GateSeverityTest(unittest.TestCase):
+    def test_by_decision(self):
+        self.assertEqual(ledger.gate_severity(finding()), "critical")
+        nc = finding(decision="needs_confirmation", severity=None, severity_if_confirmed="bug")
+        self.assertEqual(ledger.gate_severity(nc), "bug")
+        rejected = finding(decision="rejected", severity=None, disproof="a.ts:1")
+        self.assertIsNone(ledger.gate_severity(rejected))
+
+
+class BlockingFindingsTest(unittest.TestCase):
+    def setUp(self):
+        self.data = ledger_with([], [
+            finding(key="warn", decision="hardening", severity="warning"),
+            finding(key="crit"),
+            finding(key="nc", decision="needs_confirmation", severity=None, severity_if_confirmed="bug"),
+            finding(key="rej", decision="rejected", severity=None, disproof="a.ts:1"),
+        ])
+
+    def test_threshold_critical(self):
+        self.assertEqual([f["key"] for f in ledger.blocking_findings(self.data, "critical")], ["crit"])
+
+    def test_threshold_bug_includes_needs_confirmation(self):
+        self.assertEqual([f["key"] for f in ledger.blocking_findings(self.data, "bug")], ["crit", "nc"])
+
+    def test_threshold_suggestion_skips_rejected(self):
+        keys = [f["key"] for f in ledger.blocking_findings(self.data, "suggestion")]
+        self.assertEqual(keys, ["crit", "nc", "warn"])
+
+    def test_format_blocking(self):
+        text = ledger.format_blocking(ledger.blocking_findings(self.data, "bug"), "bug")
+        self.assertIn("FAIL critical crit (confirmed)", text)
+        self.assertIn("Gate: 2 finding(s) at or above 'bug'", text)
+
+
+class PrintErrorsTest(unittest.TestCase):
+    def test_caps_output(self):
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            ledger.print_errors(["e%d" % i for i in range(102)])
+        self.assertIn("... and 2 more", out.getvalue())
+        self.assertEqual(out.getvalue().count("ERROR "), 100)
 
 
 class MainTest(unittest.TestCase):
@@ -407,6 +455,20 @@ class MainTest(unittest.TestCase):
         data = ledger_with([unit(area="wildcard")])
         other = entry(surface="src/api/Cards.java#POST /cards")
         self.assertEqual(self.run_main([self.write(data), "--inventory", self.write(inventory_with([other]))]), 1)
+
+    def gated(self):
+        crit = unit(status="finding", finding_keys=["cards-idor"])
+        return self.write(ledger_with([crit], [finding()]))
+
+    def test_fail_on_blocking_returns_3(self):
+        self.assertEqual(self.run_main([self.gated(), "--fail-on", "bug"]), 3)
+
+    def test_fail_on_without_blocking_returns_0(self):
+        data = ledger_with([unit(area="wildcard")])
+        self.assertEqual(self.run_main([self.write(data), "--fail-on", "critical"]), 0)
+
+    def test_no_gate_ignores_findings(self):
+        self.assertEqual(self.run_main([self.gated()]), 0)
 
     def test_inventory_covered_returns_0(self):
         data = ledger_with([unit()])

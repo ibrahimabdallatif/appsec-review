@@ -1,12 +1,18 @@
 """Coverage ledger validator for appsec-review.
 
 Usage:
-    python -I ledger.py <coverage-ledger.json> [--inventory <inventory.json>]
+    python -I ledger.py <coverage-ledger.json> [--inventory <inventory.json>] [--fail-on <severity>]
                                                    validate and print a coverage summary
     python -I test_ledger.py                       run the unit tests
 
+Exit codes: 0 valid (and, with --fail-on, no blocking finding), 1 invalid ledger or coverage gap, 2 bad usage,
+3 valid but a reported finding is at or above the --fail-on severity (critical, bug, warning or suggestion).
+
 With --inventory (written by inventory.py), every listed entry point must have a unit and every listed sink file
 must have been read under the sink's category, so coverage no longer depends on what a run happened to notice.
+
+--fail-on is a CI gate on the finished ledger: it never shortens a review. Confirmed and hardening findings count
+by their severity, needs_confirmation findings by severity_if_confirmed, and rejected findings never count.
 """
 import json
 import os
@@ -285,13 +291,49 @@ def load_json(path):
         return json.load(handle)
 
 
+def gate_severity(finding):
+    """Severity a finding has for the --fail-on gate; None for rejected findings."""
+    if finding.get("decision") == "needs_confirmation":
+        return finding.get("severity_if_confirmed")
+    return None if finding.get("decision") == "rejected" else finding.get("severity")
+
+
+def blocking_findings(ledger, threshold):
+    """Reported findings at or above the threshold severity, most severe first."""
+    rank = {s: i for i, s in enumerate(SEVERITIES)}
+    hits = [f for f in ledger["findings"] if rank.get(gate_severity(f), len(SEVERITIES)) <= rank[threshold]]
+    return sorted(hits, key=lambda f: rank[gate_severity(f)])
+
+
+def format_blocking(findings, threshold):
+    lines = ["FAIL %s %s (%s)" % (gate_severity(f), f["key"], f["decision"]) for f in findings]
+    lines.append("Gate: %d finding(s) at or above '%s'" % (len(findings), threshold))
+    return "\n".join(lines)
+
+
 def parse_args(args):
-    """(ledger path, inventory path or None), or None for bad usage."""
-    if len(args) == 1:
-        return args[0], None
-    if len(args) == 3 and args[1] == "--inventory":
-        return args[0], args[2]
-    return None
+    """{'ledger', 'inventory', 'fail_on'} from the command line, or None for bad usage."""
+    if not args:
+        return None
+    parsed = {"ledger": args[0], "inventory": None, "fail_on": None}
+    options = {"--inventory": "inventory", "--fail-on": "fail_on"}
+    rest = args[1:]
+    if len(rest) % 2:
+        return None
+    for flag, value in zip(rest[::2], rest[1::2]):
+        if flag not in options or parsed[options[flag]] is not None:
+            return None
+        parsed[options[flag]] = value
+    if parsed["fail_on"] is not None and parsed["fail_on"] not in SEVERITIES:
+        return None
+    return parsed
+
+
+def print_errors(errors):
+    for error in errors[:100]:
+        print("ERROR " + error)
+    if len(errors) > 100:
+        print("... and %d more" % (len(errors) - 100))
 
 
 def main(args):
@@ -299,18 +341,19 @@ def main(args):
     if parsed is None:
         print(__doc__)
         return 2
-    ledger = load_json(parsed[0])
+    ledger = load_json(parsed["ledger"])
     errors = validate(ledger)
-    if not errors and parsed[1]:
-        errors = check_inventory(ledger, load_json(parsed[1]))
-    for error in errors[:100]:
-        print("ERROR " + error)
-    if len(errors) > 100:
-        print("... and %d more" % (len(errors) - 100))
+    if not errors and parsed["inventory"]:
+        errors = check_inventory(ledger, load_json(parsed["inventory"]))
+    print_errors(errors)
     if errors:
         return 1
     print(json.dumps(summary(ledger), indent=2, sort_keys=True))
-    return 0
+    if parsed["fail_on"] is None:
+        return 0
+    blocking = blocking_findings(ledger, parsed["fail_on"])
+    print(format_blocking(blocking, parsed["fail_on"]))
+    return 3 if blocking else 0
 
 
 if __name__ == "__main__":

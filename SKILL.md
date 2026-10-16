@@ -37,7 +37,7 @@ The method files in `method/` are not checklists; they define how the review run
 | File | Purpose |
 |---|---|
 | `method/coverage-ledger.md` | The coverage ledger: units (entry point × category), statuses, later runs |
-| `method/ledger.py` | Ledger validator and coverage summary (`test_ledger.py` holds its tests) |
+| `method/ledger.py` | Ledger validator, coverage summary and the `--fail-on` CI gate (`test_ledger.py` holds its tests) |
 | `method/hunters.md` | Wildcard, obvious-things and sink-trace hunter prompts, and when to run them as subagents |
 | `method/verifier.md` | Verification per mode: an inline disproof pass, plus fresh verifier subagents that try to disprove candidates |
 | `method/run_stats.py` | Run timer and token totals for the run summary (`test_run_stats.py` holds its tests) |
@@ -212,6 +212,16 @@ Run summary
 - In a multi-repository review, also give the time for each repository (start a new timer value for each).
 - Never print secret values, card numbers, CVVs, OTPs or tokens. Refer to them by location only.
 - Report only. Change code only when the user asks for fixes, and then update or add the matching negative tests.
+
+## CI gate
+
+The review itself never stops early and never fails a pipeline: every run finishes its scope, and the result is
+the same whether it finds nothing or many issues. To gate a pipeline, a CI step checks the finished ledger
+afterwards: `python -I <skill folder>/method/ledger.py <ledger> --inventory <inventory> --fail-on <severity>`.
+It exits 3 when a reported finding is at or above that severity (`critical`, `bug`, `warning` or `suggestion`),
+1 when the ledger is invalid or misses inventory coverage, and 0 otherwise. `needs_confirmation` findings count
+by `severity_if_confirmed`; rejected findings never count. Never pass `--fail-on` during a review run (step 9),
+and never shorten a review because a critical finding turned up.
 
 ## Report
 
