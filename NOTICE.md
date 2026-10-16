@@ -1,8 +1,8 @@
 # Third-party notices
 
 appsec-review includes material adapted from four projects under the MIT License, listed below with their
-copyright notices; the MIT permission notice is reproduced at the end. It also credits one project whose ideas,
-but none of its text, inspired parts of the skill.
+copyright notices; the MIT permission notice is reproduced at the end. It also credits two projects whose ideas,
+but none of their text, inspired parts of the skill.
 
 ## Cloudflare security-audit
 
@@ -43,6 +43,13 @@ but none of its text, inspired parts of the skill.
   security code and checking its tests (`rules/00-overview.md`, "Reviewing a change"), and restating each
   candidate precisely while guarding against severity inflation (`method/verifier.md`, step 0). No text from
   that project is included, so its share-alike terms don't apply; it is credited here as inspiration.
+
+## Ideas from autoresearch (no text reproduced)
+
+- Source: https://github.com/uditgoenka/autoresearch (MIT, Copyright (c) 2026 Udit Goenka)
+- Its `/autoresearch:security` command's `--fail-on <severity>` flag inspired the CI gate in `method/ledger.py`
+  (`--fail-on`), written independently for this skill. No text or code from that project is included; it is
+  credited here as inspiration.
 
 ## MIT License (applies to each MIT project above)
 
