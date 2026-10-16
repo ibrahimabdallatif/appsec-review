@@ -99,7 +99,8 @@ python -I method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json \
 
 Exit codes: `0` pass, `3` blocking findings, `1` incomplete review or invalid ledger, `2` bad arguments. Add
 `--accepted <file>` to waive findings the team has accepted, each until an expiry date and up to a severity;
-waived findings are still printed. Agent setup, accepted risks, a Jenkins example and scheduling advice:
+waived findings are still printed. `--sarif <file>` exports the findings for GitHub code scanning or Jenkins.
+Agent setup, accepted risks, SARIF, a Jenkins example and scheduling advice:
 [docs/ci-pipeline.md](docs/ci-pipeline.md).
 
 > [!WARNING]
@@ -150,7 +151,7 @@ The full picture, with a diagram: [docs/how-it-works.md](docs/how-it-works.md).
 | `rules/*.md` | Framework-neutral category checklists: access control, authentication and sessions, injection, cryptography and data protection, business logic, configuration and supply chain, logging, client side, AI/LLM agents, web protocol and identity |
 | `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, .NET, Go, Supabase and Firebase |
 | `rules/deep/*.md` | `deep`-mode playbooks: object-level authorization, payment callbacks, payment state and idempotency, race conditions, business-logic flaws |
-| `method/` | Coverage ledger, hunter and verifier prompts, `inventory.py`, `ledger.py` validator and CI gate, `run_stats.py` |
+| `method/` | Coverage ledger, hunter and verifier prompts, `inventory.py`, `ledger.py` validator and CI gate, `accepted_risks.py`, `sarif.py`, `run_stats.py` |
 | `report/` | Report structure (`REPORT.md`), CVSS 3.1 calculator (`cvss31.py`) and HTML template |
 | `docs/` | Getting started, how it works, CI pipeline guide, and the README images |
 | `evals/` | `benchmark.py`, which scores one run, or several runs for stability, against known findings |
@@ -167,6 +168,7 @@ Run the tests after changing the helper scripts (GitHub Actions runs the same co
 python -I method/test_inventory.py
 python -I method/test_ledger.py
 python -I method/test_accepted_risks.py
+python -I method/test_sarif.py
 python -I method/test_run_stats.py
 python -I evals/test_benchmark.py
 python -I report/cvss31.py --selftest

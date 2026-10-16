@@ -93,7 +93,8 @@ own helpers, and ends with a run summary (`method/run_stats.py`: time and tokens
 
 In CI, `ledger.py --fail-on <severity>` reads the finished ledger and exits non-zero on findings at or above the
 threshold ([ci-pipeline.md](ci-pipeline.md)), except findings waived by an accepted-risk file until its expiry
-date. It never stops a review early.
+date. It never stops a review early. `ledger.py --sarif` exports the same findings as SARIF for GitHub code
+scanning or Jenkins.
 
 ## Repeatability
 

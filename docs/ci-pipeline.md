@@ -55,6 +55,40 @@ python -I method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json \
   path above survives the fresh ledger each build), for example as a secret file credential in Jenkins or in a
   private repository where changes need a security reviewer's approval. Keep expiry dates short.
 
+## SARIF for code scanning
+
+`--sarif <file>` writes the reported findings of a valid ledger as SARIF 2.1.0, so they show up as annotations in
+GitHub code scanning, the Jenkins Warnings plugin or any other SARIF viewer. It needs no `--fail-on` and does not
+change the exit code; it is not written when the ledger is invalid.
+
+- One result per affected path, at the line the ledger gives (line 1 when it names only the file).
+- `critical` and `bug` are errors, `warning` a warning, `suggestion` a note; GitHub's `security-severity` is set
+  so alerts show as critical, high, medium or low. "Needs confirmation" findings use the severity they would have.
+- Rejected findings are left out. With `--accepted`, waived findings are included but marked as suppressed, with
+  the reason and expiry.
+- Each result carries the finding key as its rule id and fingerprint, so an alert stays the same alert when lines
+  move, as long as the key stays the same.
+- Messages hold only the finding's title, never the attack steps. Code scanning alerts are still a list of open
+  weaknesses: check who can see them in that repository before uploading.
+
+Jenkins, with the Warnings Next Generation plugin, after the gate step (the file must be inside the workspace):
+
+```groovy
+sh 'python -I "$SKILL_DIR/method/ledger.py" "$REVIEW_DIR/$(basename "$PWD")/coverage-ledger.json" --sarif appsec.sarif'
+recordIssues(tools: [sarif(pattern: 'appsec.sarif', id: 'appsec-review', name: 'appsec-review')])
+```
+
+GitHub Actions, in a job with `permissions: security-events: write` and `SKILL_DIR`, `REVIEW_DIR` and `REPO` set
+as in the review step:
+
+```yaml
+- run: python -I "$SKILL_DIR/method/ledger.py" "$REVIEW_DIR/$REPO/coverage-ledger.json" --sarif appsec.sarif
+- uses: github/codeql-action/upload-sarif@v4
+  with:
+    sarif_file: appsec.sarif
+    category: appsec-review
+```
+
 ## Requirements on the build agent
 
 - Node.js 18+ for the Claude Code CLI (`npm install -g @anthropic-ai/claude-code`).

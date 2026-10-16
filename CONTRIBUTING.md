@@ -48,6 +48,7 @@ Every script has a test file next to it. Update the tests with each change, and 
 python -I method/test_inventory.py      # inventory.py, inventory_patterns.py
 python -I method/test_ledger.py         # ledger.py (validator, inventory coverage, --fail-on gate)
 python -I method/test_accepted_risks.py # accepted_risks.py (--accepted for the gate)
+python -I method/test_sarif.py          # sarif.py (--sarif export)
 python -I method/test_run_stats.py      # run_stats.py
 python -I evals/test_benchmark.py       # benchmark.py
 python -I report/cvss31.py --selftest   # cvss31.py

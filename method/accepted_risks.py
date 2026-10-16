@@ -107,6 +107,12 @@ def why_still_blocking(entry, severity, today):
     return None
 
 
+def waiver_for(finding, severity, entries, today):
+    """The entry that currently waives the finding, or None."""
+    entry = entry_for(finding, entries)
+    return entry if entry and why_still_blocking(entry, severity, today) is None else None
+
+
 def apply(blocking, entries, severity_of, today):
     """Split blocking findings into (still blocking as (finding, note or None), waived as (finding, entry))."""
     still, waived = [], []

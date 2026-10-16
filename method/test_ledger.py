@@ -5,6 +5,7 @@ import datetime
 import io
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -384,11 +385,17 @@ class CheckInventoryTest(unittest.TestCase):
 class ParseArgsTest(unittest.TestCase):
     def test_ledger_only(self):
         self.assertEqual(ledger.parse_args(["l.json"]),
-                         {"ledger": "l.json", "inventory": None, "fail_on": None, "accepted": None})
+                         {"ledger": "l.json", "inventory": None, "fail_on": None, "accepted": None, "sarif": None})
 
     def test_all_options_any_order(self):
-        parsed = ledger.parse_args(["l.json", "--accepted", "a.json", "--fail-on", "bug", "--inventory", "i.json"])
-        self.assertEqual(parsed, {"ledger": "l.json", "inventory": "i.json", "fail_on": "bug", "accepted": "a.json"})
+        parsed = ledger.parse_args(["l.json", "--accepted", "a.json", "--fail-on", "bug", "--inventory", "i.json",
+                                    "--sarif", "o.sarif"])
+        self.assertEqual(parsed, {"ledger": "l.json", "inventory": "i.json", "fail_on": "bug", "accepted": "a.json",
+                                  "sarif": "o.sarif"})
+
+    def test_accepted_with_sarif_only(self):
+        parsed = ledger.parse_args(["l.json", "--accepted", "a.json", "--sarif", "o.sarif"])
+        self.assertEqual((parsed["accepted"], parsed["sarif"], parsed["fail_on"]), ("a.json", "o.sarif", None))
 
     def test_bad_usage(self):
         for args in ([], ["l.json", "--other", "x"], ["l.json", "--inventory"], ["l.json", "--fail-on", "high"],
@@ -483,6 +490,22 @@ class GateTest(unittest.TestCase):
         self.assertIn("UNUSED acceptance 'accept-crit'", text)
 
 
+class SarifLogTest(unittest.TestCase):
+    TODAY = datetime.date(2026, 10, 16)
+
+    def test_marks_waived_findings_suppressed(self):
+        data = ledger_with([], [finding(key="crit"), finding(key="other", title="Other", severity="bug")])
+        log = ledger.sarif_log(data, [acceptance()], self.TODAY)
+        results = {r["ruleId"]: r for r in log["runs"][0]["results"]}
+        self.assertEqual(results["crit"]["suppressions"][0]["status"], "accepted")
+        self.assertNotIn("suppressions", results["other"])
+
+    def test_expired_acceptance_not_suppressed(self):
+        data = ledger_with([], [finding(key="crit")])
+        log = ledger.sarif_log(data, [acceptance(expires="2026-01-01")], self.TODAY)
+        self.assertNotIn("suppressions", log["runs"][0]["results"][0])
+
+
 class LoadAcceptedTest(unittest.TestCase):
     def write(self, data):
         handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8")
@@ -549,6 +572,20 @@ class MainTest(unittest.TestCase):
     def test_invalid_accepted_file_returns_1(self):
         accepted = {"accepted": [acceptance(max_severity="high")]}
         self.assertEqual(self.run_main([self.gated(), "--fail-on", "bug", "--accepted", self.write(accepted)]), 1)
+
+    def test_sarif_written_without_changing_exit_code(self):
+        out = os.path.join(tempfile.mkdtemp(), "nested", "out.sarif")
+        self.addCleanup(shutil.rmtree, os.path.dirname(os.path.dirname(out)), ignore_errors=True)
+        self.assertEqual(self.run_main([self.gated(), "--sarif", out]), 0)
+        with open(out, encoding="utf-8") as handle:
+            log = json.load(handle)
+        self.assertEqual([r["ruleId"] for r in log["runs"][0]["results"]], ["cards-idor"])
+
+    def test_sarif_not_written_for_invalid_ledger(self):
+        out = os.path.join(tempfile.mkdtemp(), "out.sarif")
+        self.addCleanup(shutil.rmtree, os.path.dirname(out), ignore_errors=True)
+        self.assertEqual(self.run_main([self.write({"repo": "x"}), "--sarif", out]), 1)
+        self.assertFalse(os.path.exists(out))
 
     def test_no_gate_ignores_findings(self):
         self.assertEqual(self.run_main([self.gated()]), 0)

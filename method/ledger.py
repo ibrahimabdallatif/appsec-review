@@ -1,8 +1,8 @@
 """Coverage ledger validator for appsec-review.
 
 Usage:
-    python -I ledger.py <coverage-ledger.json> [--inventory <inventory.json>]
-                        [--fail-on <severity> [--accepted <accepted-risks.json>]]
+    python -I ledger.py <coverage-ledger.json> [--inventory <inventory.json>] [--sarif <out.sarif>]
+                        [--fail-on <severity>] [--accepted <accepted-risks.json>]
                                                    validate and print a coverage summary
     python -I test_ledger.py                       run the unit tests
 
@@ -16,7 +16,10 @@ must have been read under the sink's category, so coverage no longer depends on 
 --fail-on is a CI gate on the finished ledger: it never shortens a review. Confirmed and hardening findings count
 by their severity, needs_confirmation findings by severity_if_confirmed, and rejected findings never count.
 --accepted waives findings a team has accepted until an expiry date (see accepted_risks.py); waived findings
-are still printed.
+are still printed. It needs --fail-on or --sarif.
+
+--sarif writes the reported findings of a valid ledger as SARIF 2.1.0 (see sarif.py), with accepted risks marked
+as suppressed, for GitHub code scanning or Jenkins Warnings. It does not change the exit code.
 """
 import datetime
 import json
@@ -27,6 +30,7 @@ import sys
 sys.dont_write_bytecode = True  # keep the skill folder free of __pycache__
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import accepted_risks  # noqa: E402
+import sarif  # noqa: E402
 
 SCOPES = ("diff", "repo", "endpoint", "files")
 PROFILES = ("standard", "deep")
@@ -346,12 +350,27 @@ def load_accepted(path):
     return ([] if errors else doc["accepted"]), errors
 
 
+def sarif_log(ledger, entries, today):
+    """SARIF for the ledger's reported findings, with currently waived ones marked as suppressed."""
+    def waiver_for(finding, severity):
+        return accepted_risks.waiver_for(finding, severity, entries, today)
+    return sarif.to_sarif(ledger, gate_severity, waiver_for)
+
+
+def write_sarif(path, ledger, entries, today):
+    folder = os.path.dirname(os.path.abspath(path))
+    os.makedirs(folder, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(sarif_log(ledger, entries, today), handle, indent=1)
+    print("SARIF written to %s" % path)
+
+
 def parse_args(args):
-    """{'ledger', 'inventory', 'fail_on', 'accepted'} from the command line, or None for bad usage."""
+    """{'ledger', 'inventory', 'fail_on', 'accepted', 'sarif'} from the command line, or None for bad usage."""
     if not args:
         return None
-    parsed = {"ledger": args[0], "inventory": None, "fail_on": None, "accepted": None}
-    options = {"--inventory": "inventory", "--fail-on": "fail_on", "--accepted": "accepted"}
+    parsed = {"ledger": args[0], "inventory": None, "fail_on": None, "accepted": None, "sarif": None}
+    options = {"--inventory": "inventory", "--fail-on": "fail_on", "--accepted": "accepted", "--sarif": "sarif"}
     rest = args[1:]
     if len(rest) % 2:
         return None
@@ -361,7 +380,7 @@ def parse_args(args):
         parsed[options[flag]] = value
     if parsed["fail_on"] is not None and parsed["fail_on"] not in SEVERITIES:
         return None
-    if parsed["accepted"] is not None and parsed["fail_on"] is None:
+    if parsed["accepted"] is not None and parsed["fail_on"] is None and parsed["sarif"] is None:
         return None
     return parsed
 
@@ -388,9 +407,12 @@ def main(args):
     if errors:
         return 1
     print(json.dumps(summary(ledger), indent=2, sort_keys=True))
+    today = datetime.date.today()
+    if parsed["sarif"]:
+        write_sarif(parsed["sarif"], ledger, entries, today)
     if parsed["fail_on"] is None:
         return 0
-    code, text = run_gate(ledger, parsed["fail_on"], entries, datetime.date.today())
+    code, text = run_gate(ledger, parsed["fail_on"], entries, today)
     print(text)
     return code
 

@@ -134,6 +134,16 @@ class WhyStillBlockingTest(unittest.TestCase):
         self.assertEqual(note, "above acceptance 'legacy-idor' (accepted up to bug)")
 
 
+class WaiverForTest(unittest.TestCase):
+    def test_waived(self):
+        self.assertEqual(ar.waiver_for(finding(), "bug", [entry()], TODAY), entry())
+
+    def test_not_waived(self):
+        self.assertIsNone(ar.waiver_for(finding(), "critical", [entry()], TODAY))
+        self.assertIsNone(ar.waiver_for(finding(), "bug", [entry(expires="2026-01-01")], TODAY))
+        self.assertIsNone(ar.waiver_for(finding(), "bug", [], TODAY))
+
+
 class ApplyTest(unittest.TestCase):
     def test_splits_waived_and_blocking(self):
         accepted = finding()
