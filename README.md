@@ -130,11 +130,14 @@ Agent setup, accepted risks, SARIF, a Jenkins example and scheduling advice:
 3. Identify the stack from manifests, pick matching stack rules, and build the scripted inventory of entry points
    and sinks (`method/inventory.py`).
 4. Set the scope and load the category rules whose `paths` match files in scope.
-5. Seed the coverage ledger (`standard` and `deep`).
+5. Seed the coverage ledger, and write the threat model and abuse paths: what an attacker wants and how they
+   would try to get it (`standard` and `deep`).
 6. Assess the code forward from each entry point (trust boundaries, STRIDE, rule checks) while hunters run in
-   parallel: wildcard and obvious-things, and in `deep` a sink tracer working backward from every sink.
+   parallel: wildcard and obvious-things, and in `deep` a sink tracer working backward from every sink. Then
+   work each abuse path to its goal, or to the line of code that stops it.
 7. Optionally run installed tools: gitleaks, trivy/osv-scanner, ecosystem audits, semgrep.
-8. Verify every candidate with a disproof pass and, depending on the mode, independent verifier subagents.
+8. Verify every candidate with a disproof pass and, depending on the mode, independent verifier subagents,
+   then look for chains: findings that combine into a worse outcome, verified as a chain.
 9. Close the ledger, validate it against the inventory, then report.
 
 The full picture, with a diagram: [docs/how-it-works.md](docs/how-it-works.md).
@@ -169,6 +172,7 @@ python -I method/test_inventory.py
 python -I method/test_ledger.py
 python -I method/test_accepted_risks.py
 python -I method/test_sarif.py
+python -I method/test_threat_model.py
 python -I method/test_run_stats.py
 python -I evals/test_benchmark.py
 python -I report/cvss31.py --selftest

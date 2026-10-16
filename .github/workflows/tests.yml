@@ -28,6 +28,8 @@ jobs:
         run: python -I method/test_accepted_risks.py
       - name: SARIF tests
         run: python -I method/test_sarif.py
+      - name: Threat model tests
+        run: python -I method/test_threat_model.py
       - name: Run stats tests
         run: python -I method/test_run_stats.py
       - name: Benchmark tests

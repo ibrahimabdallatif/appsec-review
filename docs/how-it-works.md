@@ -7,7 +7,7 @@ are listed below so you can read or change the exact behaviour.
 flowchart TD
     A["Scope<br/>diff · branch · files · endpoint · repo · many repos"] --> B["Stack detection<br/>manifests → rules/stacks/*.md"]
     B --> C["Inventory (script)<br/>method/inventory.py<br/>entry points + sinks"]
-    C --> D["Coverage ledger seeded<br/>entry point or module × category"]
+    C --> D["Coverage ledger seeded<br/>entry point or module × category<br/>+ threat model, abuse paths"]
     D --> E["Main review<br/>forward: entry point → sink<br/>STRIDE + rules/*.md"]
     D --> F["Hunters (subagents)<br/>wildcard · obvious-things"]
     D --> G["Sink tracer (deep)<br/>backward: sink → callers"]
@@ -16,7 +16,7 @@ flowchart TD
     F --> I
     G --> I
     I --> J{"Verification<br/>disproof pass +<br/>fresh verifier subagents"}
-    J -->|confirmed / hardening| K["Findings"]
+    J -->|confirmed / hardening| K["Findings<br/>+ chains of findings"]
     J -->|needs_confirmation| L["Findings with the<br/>missing fact named"]
     J -->|rejected + path:line| M["Rejected list<br/>(you can overrule)"]
     K --> N["Ledger validated<br/>method/ledger.py --inventory"]
@@ -44,6 +44,9 @@ The coverage ledger (`method/coverage-ledger.md`) turns that list into units:
 
 - `standard`: one unit per module (file) × category.
 - `deep`: one unit per entry point × category.
+- In both, a threat model (assets, actors, trust boundaries) and **abuse paths**: concrete goals such as "a
+  customer reads another customer's card number", at least one per asset (`method/threat-model.md`). They
+  give the review a top-down view: what an attacker wants, not only what each entry point allows.
 
 Each unit ends with the paths read and one line per check. The ledger lives in `~/.appsec-review/<repo>/`,
 outside the reviewed repository.
@@ -58,6 +61,10 @@ outside the reviewed repository.
   basics everyone assumes someone else checked: hardcoded secrets, debug routes, permissive CORS, open redirects.
 - **Sink tracer, backward** (`deep` only). Starting at each inventory sink, it traces the dangerous argument back
   through its callers to an entry point, and answers every sink as candidate, safe, unreachable or blocked.
+
+- **Abuse paths, top-down** (`standard` and `deep`). After the forward pass, each abuse path is worked as an
+  attacker would: the cheapest route to the goal, step by step. It closes as realised (linked to findings) or
+  blocked, citing the `path:line` of the control that stops it.
 
 Installed scanners add their hits too. Everything found at this stage is a **candidate**, not a finding.
 
@@ -80,6 +87,12 @@ The agent that found a candidate never decides whether it is real (`method/verif
 
 Decisions are `confirmed`, `hardening`, `needs_confirmation` (with the one external fact that decides it) or
 `rejected`. Rejected candidates are listed at the end of the result so you can overrule them.
+
+3. **Chain pass.** Verification judges each weakness alone, so two warnings that together take over an
+   account would stay two warnings. After it, the findings are checked for chains: one gives the next what it
+   needs (a leaked id, a redirect that carries a token, a race past a limit). A chain is reported as its own
+   finding at the end-to-end severity, after a verifier checks each hand-off between the links. The validator
+   rejects a chain that is no worse than its worst link, or confirmed while a link is not.
 
 ## 5. Ledger validation, result and gate
 

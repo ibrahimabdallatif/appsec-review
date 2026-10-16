@@ -31,6 +31,12 @@ per repository.
   "base_ref": "<merge-base sha for a diff review, else null>",
   "stopped_early": false,
   "runs": [{"date": "2026-10-15", "source_ref": "<sha>", "scope": "repo", "note": "first full review"}],
+  "threat_model": {
+    "assets": [{"id": "card-pan", "what": "PAN and CVV returned by CardController.reveal"},
+               {"id": "wallet", "what": "balances moved by TransferService"}],
+    "actors": ["anonymous", "customer", "support-agent"],
+    "boundaries": ["browser -> API (JwtAuthFilter)", "API -> card vault (VaultClient)"]
+  },
   "units": [
     {
       "id": "src/main/java/.../CardController.java::access-control",
@@ -43,6 +49,18 @@ per repository.
       "finding_keys": [],
       "unresolved": [],
       "source_ref": "<sha when last reviewed>"
+    },
+    {
+      "id": "abuse/customer-reads-other-pan::abuse-path",
+      "surface": "abuse/customer-reads-other-pan",
+      "area": "abuse-path",
+      "status": "covered",
+      "owner": "main",
+      "abuse": {"actor": "customer", "asset": "card-pan", "goal": "read another customer's PAN"},
+      "reviewed_paths": ["src/main/java/.../CardController.java", "src/main/java/.../CardService.java"],
+      "checks": ["blocked: reveal loads via findByIdAndCustomerId(principal) at CardService.java:88"],
+      "finding_keys": [],
+      "unresolved": []
     }
   ],
   "findings": [
@@ -64,11 +82,19 @@ per repository.
   (`#GET /x`, `#consumer card-events`, `#screen Login`, `#deep link app://pay`), or `<path>` for config files, CI
   and manifests. Never contains `::`.
 - **area**: a category file stem from `rules/` (`access-control`, `web-protocol-identity`, …) or a hunter
-  (`wildcard`, `obvious-things`, `sink-trace`). The validator reads the allowed list from `rules/`.
+  (`wildcard`, `obvious-things`, `sink-trace`), or `abuse-path` for an abuse path. The validator reads the
+  category list from `rules/`.
 - **id**: `<surface>::<area>`. No line numbers, dates or agent names, so it stays the same across runs.
 - **owner**: `main` (you), `wildcard`, `obvious-things`, `sink-trace`, or `verifier`.
 - **finding key**: a stable root-cause key such as `cards/reveal-without-step-up`. No line numbers or severities.
   One root cause seen from several entry points is one finding linked from several units.
+- **threat_model** and **abuse paths**: written as `method/threat-model.md` says. An abuse path unit has area
+  `abuse-path`, surface `abuse/<slug>`, and an `abuse` object whose `actor` and `asset` come from the threat
+  model. A ledger needs at least 3 and one per asset. Closed `covered`, one check cites the `path:line` of the
+  control that blocks it; closed `finding`, it links the findings that realise it. Abuse paths count separately
+  from the coverage units in the summary.
+- **chain**: on a finding from the chain pass, the keys of the two or more findings it combines (never rejected
+  findings or other chains). It is `needs_confirmation` while any link is, and more severe than its worst link.
 
 ## Unit status
 
@@ -124,7 +150,10 @@ If a ledger already exists, read it first:
 - Re-verify every earlier `confirmed` and `needs_confirmation` finding against the current code before reporting it
   again. Mark fixed ones in the report's Status column instead of deleting them.
 - Make earlier `blocked`, `deferred` and `out_of_scope` units current work when they are now in scope.
-- Bring a ledger written under older rules up to date before validating: review its `deferred` units, add
+- Re-check the threat model: add assets, actors and boundaries the new code brings, and re-work abuse paths
+  whose `reviewed_paths` changed, as for any unit.
+- Bring a ledger written under older rules up to date before validating: add the `threat_model` and abuse
+  paths if it has none, review its `deferred` units, add
   `severity_if_confirmed` to each `needs_confirmation` finding, and re-verify each `rejected` finding that has no
   `disproof` line (keep it rejected only if a verifier cites one; otherwise it becomes `needs_confirmation`).
 - An earlier `rejected` finding suppresses only that same claim on unchanged code, not review of its unit.

@@ -38,6 +38,8 @@ The method files in `method/` are not checklists; they define how the review run
 |---|---|
 | `method/coverage-ledger.md` | The coverage ledger: units (entry point × category), statuses, later runs |
 | `method/ledger.py` | Ledger validator, coverage summary and the `--fail-on` CI gate (`test_ledger.py` holds its tests) |
+| `method/threat-model.md` | Threat model, abuse paths and the chain pass (`standard` and `deep`; the chain pass in every mode) |
+| `method/threat_model.py` | Validation of the threat model, abuse paths and chains, called by `ledger.py` (`test_threat_model.py` holds its tests) |
 | `method/accepted_risks.py` | Accepted-risk file for the gate's `--accepted` option (`test_accepted_risks.py` holds its tests) |
 | `method/sarif.py` | SARIF 2.1.0 export for `ledger.py --sarif` (`test_sarif.py` holds its tests) |
 | `method/hunters.md` | Wildcard, obvious-things and sink-trace hunter prompts, and when to run them as subagents |
@@ -101,11 +103,14 @@ never selects `deep` mode.
    loads only when a manifest matches it. In `deep` mode only, also read each `rules/deep/` playbook whose
    `parent` category is loaded and whose `when` front matter matches code in scope, and follow its method for
    that category. If no stack file fits, use the framework's own documentation and say so.
-   Read a method file only when its step runs: `method/coverage-ledger.md` at step 5 (not in `diff` mode),
-   `method/hunters.md` at step 6, `method/verifier.md` at step 8. Read `report/` only when a report is asked for.
+   Read a method file only when its step runs: `method/coverage-ledger.md` and `method/threat-model.md` at
+   step 5 (not in `diff` mode), `method/hunters.md` at step 6, `method/verifier.md` at step 8 (and
+   `method/threat-model.md` section 3 for the chain pass in `diff`). Read `report/` only when a report is asked for.
 5. **Seed the coverage ledger** (`standard` and `deep` only). Seed the units from the inventory, map the trust
    boundaries and any entry points the inventory missed, then write the ledger units at the mode's granularity,
-   plus the hunter units, as `method/coverage-ledger.md` describes. If a ledger from an earlier run exists, start from it and follow its "Later runs" rules.
+   plus the hunter units, as `method/coverage-ledger.md` describes. Then write the threat model and the abuse
+   path units (`method/threat-model.md`, sections 1–2). If a ledger from an earlier run exists, start from it
+   and follow its "Later runs" rules.
 6. **Assess, with the hunters in parallel.** Start the hunters as `method/hunters.md` says for the mode (wildcard
    and obvious-things inline in `diff` and as one subagent in `standard`; in `deep`, one subagent for those two
    and one sink-trace subagent working back from the inventory's sinks). Meanwhile follow `00-overview.md`: identify
@@ -113,6 +118,8 @@ never selects `deep` mode.
    the helpers, middleware, filters, guards, interceptors and config the code depends on before deciding. Don't
    judge a diff hunk in isolation. For changed code, also run the history, callers and tests checks in
    `00-overview.md` ("Reviewing a change"). Close each ledger unit with the paths you read and one line per check.
+   In `standard` and `deep`, after the forward pass, work each abuse path as an attacker would and close it
+   (`method/threat-model.md`, section 2).
    Everything you find at this stage is a **candidate**, not yet a finding.
 7. **Optional tools.** If they're installed, run them from each repository's directory to back up the review and
    add their real hits as candidates. Never install them without asking:
@@ -127,7 +134,9 @@ never selects `deep` mode.
    `method/verifier.md` says for the mode: a disproof pass for all, plus fresh verifier subagents where the mode
    calls for them. The verifier's decision stands: `confirmed` and `hardening`
    become findings, `needs_confirmation` is reported with the exact missing fact, `rejected` is dropped. Never
-   verify your own candidates in the same pass that found them.
+   verify your own candidates in the same pass that found them. Then run the chain pass over the findings that
+   were not rejected (`method/threat-model.md`, section 3) and verify each chain as `method/verifier.md`
+   ("Chains") says.
 9. **Close the ledger** (`standard` and `deep` only). Link the verified findings, run the gap pass, and validate with
    `python -I <skill folder>/method/ledger.py <ledger> --inventory <inventory>`. Fix every error before writing
    the result. A candidate
@@ -176,11 +185,14 @@ ledger; a platform-wide finding uses one finding key, linked from units in every
   that uses the codebase's existing helpers and conventions.
 - "Needs confirmation" findings stay in the main list, placed by the severity they have if confirmed, with a label
   such as `critical if confirmed` and the exact fact to confirm.
+- A chain is listed by its end-to-end severity like any finding, with a `Chain:` line naming its links in
+  order and where each hands off to the next; its links stay listed on their own.
 - Give two counts: root causes (findings) and affected locations (one root cause can appear in several files),
   so runs can be compared with reports that counted each location separately.
 - End with a short list of what was checked and found clean, and anything out of scope or not verifiable. Add a
   one-line coverage summary from `method/ledger.py` in `standard` and `deep` (units covered, finding, blocked,
-  deferred), and how each finding was verified (independent verifier or self-verified disproof pass).
+  deferred), a line for the abuse paths (realised, blocked with the controls that stopped them, and blocked on
+  an outside fact), and how each finding was verified (independent verifier or self-verified disproof pass).
 - List the candidates **rejected by verification** after that: title, `file:line`, the verifier's reason and the
   disproof line. The user can overrule a wrong rejection.
 - Finish every run, including one stopped early or failed, with the run summary below.

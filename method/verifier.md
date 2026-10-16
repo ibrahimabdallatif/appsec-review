@@ -115,6 +115,21 @@ severity is null for rejected and needs_confirmation. severity_if_confirmed is s
 needs_confirmation. disproof is set only for rejected.
 ```
 
+## Chains
+
+Chain candidates from the chain pass (`method/threat-model.md`, section 3) go to a fresh verifier like any
+candidate: in `diff`, the disproof pass; in `standard`, one more verifier subagent for all chains, in one batch;
+in `deep`, one verifier per chain. Give it the chain, its links as verified, and this addition to the prompt:
+
+```text
+This candidate is a chain of findings that were each verified already; don't re-verify them. Decide
+whether they combine as claimed: does the output of each link give the next one exactly what it
+needs (same identifier, same user or tenant, same environment, reachable in the order claimed,
+within any time or rate limits)? Cite the path:line where each hand-off happens. Rate the severity
+of the end-to-end outcome. If a hand-off does not hold, the chain is rejected with that line as
+the disproof; the links keep their own verdicts.
+```
+
 ## After verification
 
 - **Use the verifier's decision.** `rejected` candidates leave the findings list but are **listed at the end of

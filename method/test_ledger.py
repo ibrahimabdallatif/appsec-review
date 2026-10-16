@@ -14,7 +14,9 @@ sys.dont_write_bytecode = True  # keep the skill folder free of __pycache__
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ledger  # noqa: E402
 
-AREAS = {"access-control", "injection-input", "wildcard", "obvious-things"}
+AREAS = {"access-control", "injection-input", "wildcard", "obvious-things", "abuse-path"}
+THREAT_MODEL = {"assets": [{"id": "card-pan", "what": "card numbers returned by /cards/{id}"}],
+                "actors": ["customer", "anonymous"], "boundaries": ["browser -> API"]}
 
 
 def unit(status="covered", area="access-control", surface="src/api/Cards.java#GET /cards/{id}", **fields):
@@ -34,9 +36,22 @@ def finding(key="cards-idor", decision="confirmed", severity="critical", **field
     return base
 
 
-def ledger_with(units, findings=(), profile="deep"):
-    return {"repo": "cards", "source_ref": "abc123", "profile": profile, "scope": "repo",
+def abuse_unit(slug="other-customer-reads-pan", status="covered", **fields):
+    base = unit(status=status, area="abuse-path", surface="abuse/" + slug,
+                checks=["blocked: findByIdAndCustomerId at src/api/Cards.java:88"],
+                abuse={"actor": "customer", "asset": "card-pan", "goal": "read another customer's PAN"})
+    base.update(fields)
+    return base
+
+
+def ledger_with(units, findings=(), profile="deep", abuse=True):
+    """A ledger with the given units and findings; with abuse, also a threat model and three abuse paths."""
+    data = {"repo": "cards", "source_ref": "abc123", "profile": profile, "scope": "repo",
             "units": list(units), "findings": list(findings)}
+    if abuse:
+        data["threat_model"] = copy.deepcopy(THREAT_MODEL)
+        data["units"] += [abuse_unit("a"), abuse_unit("b"), abuse_unit("c")]
+    return data
 
 
 class AllowedAreasTest(unittest.TestCase):
@@ -44,10 +59,11 @@ class AllowedAreasTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             for name in ("00-overview.md", "access-control.md", "notes.txt"):
                 open(os.path.join(tmp, name), "w").close()
-            self.assertEqual(ledger.allowed_areas(tmp), {"access-control", "wildcard", "obvious-things", "sink-trace"})
+            self.assertEqual(ledger.allowed_areas(tmp),
+                             {"access-control", "wildcard", "obvious-things", "sink-trace", "abuse-path"})
 
-    def test_missing_dir_gives_hunters_only(self):
-        self.assertEqual(ledger.allowed_areas("/no/such/dir"), set(ledger.HUNTER_AREAS))
+    def test_missing_dir_gives_method_areas_only(self):
+        self.assertEqual(ledger.allowed_areas("/no/such/dir"), set(ledger.HUNTER_AREAS) | {"abuse-path"})
 
     def test_real_rules_dir_includes_new_category(self):
         self.assertIn("web-protocol-identity", ledger.allowed_areas())
@@ -283,6 +299,29 @@ class ValidateTest(unittest.TestCase):
         data["stopped_early"] = True
         self.assertEqual(ledger.validate(data, AREAS), [])
 
+    def test_missing_threat_model(self):
+        data = ledger_with([unit(area="wildcard")], abuse=False)
+        self.assertIn("threat_model: missing", " ".join(ledger.validate(data, AREAS)))
+
+    def test_too_few_abuse_paths(self):
+        data = self.valid()
+        data["units"] = [u for u in data["units"] if u["surface"] != "abuse/c"]
+        self.assertIn("write at least 3", " ".join(ledger.validate(data, AREAS)))
+
+    def test_valid_chain(self):
+        data = self.valid()
+        data["findings"] += [finding(key="leak", severity="warning"), finding(key="guess", severity="warning"),
+                             finding(key="takeover", chain=["leak", "guess"])]
+        data["units"][0]["finding_keys"] += ["leak", "guess", "takeover"]
+        self.assertEqual(ledger.validate(data, AREAS), [])
+
+    def test_chain_not_worse_than_links(self):
+        data = self.valid()
+        data["findings"] += [finding(key="leak", severity="warning"), finding(key="takeover", severity="critical",
+                                                                             chain=["leak", "cards-idor"])]
+        data["units"][0]["finding_keys"] += ["leak", "takeover"]
+        self.assertIn("more severe than its worst link", " ".join(ledger.validate(data, AREAS)))
+
     def test_duplicate_unit(self):
         data = self.valid()
         data["units"].append(copy.deepcopy(data["units"][1]))
@@ -293,8 +332,16 @@ class SummaryTest(unittest.TestCase):
     def test_counts(self):
         data = ledger_with([unit(status="finding", finding_keys=["cards-idor"]), unit(area="wildcard")], [finding()])
         self.assertEqual(ledger.summary(data),
-                         {"units": {"finding": 1, "covered": 1}, "findings": {"confirmed": 1},
-                          "root_causes": 1, "locations": 1})
+                         {"units": {"finding": 1, "covered": 1}, "abuse_paths": {"covered": 3},
+                          "findings": {"confirmed": 1}, "chains": 0, "root_causes": 1, "locations": 1})
+
+    def test_counts_chains(self):
+        findings = [finding(key="leak", severity="warning"), finding(key="guess", severity="warning"),
+                    finding(key="takeover", chain=["leak", "guess"])]
+        self.assertEqual(ledger.summary(ledger_with([], findings))["chains"], 1)
+
+    def test_count_by(self):
+        self.assertEqual(ledger.count_by([{"s": "a"}, {"s": "a"}, {"s": "b"}], "s"), {"a": 2, "b": 1})
 
     def test_root_causes_and_locations_skip_rejected(self):
         findings = [finding(paths=["a.ts", "b.ts", "c.ts"]),

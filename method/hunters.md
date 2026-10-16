@@ -18,6 +18,8 @@ Context block to put before each hunter prompt:
 
 - repository path and branch, stack and layer, the stack files picked;
 - the entry points and trust boundaries you mapped in steps 2–5;
+- the abuse paths from the ledger (`method/threat-model.md`), as extra targets: report candidates that
+  realise one with its unit id in the trace (`standard` and `deep` only);
 - the coverage ledger units assigned to the hunter (`method/coverage-ledger.md`), so it reports against them
   (`standard` and `deep` only);
 - for the sink-trace hunter, the path of the inventory file (`method/inventory.py`) and the instruction to read

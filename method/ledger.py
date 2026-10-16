@@ -10,6 +10,9 @@ Exit codes: 0 valid (and, with --fail-on, no blocking finding), 1 invalid ledger
 coverage gap, 2 bad usage, 3 valid but a reported finding is at or above the --fail-on severity (critical, bug,
 warning or suggestion) and not waived by an accepted risk.
 
+Every ledger also carries a threat model, abuse path units and, where findings combine, chained findings; their
+rules are in threat_model.py.
+
 With --inventory (written by inventory.py), every listed entry point must have a unit and every listed sink file
 must have been read under the sink's category, so coverage no longer depends on what a run happened to notice.
 
@@ -31,6 +34,7 @@ sys.dont_write_bytecode = True  # keep the skill folder free of __pycache__
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import accepted_risks  # noqa: E402
 import sarif  # noqa: E402
+import threat_model  # noqa: E402
 
 SCOPES = ("diff", "repo", "endpoint", "files")
 PROFILES = ("standard", "deep")
@@ -63,10 +67,10 @@ RULES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "rule
 
 
 def allowed_areas(rules_dir=RULES_DIR):
-    """Category file stems in rules/ (except the overview) plus the hunter areas."""
+    """Category file stems in rules/ (except the overview), the hunter areas and the abuse path area."""
     names = os.listdir(rules_dir) if os.path.isdir(rules_dir) else []
     stems = [n[:-3] for n in names if n.endswith(".md") and n != "00-overview.md"]
-    return set(stems) | set(HUNTER_AREAS)
+    return set(stems) | set(HUNTER_AREAS) | {threat_model.ABUSE_AREA}
 
 
 def is_relative_path(path):
@@ -234,20 +238,28 @@ def validate(ledger, areas=None):
         errors += check_deferral(unit, ledger.get("stopped_early") is True)
     for finding in findings:
         errors += check_finding(finding)
+    errors += threat_model.check_abuse(ledger)
+    errors += threat_model.check_chains(findings, gate_severity)
     return errors + check_links(units, findings)
 
 
+def count_by(items, field):
+    counts = {}
+    for item in items:
+        counts[item[field]] = counts.get(item[field], 0) + 1
+    return counts
+
+
 def summary(ledger):
-    """Counts of units per status, findings per decision, and reported root causes and locations."""
-    units = {}
-    for unit in ledger["units"]:
-        units[unit["status"]] = units.get(unit["status"], 0) + 1
-    findings = {}
-    for finding in ledger["findings"]:
-        findings[finding["decision"]] = findings.get(finding["decision"], 0) + 1
+    """Counts of coverage units and abuse paths per status, findings per decision, reported chains, root causes
+    and locations."""
+    abuse = threat_model.abuse_units(ledger["units"])
+    units = [u for u in ledger["units"] if u.get("area") != threat_model.ABUSE_AREA]
     reported = [f for f in ledger["findings"] if f["decision"] != "rejected"]
-    locations = sum(len(f["paths"]) for f in reported)
-    return {"units": units, "findings": findings, "root_causes": len(reported), "locations": locations}
+    return {"units": count_by(units, "status"), "abuse_paths": count_by(abuse, "status"),
+            "findings": count_by(ledger["findings"], "decision"),
+            "chains": sum(1 for f in reported if "chain" in f),
+            "root_causes": len(reported), "locations": sum(len(f["paths"]) for f in reported)}
 
 
 def entry_surface(entry, profile):
