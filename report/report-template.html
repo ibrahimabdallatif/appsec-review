@@ -1,0 +1,448 @@
+<title>{{SERVICE_TITLE}} Code Review</title>
+<style>
+/* Layout: dark cover band, then a two-column report (sticky contents rail + document column); findings are dossier cards with a metric strip */
+:root {
+  --bg: #f3f5f8;
+  --paper: #ffffff;
+  --ink: #121a2b;
+  --muted: #5b6579;
+  --line: #e1e5ee;
+  --accent: #0f7a72;
+  --accent-soft: #e2f3f1;
+  --code-bg: #f0f2f7;
+  --cover: #0e1626;
+  --cover-ink: #eef2fa;
+  --cover-muted: #9aa6bf;
+  --critical: #b4232f;
+  --high: #d0541b;
+  --medium: #b98a00;
+  --low: #2f7d4f;
+  --info: #4a6fa5;
+  --display: system-ui, -apple-system, "Segoe UI Variable Display", "Segoe UI", Roboto, sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d121c; --paper: #151c29; --ink: #e5eaf3; --muted: #9aa5b9; --line: #263042;
+    --accent: #3cc2b4; --accent-soft: #15302f; --code-bg: #1d2636;
+    --cover: #080c14; --cover-ink: #eef2fa; --cover-muted: #8f9bb3;
+    --critical: #ff6670; --high: #ff9a5c; --medium: #e8c14a; --low: #6fcf97; --info: #8fb0e6;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d121c; --paper: #151c29; --ink: #e5eaf3; --muted: #9aa5b9; --line: #263042;
+  --accent: #3cc2b4; --accent-soft: #15302f; --code-bg: #1d2636;
+  --cover: #080c14; --cover-ink: #eef2fa; --cover-muted: #8f9bb3;
+  --critical: #ff6670; --high: #ff9a5c; --medium: #e8c14a; --low: #6fcf97; --info: #8fb0e6;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.62; }
+h1, h2, h3, h4 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.22; }
+p { margin: 0; }
+a { color: var(--accent); }
+code { font-family: var(--mono); font-size: 0.84em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.eyebrow { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+
+/* Cover */
+.cover { background: var(--cover); color: var(--cover-ink); padding: 56px 16px 48px; }
+.cover-in { max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 40px; align-items: end; }
+@media (max-width: 860px) { .cover-in { grid-template-columns: minmax(0, 1fr); } }
+.cover .eyebrow { color: var(--cover-muted); }
+.cover h1 { font-size: clamp(2rem, 4.6vw, 3.1rem); font-weight: 700; letter-spacing: -0.02em; margin-top: 14px; }
+.cover h1 span { color: #5fd3c6; }
+.cover .sub { color: var(--cover-muted); margin-top: 14px; max-width: 54ch; }
+.cover-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; }
+.cover-meta div { background: var(--cover); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cover-meta dt { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cover-muted); }
+.cover-meta dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+.badge-conf { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid #5fd3c6; color: #5fd3c6; padding: 3px 10px; border-radius: 999px; }
+
+/* Shell */
+.shell { max-width: 1160px; margin: 0 auto; padding: 32px 16px 80px; display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 40px; }
+@media (max-width: 960px) { .shell { grid-template-columns: minmax(0, 1fr); } .rail { display: none; } }
+.rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; max-height: calc(100vh - 40px); overflow-y: auto; padding-right: 6px; }
+.rail ol { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 0.86rem; }
+.rail a { display: block; text-decoration: none; color: var(--muted); padding: 5px 10px; border-left: 2px solid var(--line); }
+.rail a:hover, .rail a:focus-visible { color: var(--ink); border-left-color: var(--accent); outline: none; }
+.rail .sub a { padding-left: 22px; font-size: 0.8rem; }
+.doc { display: flex; flex-direction: column; gap: 56px; min-width: 0; }
+
+section.part { display: flex; flex-direction: column; gap: 20px; scroll-margin-top: 20px; }
+.part > header { display: flex; align-items: baseline; gap: 14px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.part > header .num { font-family: var(--mono); color: var(--accent); font-size: 0.9rem; }
+.part > header h2 { font-size: 1.45rem; font-weight: 600; letter-spacing: -0.01em; }
+h3.sec { font-size: 1.05rem; font-weight: 600; display: flex; gap: 10px; align-items: baseline; scroll-margin-top: 20px; }
+h3.sec .num { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); font-weight: 400; }
+.prose { display: flex; flex-direction: column; gap: 12px; max-width: 72ch; }
+.prose ul { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: 4px; }
+
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; min-width: 0; }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; background: var(--code-bg); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
+.tbl-findings td:nth-child(2) { min-width: 240px; }
+.tbl-findings td:nth-child(5) { min-width: 220px; }
+.tbl-findings a { color: inherit; text-decoration: none; font-weight: 500; }
+.tbl-findings a:hover { color: var(--accent); text-decoration: underline; }
+
+/* Severity */
+.sev { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.82rem; color: var(--c); white-space: nowrap; }
+.sev::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--c); }
+.s-critical { --c: var(--critical); } .s-high { --c: var(--high); } .s-medium { --c: var(--medium); } .s-low { --c: var(--low); } .s-info { --c: var(--info); }
+
+/* Distribution */
+.dist { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 20px; }
+@media (max-width: 760px) { .dist { grid-template-columns: minmax(0, 1fr); } }
+.total { display: flex; flex-direction: column; justify-content: space-between; gap: 18px; }
+.total .big { font-family: var(--display); font-size: 3.4rem; font-weight: 700; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.stack { display: flex; height: 12px; border-radius: 999px; overflow: hidden; gap: 2px; }
+.stack span { background: var(--c); }
+.legend { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 520px) { .legend { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.legend div { display: flex; flex-direction: column; gap: 2px; }
+.legend b { font-family: var(--display); font-size: 1.4rem; font-variant-numeric: tabular-nums; color: var(--c); }
+.legend span { font-size: 0.75rem; color: var(--muted); }
+.bars { display: flex; flex-direction: column; gap: 12px; }
+.bar { display: grid; grid-template-columns: 96px minmax(0, 1fr) 28px; align-items: center; gap: 12px; font-size: 0.85rem; }
+.bar .track { height: 10px; background: var(--code-bg); border-radius: 999px; overflow: hidden; }
+.bar .fill { height: 100%; background: var(--c); border-radius: 999px; }
+.bar .v { font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; }
+
+/* Checklist */
+.check { display: flex; flex-direction: column; gap: 10px; }
+.check-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto; gap: 14px; align-items: center; font-size: 0.88rem; }
+@media (max-width: 560px) { .check-row { grid-template-columns: minmax(0, 1fr) auto; } .check-row .split { grid-column: 1 / -1; order: 3; } }
+.split { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: var(--code-bg); }
+.split .vul { background: var(--critical); }
+.split .sec { background: var(--accent); }
+.check-row .counts { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+.key { display: flex; gap: 18px; font-size: 0.8rem; color: var(--muted); }
+.key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+/* Matrix */
+.matrix td, .matrix th { text-align: center; }
+.matrix td.lbl, .matrix th.lbl { text-align: left; }
+.cell { display: inline-block; min-width: 76px; padding: 3px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); }
+
+/* Findings */
+.finding { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; scroll-margin-top: 20px; }
+.f-head { padding: 20px 22px 16px; display: flex; flex-direction: column; gap: 8px; border-top: 4px solid var(--c); }
+.f-head .id { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); }
+.f-head h4 { font-size: 1.12rem; font-weight: 600; letter-spacing: -0.005em; }
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+@media (max-width: 640px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.metrics div { padding: 12px 22px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid var(--line); min-width: 0; }
+.metrics div:last-child { border-right: 0; }
+.metrics dt { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.metrics dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.metrics .vec { font-family: var(--mono); font-size: 0.68rem; font-weight: 400; color: var(--muted); }
+.f-body { padding: 18px 22px 22px; display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px 22px; }
+@media (max-width: 640px) { .f-body { grid-template-columns: minmax(0, 1fr); gap: 4px; } .f-body dd { margin-bottom: 12px; } }
+.f-body dt { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.f-body dd { margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.f-body ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 3px; }
+.assets { display: flex; flex-direction: column; gap: 4px; }
+.poc { grid-column: 1 / -1; background: var(--code-bg); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.poc .t { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.poc .path { font-family: var(--mono); font-size: 0.76rem; color: var(--muted); overflow-wrap: anywhere; }
+pre { margin: 0; font-family: var(--mono); font-size: 0.78rem; line-height: 1.55; overflow-x: auto; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+pre .hl { background: color-mix(in srgb, var(--critical) 16%, transparent); display: inline-block; width: 100%; }
+.confirm { align-self: flex-start; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--medium); border: 1px solid var(--medium); border-radius: 999px; padding: 1px 8px; }
+.recs { counter-reset: r; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 760px) { .recs { grid-template-columns: minmax(0, 1fr); } }
+.recs li { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px 12px 46px; position: relative; counter-increment: r; font-size: 0.9rem; }
+.recs li::before { content: counter(r, decimal-leading-zero); position: absolute; left: 14px; top: 12px; font-family: var(--mono); font-size: 0.78rem; color: var(--accent); }
+footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+/* Theme toggle */
+.cover-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.theme-toggle { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cover-ink); background: transparent; border: 1px solid rgba(255,255,255,0.25); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.theme-toggle:hover { border-color: #5fd3c6; }
+.theme-toggle:focus-visible { outline: 2px solid #5fd3c6; outline-offset: 2px; }
+.theme-toggle .dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid currentColor; background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
+</style>
+
+<!--
+  appsec-review report template. Follow REPORT.md in this folder.
+  Replace every {{PLACEHOLDER}}. Repeat the blocks marked REPEAT. Keep the CSS and class names.
+  HTML-escape every value you insert (& < > always, " and ' inside attributes), including code in <pre>.
+  Numbering, only 5.1: {{SEQ}} = 1, 2, 3 (summary # column); {{FINDING_ID}} = 5.1.1, 5.1.2 (card label);
+  {{ANCHOR}} = f1, f2 (element id and summary link). All three follow the same order.
+  Several 5.x sections (5.2 Frontend, or several repositories per REPORT.md "Multi-repository reports"):
+  {{SEQ}} and {{FINDING_ID}} = 5.2.1, {{ANCHOR}} = f2-1, and the rail gets one sub-entry per section.
+  No external fonts or scripts: the report is confidential, so it uses the system font stacks only.
+  Severity classes: s-critical | s-high | s-medium | s-low | s-info
+-->
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-in">
+    <div>
+      <div class="cover-top">
+        <span class="badge-conf">Confidential</span>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false"><i class="dot" aria-hidden="true"></i><span>Dark mode</span></button>
+      </div>
+      <p class="eyebrow" style="margin-top:22px">{{ORGANISATION}} · {{PLATFORM}}</p>
+      <h1>{{SERVICE}}<br><span>Source Code Review Report</span></h1>
+      <p class="sub">{{ONE_SENTENCE_SCOPE}}</p>
+    </div>
+    <dl class="cover-meta">
+      <div><dt>Version</dt><dd>{{VERSION}}</dd></div>
+      <div><dt>Date of issue</dt><dd>{{DATE_LONG}}</dd></div>
+      <div><dt>Branch</dt><dd><code style="background:transparent;padding:0;color:inherit">{{BRANCH}}</code></dd></div>
+      <div><dt>Review type</dt><dd>Internal, white-box</dd></div>
+      <div><dt>Findings</dt><dd>{{TOTAL}} ({{N_CRITICAL}} critical, {{N_HIGH}} high)</dd></div>
+      <div><dt>Status</dt><dd>{{STATUS}}</dd></div>
+    </dl>
+  </div>
+</div>
+
+<div class="shell">
+  <nav class="rail" aria-label="Contents">
+    <span class="eyebrow">Contents</span>
+    <ol>
+      <li><a href="#doc-control">1.0 Document Control</a></li>
+      <li><a href="#exec">2.0 Executive Summary</a></li>
+      <li class="sub"><a href="#standards">2.4 Security Standards</a></li>
+      <li class="sub"><a href="#distribution">2.5 Findings Distribution</a></li>
+      <li class="sub"><a href="#risk">2.7 Risk Criteria</a></li>
+      <li class="sub"><a href="#summary">2.8 Summary of Findings</a></li>
+      <li><a href="#project">3.0 Project Description</a></li>
+      <li><a href="#checklist">4.0 Check List</a></li>
+      <li><a href="#findings">5.0 Vulnerability Findings</a></li>
+      <li><a href="#recommendation">6.0 Recommendation</a></li>
+    </ol>
+  </nav>
+
+  <main class="doc">
+
+    <section class="part" id="doc-control">
+      <header><span class="num">1.0</span><h2>Document Control</h2></header>
+      <h3 class="sec"><span class="num">1.1</span>Document Details</h3>
+      <div class="tbl-wrap"><table>
+        <tr><th>Document title</th><td>{{SERVICE}} Source Code Review Report v{{VERSION}}</td></tr>
+        <tr><th>Classification</th><td>Confidential</td></tr>
+        <tr><th>Description</th><td>This document includes technical details of vulnerabilities and how they can be exploited.</td></tr>
+        <tr><th>Date of issue</th><td>{{DATE_LONG}}</td></tr>
+      </table></div>
+      <h3 class="sec"><span class="num">1.2</span>Diffusion List</h3>
+      <div class="tbl-wrap"><table>
+        <tr><th>Contact title</th><th>Purpose</th></tr>
+        <tr><td>Chief Information Security Officer</td><td>Risk acceptance and remediation sign-off</td></tr>
+        <tr><td>Cyber Security Team Lead</td><td>Verification and retest</td></tr>
+        <tr><td>{{SERVICE}} owners</td><td>Remediation</td></tr>
+      </table></div>
+      <h3 class="sec"><span class="num">1.3</span>Document History</h3>
+      <div class="tbl-wrap"><table>
+        <tr><th>Version</th><th>Report type</th><th>Date</th><th>Role</th><th>Description</th></tr>
+        <tr><td>{{VERSION}}</td><td>Reviewing</td><td>{{DATE_DDMMYYYY}}</td><td>Internal reviewer</td><td>Initial review</td></tr>
+        <tr><td></td><td></td><td>Pending</td><td>First reviewer</td><td>Peer review</td></tr>
+        <tr><td></td><td></td><td>Pending</td><td>Approver</td><td>Approval</td></tr>
+      </table></div>
+    </section>
+
+    <section class="part" id="exec">
+      <header><span class="num">2.0</span><h2>Executive Summary</h2></header>
+      <h3 class="sec"><span class="num">2.1</span>Project Objective</h3>
+      <div class="prose">
+        <p>{{WHAT_WAS_REVIEWED_AND_WHY}}</p>
+        <p>{{MOST_URGENT_PROBLEMS}}</p>
+        <p>{{WHAT_IS_WELL_BUILT}}</p>
+      </div>
+      <h3 class="sec"><span class="num">2.2</span>Disclaimer</h3>
+      <div class="prose">
+        <p>This report is confidential and intended only for {{ORGANISATION}}. Its findings reflect the code on the reviewed branch on the date of issue; later changes to code, configuration or architecture may change the results. Findings marked "needs confirmation" depend on behaviour outside the review scope.</p>
+      </div>
+      <h3 class="sec"><span class="num">2.3</span>Assessment Methodology</h3>
+      <div class="prose">
+        <ul>
+          <li><b>Code enumeration.</b> {{STACK_AND_ENTRY_POINTS}}</li>
+          <li><b>Dependency and secret checks.</b> {{DEPENDENCY_AND_SECRET_CHECKS_AND_TOOLS_RUN}}</li>
+          <li><b>Manual source analysis.</b> Followed each entry point (routes and handlers, screens and client flows) through its middleware, filters and guards to its sinks, with a STRIDE pass on every trust boundary, against the checklist in section 4.0 and the stack checks for {{STACK}}.</li>
+          <li><b>Reporting.</b> Each finding lists affected lines, its standard references, a CVSS 3.1 score, impact, a fix that uses the codebase's existing helpers, and a proof of concept.</li>
+        </ul>
+      </div>
+      <h3 class="sec" id="standards"><span class="num">2.4</span>Security Standards</h3>
+      <div class="tbl-wrap"><table>
+        <tr><th>Standard</th><th>Version</th><th>Used for</th></tr>
+        <!-- REPEAT per standard in REPORT.md "Security standards" that applied to this review -->
+        <tr><td>{{STANDARD}}</td><td>{{STANDARD_VERSION}}</td><td>{{STANDARD_USE}}</td></tr>
+      </table></div>
+
+      <h3 class="sec" id="distribution"><span class="num">2.5</span>Findings Distribution</h3>
+      <div class="dist">
+        <div class="card total">
+          <div><span class="eyebrow">Total findings</span><div class="big">{{TOTAL}}</div></div>
+          <!-- flex values = counts; drop a span when its count is 0 -->
+          <div class="stack" aria-hidden="true">
+            <span class="s-critical" style="flex:{{N_CRITICAL}}"></span>
+            <span class="s-high" style="flex:{{N_HIGH}}"></span>
+            <span class="s-medium" style="flex:{{N_MEDIUM}}"></span>
+            <span class="s-low" style="flex:{{N_LOW}}"></span>
+            <span class="s-info" style="flex:{{N_INFO}}"></span>
+          </div>
+          <div class="legend">
+            <div class="s-critical"><b>{{N_CRITICAL}}</b><span>Critical</span></div>
+            <div class="s-high"><b>{{N_HIGH}}</b><span>High</span></div>
+            <div class="s-medium"><b>{{N_MEDIUM}}</b><span>Medium</span></div>
+            <div class="s-low"><b>{{N_LOW}}</b><span>Low</span></div>
+            <div class="s-info"><b>{{N_INFO}}</b><span>Informational</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <span class="eyebrow">2.6 Findings distribution chart</span>
+          <!-- width = count / largest count * 100% -->
+          <div class="bars" style="margin-top:16px">
+            <div class="bar s-critical"><span>Critical</span><div class="track"><div class="fill" style="width:{{PCT_CRITICAL}}%"></div></div><span class="v">{{N_CRITICAL}}</span></div>
+            <div class="bar s-high"><span>High</span><div class="track"><div class="fill" style="width:{{PCT_HIGH}}%"></div></div><span class="v">{{N_HIGH}}</span></div>
+            <div class="bar s-medium"><span>Medium</span><div class="track"><div class="fill" style="width:{{PCT_MEDIUM}}%"></div></div><span class="v">{{N_MEDIUM}}</span></div>
+            <div class="bar s-low"><span>Low</span><div class="track"><div class="fill" style="width:{{PCT_LOW}}%"></div></div><span class="v">{{N_LOW}}</span></div>
+            <div class="bar s-info"><span>Informational</span><div class="track"><div class="fill" style="width:{{PCT_INFO}}%"></div></div><span class="v">{{N_INFO}}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="sec" id="risk"><span class="num">2.7</span>Risk Criteria</h3>
+      <div class="prose"><p>Each finding is rated by its CVSS 3.1 base score. Where log or repository access is a precondition, the score assumes low-privileged readers (PR:L). The impact and exploitation complexity of each finding are listed beside the score.</p></div>
+      <div class="tbl-wrap"><table>
+        <tr><th>Risk</th><th>CVSS 3.1</th><th>Description</th></tr>
+        <tr><td><span class="sev s-critical">Critical</span></td><td class="num">9.0 – 10.0</td><td>Exposed and exploitable with severe impact; no control is in place or planned.</td></tr>
+        <tr><td><span class="sev s-high">High</span></td><td class="num">7.0 – 8.9</td><td>High concern given exposure, ease of exploitation or severity of impact.</td></tr>
+        <tr><td><span class="sev s-medium">Medium</span></td><td class="num">4.0 – 6.9</td><td>Moderate concern; a control exists but is partial or only somewhat effective.</td></tr>
+        <tr><td><span class="sev s-low">Low</span></td><td class="num">0.1 – 3.9</td><td>Minor concern; the control is in place but could be improved.</td></tr>
+        <tr><td><span class="sev s-info">Informational</span></td><td class="num">0.0</td><td>Hardening advice with no direct exploit path today.</td></tr>
+      </table></div>
+      <h3 class="sec"><span class="num">2.7.1</span>Exploitation Complexity</h3>
+      <div class="tbl-wrap"><table>
+        <tr><th>Value</th><th>Description</th></tr>
+        <tr><td>Trivial</td><td>No special knowledge; a single crafted request.</td></tr>
+        <tr><td>Easy</td><td>A valid low-privilege account or read access to logs.</td></tr>
+        <tr><td>Moderate</td><td>A network position, a misconfiguration, or a second weakness.</td></tr>
+        <tr><td>Complex</td><td>Advanced knowledge, insider secrets, or several conditions at once.</td></tr>
+      </table></div>
+      <h3 class="sec"><span class="num">2.7.2</span>Risk Level Calculation</h3>
+      <div class="tbl-wrap"><table class="matrix">
+        <tr><th class="lbl">Impact \ Complexity</th><th>Trivial</th><th>Easy</th><th>Moderate</th><th>Complex</th></tr>
+        <tr><td class="lbl">Critical</td><td><span class="cell s-critical">Critical</span></td><td><span class="cell s-critical">Critical</span></td><td><span class="cell s-high">High</span></td><td><span class="cell s-high">High</span></td></tr>
+        <tr><td class="lbl">High</td><td><span class="cell s-critical">Critical</span></td><td><span class="cell s-high">High</span></td><td><span class="cell s-high">High</span></td><td><span class="cell s-medium">Medium</span></td></tr>
+        <tr><td class="lbl">Medium</td><td><span class="cell s-high">High</span></td><td><span class="cell s-medium">Medium</span></td><td><span class="cell s-medium">Medium</span></td><td><span class="cell s-low">Low</span></td></tr>
+        <tr><td class="lbl">Low</td><td><span class="cell s-medium">Medium</span></td><td><span class="cell s-low">Low</span></td><td><span class="cell s-low">Low</span></td><td><span class="cell s-low">Low</span></td></tr>
+      </table></div>
+
+      <h3 class="sec" id="summary"><span class="num">2.8</span>Summary of Findings</h3>
+      <div class="tbl-wrap"><table class="tbl-findings">
+        <tr><th>#</th><th>Vulnerability</th><th>Risk</th><th class="num">CVSS 3.1</th><th>Affected file</th><th>Status</th></tr>
+        <!-- REPEAT per finding, same order as 5.0 -->
+        <tr><td>{{SEQ}}</td><td><a href="#{{ANCHOR}}">{{FINDING_TITLE}}</a></td><td><span class="sev {{SEV_CLASS}}">{{RATING}}</span></td><td class="num">{{CVSS}}</td><td><code>{{FILE:LINES}}</code></td><td>{{STATUS}}</td></tr>
+      </table></div>
+    </section>
+
+    <section class="part" id="project">
+      <header><span class="num">3.0</span><h2>Project Description</h2></header>
+      <h3 class="sec"><span class="num">3.1</span>Scope of Work</h3>
+      <div class="tbl-wrap"><table>
+        <tr><th>Item</th><th>Detail</th></tr>
+        <tr><td>Repository</td><td><code>{{SERVICE}}</code>, branch <code>{{BRANCH}}</code>, version {{APP_VERSION}}</td></tr>
+        <tr><td>Stack</td><td>{{STACK}} · {{LAYER}}</td></tr>
+        <tr><td>Code</td><td>{{CODE_SCOPE}}</td></tr>
+        <tr><td>Entry points</td><td>{{ENDPOINTS}}</td></tr>
+        <tr><td>Integrations</td><td>{{INTEGRATIONS}}</td></tr>
+      </table></div>
+      <h3 class="sec"><span class="num">3.2</span>Reviewing Constraints and Limitations</h3>
+      <div class="prose"><ul>
+        <li>{{NOT_VERIFIED_ITEM}}</li>
+      </ul></div>
+      <h3 class="sec"><span class="num">3.3</span>Report Organization</h3>
+      <div class="prose"><p>Section 4.0 shows the checklist results by category. Section 5.0 details each finding, ordered by CVSS score, with the affected assets, description, impact, recommendation and a proof of concept from the source. Section 6.0 lists the general recommendations.</p></div>
+    </section>
+
+    <section class="part" id="checklist">
+      <header><span class="num">4.0</span><h2>Check List</h2></header>
+      <h3 class="sec"><span class="num">4.1</span>Secure Code Review Checklist</h3>
+      <div class="card check">
+        <div class="key"><span><i style="background:var(--critical)"></i>Vulnerable</span><span><i style="background:var(--accent)"></i>Secure</span></div>
+        <!-- REPEAT for the categories in REPORT.md section 4; flex values = counts; "Not applicable" rows show 0 / 0 -->
+        <div class="check-row"><span>{{CATEGORY}}</span><div class="split"><span class="vul" style="flex:{{VULN}}"></span><span class="sec" style="flex:{{SECURE}}"></span></div><span class="counts">{{VULN}} / {{TOTAL_CHECKS}}</span></div>
+      </div>
+      <h3 class="sec"><span class="num">4.2</span>Controls Verified as Secure</h3>
+      <div class="prose"><ul>
+        <li>{{SECURE_CONTROL}}</li>
+      </ul></div>
+    </section>
+
+    <section class="part" id="findings">
+      <header><span class="num">5.0</span><h2>Vulnerability Findings</h2></header>
+      <h3 class="sec"><span class="num">5.1</span>{{SERVICE}} · {{LAYER}}</h3>
+
+      <!-- REPEAT per finding, highest CVSS first -->
+      <article class="finding {{SEV_CLASS}}" id="{{ANCHOR}}">
+        <div class="f-head"><span class="id">{{FINDING_ID}}</span><h4>{{FINDING_TITLE}}</h4></div>
+        <dl class="metrics">
+          <div><dt>Severity</dt><dd><span class="sev {{SEV_CLASS}}">{{RATING}}</span></dd></div>
+          <div><dt>CVSS 3.1</dt><dd>{{CVSS}} <span class="vec">{{VECTOR}}</span></dd></div>
+          <div><dt>Checklist</dt><dd>{{CHECKLIST_CATEGORY}}</dd></div>
+          <div><dt>Status</dt><dd>{{STATUS}}</dd></div>
+        </dl>
+        <dl class="f-body">
+          <dt>Affected assets</dt><dd class="assets"><code>{{PATH:LINES}}</code></dd>
+          <dt>References</dt><dd><p>{{REFERENCES}}</p></dd>
+          <dt>Description</dt><dd><!-- optional: <span class="confirm">Needs confirmation</span> --><p>{{DESCRIPTION}}</p></dd>
+          <dt>Impact</dt><dd><p>{{IMPACT}}</p></dd>
+          <dt>Recommendation</dt><dd><p>{{RECOMMENDATION}}</p></dd>
+          <div class="poc">
+            <span class="t">Proof of concept</span>
+            <span class="path">{{FULL_REPO_PATH}}</span>
+<pre>{{CODE_LINE}}
+<span class="hl">{{VULNERABLE_LINE}}</span></pre>
+          </div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="part" id="recommendation">
+      <header><span class="num">6.0</span><h2>Recommendation</h2></header>
+      <div class="prose"><p>The following actions are recommended to improve the security of {{SERVICE}}, in priority order.</p></div>
+      <ol class="recs">
+        <li>{{RECOMMENDED_ACTION}}</li>
+      </ol>
+      <footer class="end">Confidential. Secret values, card data, OTPs and tokens are referenced by location only and never reproduced in this report.</footer>
+    </section>
+
+  </main>
+</div>
+
+<script>
+/* Light/dark toggle: overrides the system theme and remembers the choice in this browser */
+(function () {
+  var KEY = "appsec-report-theme";
+  var root = document.documentElement;
+  var btn = document.getElementById("theme-toggle");
+  var query = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  function current() { return root.getAttribute("data-theme") || (query && query.matches ? "dark" : "light"); }
+  function render() {
+    var dark = current() === "dark";
+    btn.setAttribute("aria-pressed", String(dark));
+  }
+  try {
+    var saved = localStorage.getItem(KEY);
+    if (saved === "dark" || saved === "light") { root.setAttribute("data-theme", saved); }
+  } catch (e) {}
+  btn.addEventListener("click", function () {
+    var next = current() === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem(KEY, next); } catch (e) {}
+    render();
+  });
+  if (query && query.addEventListener) { query.addEventListener("change", render); }
+  render();
+})();
+</script>
