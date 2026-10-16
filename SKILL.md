@@ -224,7 +224,8 @@ and follow it exactly:
 
 ## Maintaining the skill
 
-This skill is self-contained (`SKILL.md`, `rules/`, `method/`, `report/`) and is not under version control.
+This skill is self-contained (`SKILL.md`, `rules/`, `method/`, `report/`) and is versioned in its own git
+repository (https://github.com/ibrahimabdallatif/appsec-review).
 `disable-model-invocation: true` keeps it manual.
 
 Edit the checks in `rules/`. Keep the `paths` front matter on every category file and the `detect` front matter on
