@@ -204,10 +204,12 @@ Run summary
   - `diff`: "For a whole repository use `standard` (`/appsec-review whole repo`). `deep` (`/appsec-review deep`)
     covers more but takes several times longer and consumes much more tokens."
   - `standard`: "For high-stakes code use `deep` (`/appsec-review deep`): it covers more, but takes several times
-    longer and consumes much more tokens. For a PR or branch, `diff` is the fastest (for example
+    longer and consumes much more tokens. For a PR or branch, `diff` is the fastest: `/appsec-review` on its own
+    reviews the current branch against its base plus uncommitted changes, or name a branch (for example
     `/appsec-review feature/login against main`)."
   - `deep`: "This run consumed much more time and tokens than `standard` would. For routine reviews use `standard`
-    (`/appsec-review whole repo`), or `diff` for a PR or branch (for example
+    (`/appsec-review whole repo`), or `diff` for a PR or branch: `/appsec-review` on its own reviews the current
+    branch against its base plus uncommitted changes, or name a branch (for example
     `/appsec-review feature/login against main`)."
 - In a multi-repository review, also give the time for each repository (start a new timer value for each).
 - Never print secret values, card numbers, CVVs, OTPs or tokens. Refer to them by location only.
