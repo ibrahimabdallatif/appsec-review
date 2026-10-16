@@ -24,6 +24,8 @@ jobs:
         run: python -I method/test_inventory.py
       - name: Ledger tests
         run: python -I method/test_ledger.py
+      - name: Accepted risks tests
+        run: python -I method/test_accepted_risks.py
       - name: Run stats tests
         run: python -I method/test_run_stats.py
       - name: Benchmark tests

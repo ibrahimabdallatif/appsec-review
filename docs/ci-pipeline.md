@@ -12,13 +12,48 @@ separate gate step fails the build when the finished ledger holds findings at or
 | Gate exit code | Meaning | Build |
 |---|---|---|
 | `0` | Ledger valid, no finding at or above the threshold | pass |
-| `3` | A reported finding is at or above `--fail-on` | fail |
-| `1` | Ledger invalid or inventory coverage missing: the review did not finish its scope | fail |
+| `3` | A reported finding is at or above `--fail-on` and not waived by an accepted risk | fail |
+| `1` | Ledger or accepted-risk file invalid, or inventory coverage missing | fail |
 | `2` | Bad arguments | fail |
 
 `--fail-on` takes `critical`, `bug`, `warning` or `suggestion`. Confirmed and hardening findings count by their
 severity, "needs confirmation" findings by the severity they have if confirmed, and rejected findings never count.
 The gate only reads the ledger after the review; it never stops a review early.
+
+## Accepted risks
+
+Some findings are known and accepted for a while: a compensating control elsewhere, a fix already scheduled. So
+that the gate does not stay red on them, pass an accepted-risk file:
+
+```sh
+python -I method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json \
+  --inventory ~/.appsec-review/<repo>/inventory.json --fail-on bug \
+  --accepted ~/.appsec-review/accepted-risks/<repo>.json
+```
+
+```json
+{"accepted": [
+  {"id": "legacy-orders-idor",
+   "paths_any": ["src/legacy/OrderController"],
+   "text": "order.*(owner|idor|caller)",
+   "max_severity": "bug",
+   "reason": "Endpoint removed in the Q1 release; the gateway blocks cross-tenant order ids until then",
+   "accepted_by": "payments security review, 2026-10-16",
+   "expires": "2027-01-31"}
+]}
+```
+
+- **Matching.** An entry matches a finding when one of its paths contains a `paths_any` substring and its key or
+  title matches the `text` regex (case-insensitive), the same matcher as the benchmarks. A fresh run that names the
+  issue differently still matches.
+- **Limits.** A matched finding stops blocking only until `expires`, and only while it is no more severe than
+  `max_severity`. An expired acceptance, or a finding that has grown more severe, blocks again and the gate says
+  why. Every field is required.
+- **Nothing is hidden.** Waived findings are printed as `ACCEPTED` with the reason and expiry, and entries that
+  match no reported finding are printed as `UNUSED`, so fixed issues can be removed from the file.
+- **Keep it private and reviewed.** The file describes open vulnerabilities. Keep it outside the repository (the
+  path above survives the fresh ledger each build), for example as a secret file credential in Jenkins or in a
+  private repository where changes need a security reviewer's approval. Keep expiry dates short.
 
 ## Requirements on the build agent
 
@@ -52,6 +87,7 @@ pipeline {
     SKILL_REF  = '<skill commit sha>'                       // pin the skill version; bump deliberately
     SKILL_DIR  = "${env.HOME}/.claude/skills/appsec-review"
     REVIEW_DIR = "${env.HOME}/.appsec-review"              // outside the workspace: ledgers hold attack details
+    ACCEPTED   = credentials('appsec-accepted-risks')       // secret file; drop it and --accepted if unused
   }
 
   stages {
@@ -88,7 +124,8 @@ pipeline {
             python -I "\$SKILL_DIR/method/ledger.py" \
               "\$REVIEW_DIR/${repo}/coverage-ledger.json" \
               --inventory "\$REVIEW_DIR/${repo}/inventory.json" \
-              --fail-on ${params.FAIL_ON}
+              --fail-on ${params.FAIL_ON} \
+              --accepted "\$ACCEPTED"
           """)
           if (code == 3) { error("Security findings at or above '${params.FAIL_ON}'") }
           if (code != 0) { error("Review incomplete or ledger invalid (exit ${code})") }

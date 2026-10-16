@@ -1,6 +1,7 @@
 """Unit tests for ledger.py. Run: python -I test_ledger.py"""
 import contextlib
 import copy
+import datetime
 import io
 import json
 import os
@@ -382,15 +383,16 @@ class CheckInventoryTest(unittest.TestCase):
 
 class ParseArgsTest(unittest.TestCase):
     def test_ledger_only(self):
-        self.assertEqual(ledger.parse_args(["l.json"]), {"ledger": "l.json", "inventory": None, "fail_on": None})
+        self.assertEqual(ledger.parse_args(["l.json"]),
+                         {"ledger": "l.json", "inventory": None, "fail_on": None, "accepted": None})
 
     def test_all_options_any_order(self):
-        parsed = ledger.parse_args(["l.json", "--fail-on", "bug", "--inventory", "i.json"])
-        self.assertEqual(parsed, {"ledger": "l.json", "inventory": "i.json", "fail_on": "bug"})
+        parsed = ledger.parse_args(["l.json", "--accepted", "a.json", "--fail-on", "bug", "--inventory", "i.json"])
+        self.assertEqual(parsed, {"ledger": "l.json", "inventory": "i.json", "fail_on": "bug", "accepted": "a.json"})
 
     def test_bad_usage(self):
         for args in ([], ["l.json", "--other", "x"], ["l.json", "--inventory"], ["l.json", "--fail-on", "high"],
-                     ["l.json", "--inventory", "a", "--inventory", "b"]):
+                     ["l.json", "--inventory", "a", "--inventory", "b"], ["l.json", "--accepted", "a.json"]):
             self.assertIsNone(ledger.parse_args(args), args)
 
 
@@ -422,10 +424,83 @@ class BlockingFindingsTest(unittest.TestCase):
         keys = [f["key"] for f in ledger.blocking_findings(self.data, "suggestion")]
         self.assertEqual(keys, ["crit", "nc", "warn"])
 
-    def test_format_blocking(self):
-        text = ledger.format_blocking(ledger.blocking_findings(self.data, "bug"), "bug")
-        self.assertIn("FAIL critical crit (confirmed)", text)
-        self.assertIn("Gate: 2 finding(s) at or above 'bug'", text)
+
+def acceptance(**fields):
+    base = {"id": "accept-crit", "paths_any": ["src/api/Cards"], "text": "crit", "max_severity": "critical",
+            "reason": "compensating control", "accepted_by": "security review", "expires": "2026-12-31"}
+    base.update(fields)
+    return base
+
+
+class GateTest(unittest.TestCase):
+    TODAY = datetime.date(2026, 10, 16)
+
+    def setUp(self):
+        self.data = ledger_with([], [finding(key="crit"),
+                                     finding(key="nc", decision="needs_confirmation", severity=None,
+                                             severity_if_confirmed="bug")])
+
+    def test_finding_label(self):
+        self.assertEqual(ledger.finding_label(finding()), "critical cards-idor (confirmed)")
+
+    def test_format_gate(self):
+        crit, nc = self.data["findings"]
+        text = ledger.format_gate([(crit, None), (nc, "acceptance 'x' expired 2026-01-01")],
+                                  [(crit, acceptance())], [acceptance(id="old")], "bug")
+        self.assertEqual(text.splitlines(), [
+            "FAIL critical crit (confirmed)",
+            "FAIL bug nc (needs_confirmation): acceptance 'x' expired 2026-01-01",
+            "ACCEPTED critical crit (confirmed): 'accept-crit' until 2026-12-31, compensating control",
+            "UNUSED acceptance 'old': matches no reported finding",
+            "Gate: 2 finding(s) at or above 'bug', 1 accepted",
+        ])
+
+    def test_run_gate_without_acceptances(self):
+        code, text = ledger.run_gate(self.data, "bug", [], self.TODAY)
+        self.assertEqual(code, 3)
+        self.assertIn("Gate: 2 finding(s) at or above 'bug', 0 accepted", text)
+
+    def test_run_gate_partly_accepted(self):
+        code, text = ledger.run_gate(self.data, "bug", [acceptance()], self.TODAY)
+        self.assertEqual(code, 3)
+        self.assertIn("ACCEPTED critical crit", text)
+        self.assertIn("FAIL bug nc", text)
+
+    def test_run_gate_all_accepted_passes(self):
+        code, text = ledger.run_gate(self.data, "critical", [acceptance()], self.TODAY)
+        self.assertEqual(code, 0)
+        self.assertIn("Gate: 0 finding(s) at or above 'critical', 1 accepted", text)
+
+    def test_run_gate_expired_blocks(self):
+        code, text = ledger.run_gate(self.data, "critical", [acceptance(expires="2026-10-01")], self.TODAY)
+        self.assertEqual(code, 3)
+        self.assertIn("expired 2026-10-01", text)
+
+    def test_run_gate_lists_unused_and_ignores_rejected(self):
+        data = ledger_with([], [finding(key="crit", decision="rejected", severity=None, disproof="a.ts:1")])
+        code, text = ledger.run_gate(data, "critical", [acceptance()], self.TODAY)
+        self.assertEqual(code, 0)
+        self.assertIn("UNUSED acceptance 'accept-crit'", text)
+
+
+class LoadAcceptedTest(unittest.TestCase):
+    def write(self, data):
+        handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8")
+        json.dump(data, handle)
+        handle.close()
+        self.addCleanup(os.remove, handle.name)
+        return handle.name
+
+    def test_no_path(self):
+        self.assertEqual(ledger.load_accepted(None), ([], []))
+
+    def test_valid(self):
+        self.assertEqual(ledger.load_accepted(self.write({"accepted": [acceptance()]})), ([acceptance()], []))
+
+    def test_invalid(self):
+        entries, errors = ledger.load_accepted(self.write({"accepted": [acceptance(expires="never")]}))
+        self.assertEqual(entries, [])
+        self.assertEqual(len(errors), 1)
 
 
 class PrintErrorsTest(unittest.TestCase):
@@ -466,6 +541,14 @@ class MainTest(unittest.TestCase):
     def test_fail_on_without_blocking_returns_0(self):
         data = ledger_with([unit(area="wildcard")])
         self.assertEqual(self.run_main([self.write(data), "--fail-on", "critical"]), 0)
+
+    def test_accepted_finding_passes(self):
+        accepted = {"accepted": [acceptance(text="cards-idor", expires="2999-12-31")]}
+        self.assertEqual(self.run_main([self.gated(), "--fail-on", "bug", "--accepted", self.write(accepted)]), 0)
+
+    def test_invalid_accepted_file_returns_1(self):
+        accepted = {"accepted": [acceptance(max_severity="high")]}
+        self.assertEqual(self.run_main([self.gated(), "--fail-on", "bug", "--accepted", self.write(accepted)]), 1)
 
     def test_no_gate_ignores_findings(self):
         self.assertEqual(self.run_main([self.gated()]), 0)

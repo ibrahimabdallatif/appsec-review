@@ -5,6 +5,7 @@ __pycache__/
 # Review output never belongs in this repository: ledgers, inventories and reports hold attack details
 coverage-ledger*.json
 inventory*.json
+accepted-risks*
 *-review.txt
 
 # Editor and OS files

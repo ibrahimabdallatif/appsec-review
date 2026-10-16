@@ -38,6 +38,7 @@ The method files in `method/` are not checklists; they define how the review run
 |---|---|
 | `method/coverage-ledger.md` | The coverage ledger: units (entry point × category), statuses, later runs |
 | `method/ledger.py` | Ledger validator, coverage summary and the `--fail-on` CI gate (`test_ledger.py` holds its tests) |
+| `method/accepted_risks.py` | Accepted-risk file for the gate's `--accepted` option (`test_accepted_risks.py` holds its tests) |
 | `method/hunters.md` | Wildcard, obvious-things and sink-trace hunter prompts, and when to run them as subagents |
 | `method/verifier.md` | Verification per mode: an inline disproof pass, plus fresh verifier subagents that try to disprove candidates |
 | `method/run_stats.py` | Run timer and token totals for the run summary (`test_run_stats.py` holds its tests) |
@@ -222,8 +223,10 @@ the same whether it finds nothing or many issues. To gate a pipeline, a CI step 
 afterwards: `python -I <skill folder>/method/ledger.py <ledger> --inventory <inventory> --fail-on <severity>`.
 It exits 3 when a reported finding is at or above that severity (`critical`, `bug`, `warning` or `suggestion`),
 1 when the ledger is invalid or misses inventory coverage, and 0 otherwise. `needs_confirmation` findings count
-by `severity_if_confirmed`; rejected findings never count. Never pass `--fail-on` during a review run (step 9),
-and never shorten a review because a critical finding turned up.
+by `severity_if_confirmed`; rejected findings never count. `--accepted <file>` waives findings a team accepted,
+each until an expiry date and up to a severity (`docs/ci-pipeline.md`). Never pass `--fail-on` or `--accepted`
+during a review run (step 9), never write or change an accepted-risk file unless the user asks, and never
+shorten a review because a critical finding turned up.
 
 ## Report
 

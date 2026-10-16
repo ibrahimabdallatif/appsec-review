@@ -1,23 +1,32 @@
 """Coverage ledger validator for appsec-review.
 
 Usage:
-    python -I ledger.py <coverage-ledger.json> [--inventory <inventory.json>] [--fail-on <severity>]
+    python -I ledger.py <coverage-ledger.json> [--inventory <inventory.json>]
+                        [--fail-on <severity> [--accepted <accepted-risks.json>]]
                                                    validate and print a coverage summary
     python -I test_ledger.py                       run the unit tests
 
-Exit codes: 0 valid (and, with --fail-on, no blocking finding), 1 invalid ledger or coverage gap, 2 bad usage,
-3 valid but a reported finding is at or above the --fail-on severity (critical, bug, warning or suggestion).
+Exit codes: 0 valid (and, with --fail-on, no blocking finding), 1 invalid ledger, invalid accepted-risk file or
+coverage gap, 2 bad usage, 3 valid but a reported finding is at or above the --fail-on severity (critical, bug,
+warning or suggestion) and not waived by an accepted risk.
 
 With --inventory (written by inventory.py), every listed entry point must have a unit and every listed sink file
 must have been read under the sink's category, so coverage no longer depends on what a run happened to notice.
 
 --fail-on is a CI gate on the finished ledger: it never shortens a review. Confirmed and hardening findings count
 by their severity, needs_confirmation findings by severity_if_confirmed, and rejected findings never count.
+--accepted waives findings a team has accepted until an expiry date (see accepted_risks.py); waived findings
+are still printed.
 """
+import datetime
 import json
 import os
 import re
 import sys
+
+sys.dont_write_bytecode = True  # keep the skill folder free of __pycache__
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import accepted_risks  # noqa: E402
 
 SCOPES = ("diff", "repo", "endpoint", "files")
 PROFILES = ("standard", "deep")
@@ -305,18 +314,44 @@ def blocking_findings(ledger, threshold):
     return sorted(hits, key=lambda f: rank[gate_severity(f)])
 
 
-def format_blocking(findings, threshold):
-    lines = ["FAIL %s %s (%s)" % (gate_severity(f), f["key"], f["decision"]) for f in findings]
-    lines.append("Gate: %d finding(s) at or above '%s'" % (len(findings), threshold))
+def finding_label(finding):
+    return "%s %s (%s)" % (gate_severity(finding), finding["key"], finding["decision"])
+
+
+def format_gate(still, waived, unused, threshold):
+    """Gate output: blocking findings with the reason an acceptance did not apply, waived ones, unused entries."""
+    lines = ["FAIL " + finding_label(f) + (": " + note if note else "") for f, note in still]
+    lines += ["ACCEPTED %s: '%s' until %s, %s" % (finding_label(f), e["id"], e["expires"], e["reason"])
+              for f, e in waived]
+    lines += ["UNUSED acceptance '%s': matches no reported finding" % e["id"] for e in unused]
+    lines.append("Gate: %d finding(s) at or above '%s', %d accepted" % (len(still), threshold, len(waived)))
     return "\n".join(lines)
 
 
+def run_gate(ledger, threshold, entries, today):
+    """(exit code, gate output) for the reported findings against the threshold and accepted risks."""
+    blocking = blocking_findings(ledger, threshold)
+    still, waived = accepted_risks.apply(blocking, entries, gate_severity, today)
+    reported = [f for f in ledger["findings"] if f["decision"] != "rejected"]
+    text = format_gate(still, waived, accepted_risks.unused(entries, reported), threshold)
+    return (3 if still else 0), text
+
+
+def load_accepted(path):
+    """(entries, errors) from an accepted-risk file; no path means no entries."""
+    if path is None:
+        return [], []
+    doc = load_json(path)
+    errors = accepted_risks.check_accepted(doc)
+    return ([] if errors else doc["accepted"]), errors
+
+
 def parse_args(args):
-    """{'ledger', 'inventory', 'fail_on'} from the command line, or None for bad usage."""
+    """{'ledger', 'inventory', 'fail_on', 'accepted'} from the command line, or None for bad usage."""
     if not args:
         return None
-    parsed = {"ledger": args[0], "inventory": None, "fail_on": None}
-    options = {"--inventory": "inventory", "--fail-on": "fail_on"}
+    parsed = {"ledger": args[0], "inventory": None, "fail_on": None, "accepted": None}
+    options = {"--inventory": "inventory", "--fail-on": "fail_on", "--accepted": "accepted"}
     rest = args[1:]
     if len(rest) % 2:
         return None
@@ -325,6 +360,8 @@ def parse_args(args):
             return None
         parsed[options[flag]] = value
     if parsed["fail_on"] is not None and parsed["fail_on"] not in SEVERITIES:
+        return None
+    if parsed["accepted"] is not None and parsed["fail_on"] is None:
         return None
     return parsed
 
@@ -345,15 +382,17 @@ def main(args):
     errors = validate(ledger)
     if not errors and parsed["inventory"]:
         errors = check_inventory(ledger, load_json(parsed["inventory"]))
+    entries, accepted_errors = load_accepted(parsed["accepted"])
+    errors += accepted_errors
     print_errors(errors)
     if errors:
         return 1
     print(json.dumps(summary(ledger), indent=2, sort_keys=True))
     if parsed["fail_on"] is None:
         return 0
-    blocking = blocking_findings(ledger, parsed["fail_on"])
-    print(format_blocking(blocking, parsed["fail_on"]))
-    return 3 if blocking else 0
+    code, text = run_gate(ledger, parsed["fail_on"], entries, datetime.date.today())
+    print(text)
+    return code
 
 
 if __name__ == "__main__":

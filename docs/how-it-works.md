@@ -92,7 +92,8 @@ own helpers, and ends with a run summary (`method/run_stats.py`: time and tokens
 (`report/REPORT.md`) adds CVSS 3.1 vectors computed by `report/cvss31.py` and standards references per finding.
 
 In CI, `ledger.py --fail-on <severity>` reads the finished ledger and exits non-zero on findings at or above the
-threshold ([ci-pipeline.md](ci-pipeline.md)). It never stops a review early.
+threshold ([ci-pipeline.md](ci-pipeline.md)), except findings waived by an accepted-risk file until its expiry
+date. It never stops a review early.
 
 ## Repeatability
 

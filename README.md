@@ -97,8 +97,10 @@ python -I method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json \
   --inventory ~/.appsec-review/<repo>/inventory.json --fail-on critical
 ```
 
-Exit codes: `0` pass, `3` blocking findings, `1` incomplete review or invalid ledger, `2` bad arguments. Agent
-setup, a Jenkins example and scheduling advice: [docs/ci-pipeline.md](docs/ci-pipeline.md).
+Exit codes: `0` pass, `3` blocking findings, `1` incomplete review or invalid ledger, `2` bad arguments. Add
+`--accepted <file>` to waive findings the team has accepted, each until an expiry date and up to a severity;
+waived findings are still printed. Agent setup, accepted risks, a Jenkins example and scheduling advice:
+[docs/ci-pipeline.md](docs/ci-pipeline.md).
 
 > [!WARNING]
 > Ledgers, inventories and reports describe how to attack open issues. They are kept in `~/.appsec-review/`,
@@ -164,6 +166,7 @@ Run the tests after changing the helper scripts (GitHub Actions runs the same co
 ```sh
 python -I method/test_inventory.py
 python -I method/test_ledger.py
+python -I method/test_accepted_risks.py
 python -I method/test_run_stats.py
 python -I evals/test_benchmark.py
 python -I report/cvss31.py --selftest
