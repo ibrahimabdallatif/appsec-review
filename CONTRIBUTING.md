@@ -73,15 +73,21 @@ After changing `rules/`, `method/` or the steps in `SKILL.md`, check that the sk
    person has checked in the code; set `expect_confirmed: true` where "needs confirmation" counts as a miss.
 2. Check out the benchmark's commit, run `/appsec-review whole repo` (or `deep`, matching the benchmark), and
    score the run: `python -I <skill folder>/evals/benchmark.py ~/.appsec-review/benchmarks/<repo>.json
-   ~/.appsec-review/<repo>/coverage-ledger.json`. To score a fresh run on its own, move the old ledger aside
-   first; otherwise findings carried from earlier runs count too.
+   ~/.appsec-review/<repo>/coverage-ledger.json`. To score a fresh run on its own, move the old ledger out of
+   `~/.appsec-review/<repo>/` first; otherwise findings carried from earlier runs count too.
 3. Every expected finding should be `FOUND`. `MISSED`, `REJECTED` or `DOWNGRADED` means the change lost recall:
    fix it before keeping the change. Review the extra findings it lists, and add the real ones to the benchmark.
 4. **Stability.** One run proves little, because runs vary. After a significant change, run the same mode three
-   to five times on the benchmark commit, each from a fresh start: move the ledger aside before each run and copy
-   it out afterwards (`~/.appsec-review/<repo>/runs/run-<n>.json`). Score them together:
-   `python -I <skill folder>/evals/benchmark.py ~/.appsec-review/benchmarks/<repo>.json
-   ~/.appsec-review/<repo>/runs/run-*.json`. Each expected finding is `STABLE` (found in every run), `FLAKY` or
+   to five times on the benchmark commit, and keep the runs independent:
+   - start each run in a **new Claude Code session**, so it can't reuse what an earlier run found;
+   - before each run, empty `~/.appsec-review/<repo>/` of everything but `inventory.json`; after it, move the
+     ledger to a folder outside it, such as `~/.appsec-review/benchmark-runs/<repo>/<mode>-<n>.json`. A run
+     looks in its own folder, and a saved run or a moved-aside ledger there turns the next run into a copy.
+
+   A run is suspect if its ledger shares asset ids, abuse path slugs and extra findings, in the same order, with
+   another run. Score them together: `python -I <skill folder>/evals/benchmark.py
+   ~/.appsec-review/benchmarks/<repo>.json ~/.appsec-review/benchmark-runs/<repo>/standard-*.json`. Each
+   expected finding is `STABLE` (found in every run), `FLAKY` or
    `LOST`. Fix what makes a finding flaky (a missing sink pattern, an unclear rule, a hunter prompt) before
    keeping the change. Extras that only some runs report are either noise or real findings the other runs
    missed; check them.

@@ -110,7 +110,8 @@ never selects `deep` mode.
    boundaries and any entry points the inventory missed, then write the ledger units at the mode's granularity,
    plus the hunter units, as `method/coverage-ledger.md` describes. Then write the threat model and the abuse
    path units (`method/threat-model.md`, sections 1–2). If a ledger from an earlier run exists, start from it
-   and follow its "Later runs" rules.
+   and follow its "Later runs" rules. Read only `coverage-ledger.json` and `inventory.json` from
+   `~/.appsec-review/<repo>/`; never open other files there (moved-aside ledgers, saved runs).
 6. **Assess, with the hunters in parallel.** Start the hunters as `method/hunters.md` says for the mode (wildcard
    and obvious-things inline in `diff` and as one subagent in `standard`; in `deep`, one subagent for those two
    and one sink-trace subagent working back from the inventory's sinks). Meanwhile follow `00-overview.md`: identify

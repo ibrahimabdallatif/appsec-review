@@ -16,7 +16,9 @@ A later run may switch profile; the new run re-seeds units at its own granularit
 
 `~/.appsec-review/<repo-name>/coverage-ledger.json`, outside the reviewed repository, next to the run's
 `inventory.json`. It holds attack details,
-so never commit it or copy it into the repository. One ledger per repository; a multi-repository review keeps one
+so never commit it or copy it into the repository. A run reads only `coverage-ledger.json` and `inventory.json`
+from this folder. Ignore anything else there (moved-aside ledgers, saved benchmark runs): reading an earlier
+run's results would make this run copy them instead of reviewing the code. One ledger per repository; a multi-repository review keeps one
 per repository.
 
 ## Shape
