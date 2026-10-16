@@ -1,15 +1,113 @@
-# appsec-review
+<h1 align="center">appsec-review</h1>
 
-A Claude Code skill for manual security reviews and pentest-style assessments of back-end, web front-end and
-mobile code, in any language or framework. It reviews a diff, branch, PR, file, endpoint, a whole repository, or
-every repository under a directory, and reports verified findings with attack scenarios, impact and concrete fixes.
+<p align="center">
+  <b>Pentest-style security reviews in Claude Code, where every finding has to survive a second agent.</b><br>
+  Back end, web front end and mobile, in any language or framework.
+</p>
 
-The skill runs only when invoked explicitly (`disable-model-invocation: true`); it is never triggered
-automatically. You can invoke it interactively in Claude Code, or headless in a CI pipeline (for example a
-nightly Jenkins job) with a gate that fails the build on findings at or above a chosen severity; see
-[docs/ci-pipeline.md](docs/ci-pipeline.md).
+<p align="center">
+  <a href="https://github.com/ibrahimabdallatif/appsec-review/actions/workflows/tests.yml"><img src="https://github.com/ibrahimabdallatif/appsec-review/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/Claude%20Code-skill-d97757" alt="Claude Code skill">
+  <img src="https://img.shields.io/badge/OWASP-Top%2010%3A2025-000000" alt="OWASP Top 10:2025">
+  <img src="https://img.shields.io/badge/python-3.10%2B-3776ab" alt="Python 3.10+">
+</p>
 
-## Standards covered
+<p align="center">
+  <a href="docs/getting-started.md">Getting started</a> ·
+  <a href="docs/how-it-works.md">How it works</a> ·
+  <a href="docs/ci-pipeline.md">CI pipeline</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/pipeline-dark.svg">
+  <img alt="Pipeline: scope, scripted inventory, assessment in three directions, verification by a second agent, proven findings" src="docs/assets/pipeline-light.svg">
+</picture>
+
+## Why it's different
+
+<table>
+  <tr>
+    <td width="50%"><b>Findings are disproved, not just found.</b><br>A fresh verifier agent, which never sees the finder's reasoning, tries to refute each candidate. A rejection must cite the line of code that stops the attack, and rejected candidates are listed so you can overrule them.</td>
+    <td width="50%"><b>Coverage is checked by script.</b><br>A scripted inventory lists every entry point and dangerous sink. The ledger validator fails the run if any of them was skipped, so every run covers the same ground.</td>
+  </tr>
+  <tr>
+    <td><b>It knows your framework.</b><br>Rules for Spring, Node, Python, .NET, Go, web front ends and mobile apps, plus deep playbooks for object-level authorization, payment callbacks, idempotency and race conditions.</td>
+    <td><b>Audit-ready output.</b><br>Each finding gives <code>file:line</code>, the attack, the impact and a fix using your own helpers, mapped to OWASP, ASVS, MASVS, CWE and PCI DSS, with CVSS 3.1 computed by script, never estimated.</td>
+  </tr>
+</table>
+
+## Quick start
+
+```sh
+git clone https://github.com/ibrahimabdallatif/appsec-review.git ~/.claude/skills/appsec-review
+```
+
+Then, in Claude Code, inside the repository to review:
+
+```
+/appsec-review                               # current branch vs. its base, plus uncommitted changes
+/appsec-review whole repo                    # the whole repository
+/appsec-review deep                          # in-depth review for high-stakes code
+```
+
+> [!TIP]
+> Start with a plain `/appsec-review` on a branch. It is the fastest mode and shows you the output format before
+> you spend time on a whole repository. More commands: [Getting started](docs/getting-started.md).
+
+The skill runs only when you invoke it (`disable-model-invocation: true`). Python 3 is needed for its helper
+scripts; gitleaks, trivy, semgrep and your ecosystem's audit tool are used when installed.
+
+## Modes
+
+| Mode | Use it for | Subagents | Coverage ledger |
+|---|---|---|---|
+| `diff` | A branch, PR or files (default) | None, except one verifier for a surviving `critical` | None |
+| `standard` | A whole repository, an endpoint, or several repositories | One hunter, one batch verifier | Module × category |
+| `deep` | High-stakes code, only when you say "deep" | Two hunters (incl. a backward sink tracer), one verifier per serious candidate | Entry point × category |
+
+Every mode reads all in-scope code and follows each input to its sinks; modes change how many agents run and how
+detailed the ledger is. `deep` takes several times longer and uses much more tokens than `standard`.
+
+## What you get
+
+Findings ordered by severity (`critical`, `bug`, `warning`, `suggestion`), each one like this (illustrative):
+
+```
+[Security] Order id not bound to caller (API1, CWE-639)        critical
+src/orders/OrderController.java:42
+
+Attack: any signed-in user sends GET /orders/{id} with another customer's order id.
+Impact: read access to every customer's orders.
+Fix:    load through orderRepository.findByIdAndCustomerId(id, principal.customerId()).
+```
+
+Then the "needs confirmation" findings with the exact fact to check, what was checked and found clean, the
+coverage summary, the candidates rejected by verification, and a run summary with time and tokens. Ask for a
+report and you get a published HTML report with CVSS 3.1 scores and standards references for each finding.
+
+## In CI
+
+The review always runs to completion. A separate gate reads the finished ledger and fails the build on findings at
+or above a severity:
+
+```sh
+python -I method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json \
+  --inventory ~/.appsec-review/<repo>/inventory.json --fail-on critical
+```
+
+Exit codes: `0` pass, `3` blocking findings, `1` incomplete review or invalid ledger, `2` bad arguments. Agent
+setup, a Jenkins example and scheduling advice: [docs/ci-pipeline.md](docs/ci-pipeline.md).
+
+> [!WARNING]
+> Ledgers, inventories and reports describe how to attack open issues. They are kept in `~/.appsec-review/`,
+> outside your repository, and reports are published privately. Check who can see them before sharing.
+
+## Reference
+
+<details>
+<summary><b>Standards covered</b></summary>
 
 - OWASP Top 10:2025 and OWASP API Security Top 10:2023
 - OWASP ASVS 5.0, including V3 Web Frontend Security, and WSTG-CLNT
@@ -19,70 +117,29 @@ nightly Jenkins job) with a gate that fails the build on findings at or above a 
 - NIST SP 800-63B-4
 - RFC 9700 (OAuth security BCP), RFC 8252 (OAuth for native apps), RFC 10017 (OAuth for browser-based apps)
 
-## Installation
+</details>
 
-Clone the repository into your Claude Code skills folder:
-
-```sh
-git clone https://github.com/ibrahimabdallatif/appsec-review.git ~/.claude/skills/appsec-review
-```
-
-The skill is then available in every Claude Code session. Python 3 is needed for the helper scripts.
-
-New to the skill? Start with [docs/getting-started.md](docs/getting-started.md).
-
-## Documentation
-
-| Guide | For |
-|---|---|
-| [Getting started](docs/getting-started.md) | Installing, a first review, reading the result, fixing and re-checking |
-| [How it works](docs/how-it-works.md) | The inventory, hunters, verifiers and coverage ledger, with a diagram |
-| [CI pipeline](docs/ci-pipeline.md) | Running the skill on a schedule and failing builds on serious findings |
-| [Contributing](CONTRIBUTING.md) | Adding rules, stacks and patterns; tests; benchmarking the skill after changes |
-
-## Usage
-
-```
-/appsec-review                               # current branch vs. its base, plus uncommitted changes
-/appsec-review feature/login against main    # a branch or PR
-/appsec-review src/payments/                 # specific files or folders
-/appsec-review whole repo                    # the whole repository (standard mode)
-/appsec-review deep                          # in-depth review (deep mode)
-/appsec-review ~/work/services               # every repository under a directory
-/appsec-review whole repo, write a report    # adds a published HTML report
-```
-
-### Review modes
-
-| Mode | When | Subagents | Coverage ledger |
-|---|---|---|---|
-| `diff` | Default; a diff, branch, PR or files | None, except one verifier for a surviving `critical` | None |
-| `standard` | A whole repository, an endpoint, or several repositories | One combined hunter and one batch verifier | Module × category |
-| `deep` | Only when the user explicitly asks for "deep" | Two hunters (wildcard/obvious-things and a backward sink tracer), one verifier per `critical`/`bug` candidate, plus the deep playbooks | Entry point × category |
-
-Every mode reads all in-scope code and follows each input to its sinks; modes only change how many subagents run
-and how detailed the ledger is. `deep` takes several times longer and uses much more tokens than `standard`.
-
-## How a review runs
+<details>
+<summary><b>How a review runs, step by step</b></summary>
 
 1. Start a run timer and note the token budget.
 2. Pick the repositories (single or multi-repository review).
-3. Identify the stack from manifests, pick matching stack rules, and build a scripted inventory of entry points
-   and sinks (`method/inventory.py`), so every run starts from the same list.
+3. Identify the stack from manifests, pick matching stack rules, and build the scripted inventory of entry points
+   and sinks (`method/inventory.py`).
 4. Set the scope and load the category rules whose `paths` match files in scope.
 5. Seed the coverage ledger (`standard` and `deep`).
-6. Assess the code (trust boundaries, STRIDE, rule checks) forward from each entry point, while hunters run in
+6. Assess the code forward from each entry point (trust boundaries, STRIDE, rule checks) while hunters run in
    parallel: wildcard and obvious-things, and in `deep` a sink tracer working backward from every sink.
 7. Optionally run installed tools: gitleaks, trivy/osv-scanner, ecosystem audits, semgrep.
 8. Verify every candidate with a disproof pass and, depending on the mode, independent verifier subagents.
-9. Close the ledger and validate it against the inventory (every entry point has a unit, every sink file was read), then report.
+9. Close the ledger, validate it against the inventory, then report.
 
-Findings are ordered by severity (`critical`, `bug`, `warning`, `suggestion`), each with `file:line`, the attack,
-the impact and a fix that uses the codebase's own helpers. Rejected candidates are listed with the verifier's
-reason so they can be overruled. Every run ends with a run summary (mode, time, tokens, subagents, counts).
-Secret values, card numbers, OTPs and tokens are never printed.
+The full picture, with a diagram: [docs/how-it-works.md](docs/how-it-works.md).
 
-## Repository layout
+</details>
+
+<details>
+<summary><b>Repository layout</b></summary>
 
 | Path | Contents |
 |---|---|
@@ -91,56 +148,35 @@ Secret values, card numbers, OTPs and tokens are never printed.
 | `rules/*.md` | Framework-neutral category checklists: access control, authentication and sessions, injection, cryptography and data protection, business logic, configuration and supply chain, logging, client side, AI/LLM agents, web protocol and identity |
 | `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, .NET, Go |
 | `rules/deep/*.md` | `deep`-mode playbooks: object-level authorization, payment callbacks, payment state and idempotency, race conditions, business-logic flaws |
-| `method/` | Coverage ledger, hunter and verifier prompts, `inventory.py` (entry points and sinks by script), `ledger.py` validator and `run_stats.py` timer |
+| `method/` | Coverage ledger, hunter and verifier prompts, `inventory.py`, `ledger.py` validator and CI gate, `run_stats.py` |
 | `report/` | Report structure (`REPORT.md`), CVSS 3.1 calculator (`cvss31.py`) and HTML template |
-| `docs/` | Getting started, how it works, and the CI pipeline guide |
+| `docs/` | Getting started, how it works, CI pipeline guide, and the README images |
 | `evals/` | `benchmark.py`, which scores one run, or several runs for stability, against known findings |
 | `.github/workflows/tests.yml` | Runs every test suite on Linux and Windows on each push and pull request |
 
-## Reports
+</details>
 
-Ask for a report and the skill builds an HTML page from `report/report-template.html`, with document control,
-the standards used, CVSS 3.1 scored findings (computed by `report/cvss31.py`, never estimated) and
-recommendations. Reports are published privately, since they contain attack details for open issues.
-
-## CI gate
-
-The review always runs to completion. To fail a pipeline on its results, check the finished ledger afterwards:
-
-```sh
-python -I method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json \
-  --inventory ~/.appsec-review/<repo>/inventory.json --fail-on critical
-```
-
-Exit codes: `0` pass, `3` a finding at or above the given severity (`critical`, `bug`, `warning`, `suggestion`;
-"needs confirmation" findings count by their severity if confirmed), `1` invalid ledger or missing coverage,
-`2` bad arguments.
-
-For a full pipeline setup (agent requirements, a Jenkins example, permissions, keeping findings private, and when
-to run which mode), see [docs/ci-pipeline.md](docs/ci-pipeline.md).
-
-## Development
+<details>
+<summary><b>Development</b></summary>
 
 Run the tests after changing the helper scripts (GitHub Actions runs the same commands on every push):
 
 ```sh
+python -I method/test_inventory.py
 python -I method/test_ledger.py
 python -I method/test_run_stats.py
-python -I method/test_inventory.py
 python -I evals/test_benchmark.py
 python -I report/cvss31.py --selftest
 ```
 
-After changing `rules/`, `method/` or the steps, re-run the skill against a benchmark repository and score it
-with `evals/benchmark.py` to make sure no known finding is lost. Pass several fresh runs' ledgers to see which
-findings are found in every run and which only sometimes. See [CONTRIBUTING.md](CONTRIBUTING.md).
+After changing `rules/`, `method/` or the steps, score the skill against a benchmark repository with
+`evals/benchmark.py`, over several fresh runs, to make sure no known finding is lost or only found sometimes. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Credits
+</details>
 
-Parts of this skill are adapted from MIT-licensed projects by Cloudflare, Vasiliy Uvarov, Riyan Dhiman and
-Mohamed AboElKheir, with ideas inspired by Trail of Bits. See [NOTICE.md](NOTICE.md) for details.
+## Credits and license
 
-## License
-
-MIT, see [LICENSE](LICENSE). Adapted third-party material keeps its own copyright notices in
+MIT, see [LICENSE](LICENSE). Parts of this skill are adapted from MIT-licensed projects by Cloudflare, Vasiliy
+Uvarov, Riyan Dhiman and Mohamed AboElKheir, with ideas from Trail of Bits and autoresearch; see
 [NOTICE.md](NOTICE.md).
