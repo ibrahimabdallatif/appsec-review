@@ -92,6 +92,7 @@ SAMPLES = {
         ("grant all on table public.cards to anon;", "sink", "grant"),
         ("using ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin')", "sink", "user-metadata"),
         ("const admin = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!)", "sink", "service-key"),
+        ("createClient(url, process.env.NEXT_PUBLIC_SUPABASE_SERVICE_KEY!)", "sink", "service-key"),
         ("      allow read, write: if true;", "sink", "open-rule"),
         ("      allow read: if request.auth != null;", "sink", "open-rule"),
         ('    ".write": true,', "sink", "open-rule"),
@@ -323,6 +324,14 @@ class HitsTest(unittest.TestCase):
 
     def test_conditional_entries_optional(self):
         self.assertEqual(inventory.conditional_entry_hits("a.go", "x", "go", patterns.GO), [])
+
+    def test_public_secret_skips_public_client_keys(self):
+        spec = patterns.WEB_FRONTEND
+        for line in ("process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY", "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY"):
+            self.assertEqual(inventory.sink_hits("a.ts", line, "web-frontend", spec), [], line)
+        for line in ("process.env.NEXT_PUBLIC_SUPABASE_SERVICE_KEY", "process.env.EXPO_PUBLIC_STRIPE_SECRET"):
+            kinds = [h["kind"] for h in inventory.sink_hits("a.ts", line, "web-frontend", spec)]
+            self.assertEqual(kinds, ["public-secret"], line)
 
     def test_sql_policy_lines_are_scanned(self):
         text = ("create policy p on public.cards for update\n"

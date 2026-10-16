@@ -227,7 +227,8 @@ WEB_FRONTEND = {
         ("post-message", "client-side", r"\.postMessage\s*\("),
         ("token-storage", "client-side", r"\b(?:localStorage|sessionStorage)\.setItem\s*\("),
         ("public-secret", "client-side",
-         r"\b(?:NEXT_PUBLIC|VITE|REACT_APP|NUXT_PUBLIC)_\w*(?:SECRET|KEY|TOKEN|PASSWORD)\b"),
+         r"\b(?:NEXT_PUBLIC|VITE|REACT_APP|NUXT_PUBLIC|EXPO_PUBLIC)_(?!\w*(?:ANON|PUBLISHABLE)_KEY\b)"
+         r"\w*(?:SECRET|KEY|TOKEN|PASSWORD)\b"),
     ],
 }
 
@@ -286,7 +287,8 @@ BAAS = {
         ("grant", "access-control", r"(?i)\bgrant\b.*\bto\s+(?:anon|authenticated|public)\b"),
         ("user-metadata", "access-control", r"\buser_metadata\b|\braw_user_meta_data\b"),
         ("service-key", "access-control",
-         r"(?i)\bservice_role\b|SERVICE_ROLE_KEY|\bsb_secret_|\bfirebase-admin\b|\badmin\.initializeApp\s*\(|"
+         r"(?i)\bservice_role\b|SERVICE_ROLE_KEY|SUPABASE_SERVICE_KEY|\bsb_secret_|\bfirebase-admin\b|"
+         r"\badmin\.initializeApp\s*\(|"
          r"\"private_key\"\s*:"),
         ("open-rule", "access-control",
          r"\bif\s+true\b|\bif\s+request\.auth\s*!=\s*null\s*;|request\.time\s*<\s*timestamp\.date|"
