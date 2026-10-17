@@ -208,7 +208,7 @@ Run summary
 - Time: <python -I <skill folder>/method/run_stats.py <start value>>
 - Tokens: <python -I <skill folder>/method/run_stats.py --tokens <budget at start> <budget at end> <tokens per subagent ...>>
 - Subagents: <number started, by role and model>
-- Findings: <root causes> root causes across <locations> locations; <n> rejected by verification
+- Findings: <root causes> root causes: <n> critical ; <n> bug ; <n> warning ; <n> suggestion ; <n> rejected by verification
 - <mode note>
 ```
 
@@ -226,6 +226,8 @@ Run summary
     (`/appsec-review whole repo`), or `diff` for a PR or branch: `/appsec-review` on its own reviews the current
     branch against its base plus uncommitted changes, or name a branch (for example
     `/appsec-review feature/login against main`)."
+- **Findings.** One line. In `standard` and `deep`, copy the `Findings:` line `method/ledger.py` prints. In `diff`,
+  write it in the same form. Add `; <n> needs confirmation` before the rejected count when there are any.
 - In a multi-repository review, also give the time for each repository (start a new timer value for each).
 - Never print secret values, card numbers, CVVs, OTPs or tokens. Refer to them by location only.
 - Report only. Change code only when the user asks for fixes, and then update or add the matching negative tests.

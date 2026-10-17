@@ -363,6 +363,22 @@ class SummaryTest(unittest.TestCase):
         self.assertEqual((result["root_causes"], result["locations"]), (1, 3))
 
 
+class FindingsLineTest(unittest.TestCase):
+    def test_counts_by_severity(self):
+        findings = [finding(), finding(key="b", severity="bug"), finding(key="w", decision="hardening",
+                                                                         severity="warning"),
+                    finding(key="r", decision="rejected", severity=None, disproof="a.ts:1")]
+        self.assertEqual(ledger.findings_line(ledger_with([], findings)),
+                         "Findings: 3 root causes: 1 critical ; 1 bug ; 1 warning ; 0 suggestion ; "
+                         "1 rejected by verification")
+
+    def test_counts_needs_confirmation(self):
+        findings = [finding(decision="needs_confirmation", severity=None, severity_if_confirmed="critical")]
+        self.assertEqual(ledger.findings_line(ledger_with([], findings)),
+                         "Findings: 1 root causes: 0 critical ; 0 bug ; 0 warning ; 0 suggestion ; "
+                         "1 needs confirmation ; 0 rejected by verification")
+
+
 def inventory_with(entries=(), sinks=(), source_ref="abc123"):
     return {"source_ref": source_ref, "entry_points": list(entries), "sinks": list(sinks)}
 

@@ -273,6 +273,19 @@ def summary(ledger):
             "root_causes": len(reported), "locations": sum(len(f["paths"]) for f in reported)}
 
 
+def findings_line(ledger):
+    """One line of root causes by severity, needs confirmation and rejected, for the run summary."""
+    findings = ledger["findings"]
+    reported = [f for f in findings if f["decision"] != "rejected"]
+    by_severity = count_by([f for f in reported if f["severity"] is not None], "severity")
+    parts = ["%d %s" % (by_severity.get(s, 0), s) for s in SEVERITIES]
+    pending = sum(1 for f in reported if f["decision"] == "needs_confirmation")
+    if pending:
+        parts.append("%d needs confirmation" % pending)
+    parts.append("%d rejected by verification" % (len(findings) - len(reported)))
+    return "Findings: %d root causes: %s" % (len(reported), " ; ".join(parts))
+
+
 def entry_surface(entry, profile):
     """The ledger surface an inventory entry point needs: its module in standard, its own surface in deep."""
     return entry["path"] if profile == "standard" else entry["surface"]
@@ -430,6 +443,7 @@ def main(args):
     if errors:
         return 1
     print(json.dumps(summary(ledger), indent=2, sort_keys=True))
+    print(findings_line(ledger))
     today = datetime.date.today()
     if parsed["sarif"]:
         write_sarif(parsed["sarif"], ledger, entries, today)
