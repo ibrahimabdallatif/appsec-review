@@ -5,8 +5,9 @@ paths:
 
 # Security assessment: method and reporting
 
-This assessment runs only when someone invokes it explicitly. It works on back-end services, web front ends and
-mobile apps in any language or framework. The other files in this folder each cover one area and together map to
+This assessment runs only when someone invokes it explicitly. It has stack files for Spring, Node.js, Python,
+.NET and Go back ends, browser front ends, mobile apps, Supabase and Firebase (`stacks/`). The other files in
+this folder each cover one area and together map to
 these standards:
 
 - OWASP Top 10:2025 (web application risks)

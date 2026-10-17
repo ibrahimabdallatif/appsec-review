@@ -2,7 +2,7 @@
 
 <p align="center">
   <b>Pentest-style security reviews in Claude Code, where every finding has to survive a second agent.</b><br>
-  Back end, web front end and mobile, in any language or framework.
+  Spring, Node.js, Python, .NET and Go back ends, browser front ends, mobile apps, Supabase and Firebase.
 </p>
 
 <p align="center">
@@ -37,6 +37,23 @@
     <td><b>Audit-ready output.</b><br>Each finding gives <code>file:line</code>, the attack, the impact and a fix using your own helpers, mapped to OWASP, ASVS, MASVS, CWE and PCI DSS, with CVSS 3.1 computed by script, never estimated.</td>
   </tr>
 </table>
+
+## Supported stacks
+
+| Stack | Frameworks |
+|---|---|
+| Java and Kotlin | Spring Boot, MVC, WebFlux, Security, Data |
+| Node.js | NestJS, Express, Fastify, Koa, Hapi, Hono, and server code in Next.js and other full-stack frameworks |
+| Python | Django, Django REST Framework, FastAPI, Flask, Starlette |
+| .NET | ASP.NET Core MVC, Web API, minimal APIs, Blazor |
+| Go | net/http, Gin, Echo, Fiber, chi, gRPC |
+| Browser front ends | React, Next.js, Angular, Vue, Nuxt, Svelte, Solid, Astro |
+| Mobile | React Native, Expo, Flutter, native Android and iOS |
+| Backend as a service | Supabase, Firebase |
+
+Each stack has a rule file in `rules/stacks/` and inventory patterns that list its entry points and sinks. Code
+in other stacks gets only the general category checks, without a scripted inventory, so coverage is weaker; the
+report says when no stack file matched.
 
 ## Quick start
 

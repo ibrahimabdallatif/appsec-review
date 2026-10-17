@@ -1,6 +1,6 @@
 ---
 name: appsec-review
-description: Manual security review and pentest-style assessment of back-end, web front-end and mobile code in any language or framework against OWASP Top 10:2025, OWASP API Top 10:2023, ASVS 5.0 including V3 Web Frontend Security, MASVS, MASTG, Mobile Top 10:2024, CWE Top 25, PCI DSS, NIST SP 800-63B-4, RFC 9700, RFC 8252 and RFC 10017. Run only when the user explicitly invokes /appsec-review or $appsec-review, for a diff, branch, PR, file, endpoint, the whole repository, or every repository under a directory.
+description: Manual security review and pentest-style assessment of Spring, Node.js, Python, .NET and Go back ends, browser front ends (React, Next.js, Angular, Vue, Svelte), mobile apps (React Native, Flutter, native Android and iOS), Supabase and Firebase against OWASP Top 10:2025, OWASP API Top 10:2023, ASVS 5.0 including V3 Web Frontend Security, MASVS, MASTG, Mobile Top 10:2024, CWE Top 25, PCI DSS, NIST SP 800-63B-4, RFC 9700, RFC 8252 and RFC 10017. Run only when the user explicitly invokes /appsec-review or $appsec-review, for a diff, branch, PR, file, endpoint, the whole repository, or every repository under a directory.
 disable-model-invocation: true
 ---
 
