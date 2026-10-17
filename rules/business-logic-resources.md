@@ -16,6 +16,9 @@ CWE-400, CWE-190, CWE-681, CWE-1284, CWE-204, CWE-602.
   caller-supplied flags), and server code that assumes the client already checked. (CWE-602)
 - Verification results (KYC, identity, document, payment status) must be fetched or verified by the server from
   the trusted provider. Flag status flags accepted from the client or trusted from a client-relayed response.
+- Paid and metered features: for each feature the README, docs, pricing or UI wording says costs credit, needs a
+  plan or has a quota, find the server code that checks and deducts it before the action runs. Flag features
+  served without it, and checks done only in the UI. (API6, CWE-841)
 - Amounts, fees, FX rates, prices and debit accounts must be computed or resolved on the server. Flag
   client-supplied prices, fees, rates, balances or source accounts that are trusted.
 

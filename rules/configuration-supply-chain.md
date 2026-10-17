@@ -93,6 +93,10 @@ dependency lines to watch.
 ## Dependencies and build (supply chain)
 - Treat a dependency CVE listed in the CISA Known Exploited Vulnerabilities catalog as `critical`, whatever its
   CVSS score.
+- Check the exact version of each framework, runtime and auth or security library (from the lock file, else the
+  manifest) against every advisory for that version: OSV, GitHub advisories, the ecosystem's audit and CISA KEV.
+  Never stop at one fix you know: a version past one advisory's fix can still be inside a later advisory's range.
+  If no tool or lookup is available, list the versions left unchecked.
 - Flag end-of-life framework or runtime lines and versions with known critical CVEs when the build file changes.
   The stack file lists the lines to watch for each ecosystem. (A03, CWE-1395)
 - Flag unmaintained libraries, unpinned or ranged versions, missing or uncommitted lock files, CI installs that
