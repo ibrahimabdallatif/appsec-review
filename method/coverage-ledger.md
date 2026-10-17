@@ -88,6 +88,8 @@ per repository.
   category list from `rules/`.
 - **id**: `<surface>::<area>`. No line numbers, dates or agent names, so it stays the same across runs.
 - **owner**: `main` (you), `wildcard`, `obvious-things`, `sink-trace`, or `verifier`.
+- **title**: the weakness in words a reader understands, at least three ("Card reveal without OTP step-up"),
+  never a working candidate id such as `C9`. It is what the result, SARIF and reports show.
 - **finding key**: a stable root-cause key such as `cards/reveal-without-step-up`. No line numbers or severities.
   One root cause seen from several entry points is one finding linked from several units.
 - **threat_model** and **abuse paths**: written as `method/threat-model.md` says. An abuse path unit has area

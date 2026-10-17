@@ -63,6 +63,8 @@ STATES = {
 
 DRIVE = re.compile(r"^[A-Za-z]:")
 PATH_LINE = re.compile(r"[^\s:]+:\d+")
+ID_LIKE = re.compile(r"^\s*[A-Za-z]{0,3}[-_ ]?\d+\s*$")
+MIN_TITLE_WORDS = 3
 RULES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "rules")
 
 
@@ -172,10 +174,19 @@ def check_finding(finding):
         errors.append("%s: hardening severity must be warning or suggestion" % label)
     elif decision == "confirmed" and severity not in SEVERITIES:
         errors.append("%s: confirmed needs a severity" % label)
+    errors += check_title(finding, label)
     errors += check_rejection_proof(finding, label)
     errors += check_severity_if_confirmed(finding, label)
     errors += check_paths(finding["paths"], label)
     return errors
+
+
+def check_title(finding, label):
+    """Titles name the weakness for people reading results, SARIF and reports: never a candidate id like 'C9'."""
+    title = finding.get("title")
+    if not isinstance(title, str) or ID_LIKE.match(title) or len(title.split()) < MIN_TITLE_WORDS:
+        return ["%s: title must name the weakness in at least %d words, not an id" % (label, MIN_TITLE_WORDS)]
+    return []
 
 
 def check_rejection_proof(finding, label):

@@ -174,6 +174,19 @@ class CheckUnitTest(unittest.TestCase):
         self.assertEqual(ledger.check_unit(unit(), AREAS, "deep"), [])
 
 
+class CheckTitleTest(unittest.TestCase):
+    def test_descriptive_title(self):
+        self.assertEqual(ledger.check_title(finding(), "f"), [])
+
+    def test_id_like_or_short_titles(self):
+        for title in ("C9", "c-12", "F 3", "  42 ", "IDOR", "Open redirect", None, 7):
+            errors = ledger.check_title(finding(title=title), "f")
+            self.assertEqual(errors, ["f: title must name the weakness in at least 3 words, not an id"], title)
+
+    def test_check_finding_reports_title(self):
+        self.assertIn("title must name the weakness", " ".join(ledger.check_finding(finding(title="C9"))))
+
+
 class CheckFindingTest(unittest.TestCase):
     def test_confirmed_ok(self):
         self.assertEqual(ledger.check_finding(finding()), [])

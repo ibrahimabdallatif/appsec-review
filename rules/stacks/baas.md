@@ -38,6 +38,11 @@ as the API's access control, one table or collection at a time.
 - INSERT policies use only `with check`: check that it pins the owner column to `auth.uid()`, or users create
   rows owned by others. UPDATE reuses `using` as `with check` when there is none; an explicit, weaker
   `with check` lets a user move a row to another owner or tenant.
+- INSERT policies must also pin workflow and money columns that column defaults are meant to set: `status`,
+  `approved`, `paid`, `verified`, amounts, limits and timestamps. A default applies only when the client leaves the
+  column out; through the Data API a user inserts the row already `approved` or `paid`. Check every column of
+  the table against the policy, or look for a column-level `grant insert (…)` or a trigger that resets them.
+  (CWE-915, API3)
 - RLS is per row, not per column: a user who can update their own `profiles` row can also set `role`,
   `is_admin`, `plan`, `credits` or `tenant_id` on it. Look for column-level `grant update (…)`, a trigger that
   rejects changes, or sensitive columns kept in a separate table. (CWE-915)
