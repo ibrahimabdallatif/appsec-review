@@ -103,7 +103,7 @@ finding linked, every rejection proven. With `--inventory` it also fails when an
 or a sink file was never read under its category, so a run cannot quietly skip part of its scope.
 
 The result orders findings by severity with `file:line`, the attack, the impact and a fix that uses the codebase's
-own helpers, and ends with a run summary (`method/run_stats.py`: time and tokens). A report
+own helpers, and ends with a run summary (`method/run_stats.py`: time and tokens). The report every run builds
 (`report/REPORT.md`) adds CVSS 3.1 vectors computed by `report/cvss31.py` and standards references per finding.
 
 In CI, `ledger.py --fail-on <severity>` reads the finished ledger and exits non-zero on findings at or above the

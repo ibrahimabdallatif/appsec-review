@@ -105,7 +105,7 @@ never selects `deep` mode.
    that category. If no stack file fits, use the framework's own documentation and say so.
    Read a method file only when its step runs: `method/coverage-ledger.md` and `method/threat-model.md` at
    step 5 (not in `diff` mode), `method/hunters.md` at step 6, `method/verifier.md` at step 8 (and
-   `method/threat-model.md` section 3 for the chain pass in `diff`). Read `report/` only when a report is asked for.
+   `method/threat-model.md` section 3 for the chain pass in `diff`). Read `report/` only at the report step (Report).
 5. **Seed the coverage ledger** (`standard` and `deep` only). Seed the units from the inventory, map the trust
    boundaries and any entry points the inventory missed, then write the ledger units at the mode's granularity,
    plus the hunter units, as `method/coverage-ledger.md` describes. Then write the threat model and the abuse
@@ -197,12 +197,12 @@ ledger; a platform-wide finding uses one finding key, linked from units in every
   an outside fact), and how each finding was verified (independent verifier or self-verified disproof pass).
 - List the candidates **rejected by verification** after that: title, `file:line`, the verifier's reason and the
   disproof line. The user can overrule a wrong rejection.
-- Finish every run, including one stopped early or failed, with the run summary below, then the next-steps
-  questions.
+- Finish every run, including one stopped early or failed, with the run summary below, then the report (see
+  Report), then the next-steps questions.
 
 ### Run summary
 
-The last block of every result, followed only by the next-steps questions:
+The last block of every result, followed only by the report and the next-steps questions:
 
 ```
 Run summary
@@ -237,18 +237,16 @@ Run summary
 
 ### Next steps
 
-After the run summary, ask the user what to do next, with the question tool when the session has one, otherwise
-as a short closing question. Ask only what applies:
+After the report, ask the user what to do next, with the question tool when the session has one, otherwise as a
+short closing question:
 
-- **Report.** When the user didn't ask for a report, ask whether to generate one with the findings (see Report).
-  Skip it when a report was asked for or is already being built.
 - **Fixes.** When there is at least one finding, ask whether to fix a specific finding (offer the findings by
   title, most severe first; the user can name others), fix all of them, or neither for now. Leave out findings
   rejected by verification, and note that `needs confirmation` findings are fixed only after their fact is
   confirmed or the user chooses to fix them anyway.
 
-Act on the answers in that order: build the report first, then fix (rules above). Skip the questions in a
-non-interactive run (CI, scheduled or headless), where no one can answer.
+Then fix as answered (rules above). Skip the questions in a non-interactive run
+(CI, scheduled or headless), where no one can answer.
 
 ## CI gate
 
@@ -265,10 +263,10 @@ accepted-risk file unless the user asks, and never shorten a review because a cr
 
 ## Report
 
-When the user asks for a report (a page, artifact, export or document of the findings), read `report/REPORT.md`
-and follow it exactly:
+Every run produces a report without being asked, including a `diff` run and a run with no findings (the report
+then says so). Build it after the run summary: read `report/REPORT.md` and follow it exactly:
 
-- Use its section structure (1.0 Document Control to 6.0 Recommendation) and finding card fields, and its
+- Use its section structure (2.0 Executive Summary to 6.0 Recommendation) and finding card fields, and its
   multi-repository rules when more than one repository is in scope.
 - State the security standards the review is based on in 2.4 (REPORT.md "Security standards") and give every
   finding its References. Include ASVS V3, WSTG-CLNT and RFC 10017 for browser findings, and MASVS, MASTG,
@@ -277,7 +275,9 @@ and follow it exactly:
 - Score every finding with a CVSS 3.1 base vector and rate it by the CVSS band. Compute each score with
   `python -I <skill folder>/report/cvss31.py "<vector>"`; never estimate.
 - Build the page from `report/report-template.html`, keeping its CSS and layout and replacing only the content.
-- Publish it privately and warn before wider sharing, because it contains attack details for open issues.
+- Publish it privately and warn before wider sharing, because it contains attack details for open issues. When the
+  session cannot publish (CI, scheduled or headless), write it to `~/.appsec-review/<repo>/report.html` instead and
+  print that path.
 
 ## Maintaining the skill
 

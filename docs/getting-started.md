@@ -70,8 +70,9 @@ After the findings come:
   attack. If you think a rejection is wrong, you can overrule it.
 - **Run summary**: mode, time, tokens and subagents used, and counts of findings and affected locations.
 
-The review then asks what to do next: whether to generate a report (when you didn't ask for one) and whether to
-fix a specific finding, all of them, or none for now. Non-interactive runs (CI) skip these questions.
+Every run then publishes a private HTML report of the findings (CI runs write it to
+`~/.appsec-review/<repo>/report.html`) and asks whether to fix a specific finding, all of them, or none for now.
+Non-interactive runs (CI) skip the question.
 
 ## 4. Fix and re-check
 

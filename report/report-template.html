@@ -128,11 +128,6 @@ td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
 .key { display: flex; gap: 18px; font-size: 0.8rem; color: var(--muted); }
 .key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 
-/* Matrix */
-.matrix td, .matrix th { text-align: center; }
-.matrix td.lbl, .matrix th.lbl { text-align: left; }
-.cell { display: inline-block; min-width: 76px; padding: 3px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); }
-
 /* Findings */
 .finding { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; scroll-margin-top: 20px; }
 .f-head { padding: 20px 22px 16px; display: flex; flex-direction: column; gap: 8px; border-top: 4px solid var(--c); }
@@ -210,7 +205,6 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
   <nav class="rail" aria-label="Contents">
     <span class="eyebrow">Contents</span>
     <ol>
-      <li><a href="#doc-control">1.0 Document Control</a></li>
       <li><a href="#exec">2.0 Executive Summary</a></li>
       <li class="sub"><a href="#standards">2.4 Security Standards</a></li>
       <li class="sub"><a href="#distribution">2.5 Findings Distribution</a></li>
@@ -224,31 +218,6 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
   </nav>
 
   <main class="doc">
-
-    <section class="part" id="doc-control">
-      <header><span class="num">1.0</span><h2>Document Control</h2></header>
-      <h3 class="sec"><span class="num">1.1</span>Document Details</h3>
-      <div class="tbl-wrap"><table>
-        <tr><th>Document title</th><td>{{SERVICE}} Source Code Review Report v{{VERSION}}</td></tr>
-        <tr><th>Classification</th><td>Confidential</td></tr>
-        <tr><th>Description</th><td>This document includes technical details of vulnerabilities and how they can be exploited.</td></tr>
-        <tr><th>Date of issue</th><td>{{DATE_LONG}}</td></tr>
-      </table></div>
-      <h3 class="sec"><span class="num">1.2</span>Diffusion List</h3>
-      <div class="tbl-wrap"><table>
-        <tr><th>Contact title</th><th>Purpose</th></tr>
-        <tr><td>Chief Information Security Officer</td><td>Risk acceptance and remediation sign-off</td></tr>
-        <tr><td>Cyber Security Team Lead</td><td>Verification and retest</td></tr>
-        <tr><td>{{SERVICE}} owners</td><td>Remediation</td></tr>
-      </table></div>
-      <h3 class="sec"><span class="num">1.3</span>Document History</h3>
-      <div class="tbl-wrap"><table>
-        <tr><th>Version</th><th>Report type</th><th>Date</th><th>Role</th><th>Description</th></tr>
-        <tr><td>{{VERSION}}</td><td>Reviewing</td><td>{{DATE_DDMMYYYY}}</td><td>Internal reviewer</td><td>Initial review</td></tr>
-        <tr><td></td><td></td><td>Pending</td><td>First reviewer</td><td>Peer review</td></tr>
-        <tr><td></td><td></td><td>Pending</td><td>Approver</td><td>Approval</td></tr>
-      </table></div>
-    </section>
 
     <section class="part" id="exec">
       <header><span class="num">2.0</span><h2>Executive Summary</h2></header>
@@ -312,7 +281,7 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
       </div>
 
       <h3 class="sec" id="risk"><span class="num">2.7</span>Risk Criteria</h3>
-      <div class="prose"><p>Each finding is rated by its CVSS 3.1 base score. Where log or repository access is a precondition, the score assumes low-privileged readers (PR:L). The impact and exploitation complexity of each finding are listed beside the score.</p></div>
+      <div class="prose"><p>Each finding is rated by its CVSS 3.1 base score. Where log or repository access is a precondition, the score assumes low-privileged readers (PR:L).</p></div>
       <div class="tbl-wrap"><table>
         <tr><th>Risk</th><th>CVSS 3.1</th><th>Description</th></tr>
         <tr><td><span class="sev s-critical">Critical</span></td><td class="num">9.0 – 10.0</td><td>Exposed and exploitable with severe impact; no control is in place or planned.</td></tr>
@@ -320,22 +289,6 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
         <tr><td><span class="sev s-medium">Medium</span></td><td class="num">4.0 – 6.9</td><td>Moderate concern; a control exists but is partial or only somewhat effective.</td></tr>
         <tr><td><span class="sev s-low">Low</span></td><td class="num">0.1 – 3.9</td><td>Minor concern; the control is in place but could be improved.</td></tr>
         <tr><td><span class="sev s-info">Informational</span></td><td class="num">0.0</td><td>Hardening advice with no direct exploit path today.</td></tr>
-      </table></div>
-      <h3 class="sec"><span class="num">2.7.1</span>Exploitation Complexity</h3>
-      <div class="tbl-wrap"><table>
-        <tr><th>Value</th><th>Description</th></tr>
-        <tr><td>Trivial</td><td>No special knowledge; a single crafted request.</td></tr>
-        <tr><td>Easy</td><td>A valid low-privilege account or read access to logs.</td></tr>
-        <tr><td>Moderate</td><td>A network position, a misconfiguration, or a second weakness.</td></tr>
-        <tr><td>Complex</td><td>Advanced knowledge, insider secrets, or several conditions at once.</td></tr>
-      </table></div>
-      <h3 class="sec"><span class="num">2.7.2</span>Risk Level Calculation</h3>
-      <div class="tbl-wrap"><table class="matrix">
-        <tr><th class="lbl">Impact \ Complexity</th><th>Trivial</th><th>Easy</th><th>Moderate</th><th>Complex</th></tr>
-        <tr><td class="lbl">Critical</td><td><span class="cell s-critical">Critical</span></td><td><span class="cell s-critical">Critical</span></td><td><span class="cell s-high">High</span></td><td><span class="cell s-high">High</span></td></tr>
-        <tr><td class="lbl">High</td><td><span class="cell s-critical">Critical</span></td><td><span class="cell s-high">High</span></td><td><span class="cell s-high">High</span></td><td><span class="cell s-medium">Medium</span></td></tr>
-        <tr><td class="lbl">Medium</td><td><span class="cell s-high">High</span></td><td><span class="cell s-medium">Medium</span></td><td><span class="cell s-medium">Medium</span></td><td><span class="cell s-low">Low</span></td></tr>
-        <tr><td class="lbl">Low</td><td><span class="cell s-medium">Medium</span></td><td><span class="cell s-low">Low</span></td><td><span class="cell s-low">Low</span></td><td><span class="cell s-low">Low</span></td></tr>
       </table></div>
 
       <h3 class="sec" id="summary"><span class="num">2.8</span>Summary of Findings</h3>

@@ -101,8 +101,8 @@ Fix:    load through orderRepository.findByIdAndCustomerId(id, principal.custome
 ```
 
 Then the "needs confirmation" findings with the exact fact to check, what was checked and found clean, the
-coverage summary, the candidates rejected by verification, and a run summary with time and tokens. Ask for a
-report and you get a published HTML report with CVSS 3.1 scores and standards references for each finding.
+coverage summary, the candidates rejected by verification, and a run summary with time and tokens. Every run
+also publishes a private HTML report with CVSS 3.1 scores and standards references for each finding.
 
 ## In CI
 
