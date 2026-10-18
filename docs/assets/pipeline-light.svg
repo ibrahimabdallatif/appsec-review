@@ -49,6 +49,6 @@
 <path d="M702 274H724" stroke="#8c959f" stroke-width="2" marker-end="url(#a)"/>
 <path d="M930 274H952" stroke="#8c959f" stroke-width="2" marker-end="url(#a)"/>
 <line x1="48" y1="404" x2="1152" y2="404" stroke="#d0d7de"/>
-<text x="48" y="432" font-family="ui-monospace, SFMono-Regular, Consolas, &apos;Liberation Mono&apos;, Menlo, monospace" font-size="14" font-weight="400" fill="#59636e" text-anchor="start" letter-spacing="0"><tspan fill="#9a5b00" font-weight="600">diff</tspan> for PRs   ·   <tspan fill="#9a5b00" font-weight="600">standard</tspan> for a repo   ·   <tspan fill="#9a5b00" font-weight="600">deep</tspan> for payments and identity</text>
+<text x="48" y="432" font-family="ui-monospace, SFMono-Regular, Consolas, &apos;Liberation Mono&apos;, Menlo, monospace" font-size="14" font-weight="400" fill="#59636e" text-anchor="start" letter-spacing="0"><tspan fill="#9a5b00" font-weight="600">diff</tspan> for PRs   ·   <tspan fill="#9a5b00" font-weight="600">standard</tspan> for a repo   ·   <tspan fill="#9a5b00" font-weight="600">deep</tspan> for high-stakes code</text>
 <text x="1152" y="432" font-family="ui-monospace, SFMono-Regular, Consolas, &apos;Liberation Mono&apos;, Menlo, monospace" font-size="14" font-weight="400" fill="#59636e" text-anchor="end" letter-spacing="0">CI gate: <tspan fill="#9a5b00" font-weight="600">--fail-on critical</tspan></text>
 </svg>
