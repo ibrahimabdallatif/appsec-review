@@ -193,26 +193,6 @@ Agent setup, accepted risks, SARIF, a Jenkins example and scheduling advice:
 > Ledgers, inventories and reports describe how to attack open issues. They are kept in `~/.appsec-review/`,
 > outside your repository, and reports are published privately. Check who can see them before sharing.
 
-## 🗺️ Roadmap
-
-Planned improvements, several inspired by the methodology in [Strix](https://github.com/usestrix/strix), adapted
-to a static, source-only review:
-
-| Improvement | What it adds | Effort |
-|---|---|---|
-| 🩹 **Fix verification gates** | Before a fix is proposed: it closes the input class, survives a bypass review, keeps legitimate behaviour, and comes with a test that fails when the fix is reverted. A fix that can't pass is withheld and explained | Medium |
-| 📦 **Dependency reachability** | Each dependency CVE gets an evidence level (`not_imported`, `imported`, `vulnerable_symbol_used`, `reachable_call_path`), transitive CVEs are traced to the direct dependency to bump or override, and a stale vulnerability database is flagged | High |
-| 🧬 **Family sweeps** | Once one instance turns up, sweep its family: deserializer codecs, XML parser factories, archive extraction, SAML validated-vs-consumed assertions, JSON Patch operations, authentication state transitions, protocol version negotiation | Medium |
-| 🎯 **Severity calibration** | A "usually not high or critical" list and an acceptance checklist for `critical`, folded into the verifier's severity check | Low |
-| 🧾 **Richer finding fields** | `severity_change_conditions` (the one fact that would raise or lower severity) and `counterevidence` (what was checked on the other side) on every finding | Low |
-| 🔀 **Sharper diff mode** | Pre-existing weaknesses the change newly reaches, controls the change removes, and PR titles and descriptions treated as untrusted input | Low |
-| 🧩 **New rule topics** | Argument injection, Electron desktop apps, dangling DNS and subdomain takeover in IaC, package-runner confusion (`npx` in MCP and CI configs), parser differentials, deeper cloud and Kubernetes IaC | Medium |
-| 🔌 **API specs as input** | Seed the inventory from OpenAPI or Postman collections, for stacks the patterns don't cover | Medium |
-| 🧪 **Optional dynamic confirmation** | When you supply a running instance you are authorized to test, reproduce `needs_confirmation` findings with a request or a small script | High |
-| 💲 **Estimated cost** | An estimated dollar cost in the run summary next to the token totals, to compare modes | Low |
-| ⚡ **Quick mode for CI** | A time-boxed, clearly labelled partial mode that checks in priority order: authentication bypass, access control, RCE, injection, SSRF, secrets | Low |
-| 📄 **PDF report** | A PDF export of the HTML report for auditors who can't open a private link | Low |
-
 ## 📚 Reference
 
 <details>
