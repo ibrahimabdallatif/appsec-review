@@ -34,6 +34,21 @@ class ParseStartTest(unittest.TestCase):
                 elapsed.parse_start(text)
 
 
+class ResumeStartTest(unittest.TestCase):
+    def test_moves_start_by_wait(self):
+        self.assertEqual(elapsed.resume_start(1000, 1100, 1400), 1300)
+
+    def test_no_wait(self):
+        self.assertEqual(elapsed.resume_start(1000, 1100, 1100), 1000)
+
+    def test_clock_behind_pause_counts_as_no_wait(self):
+        self.assertEqual(elapsed.resume_start(1000, 1100, 1050), 1000)
+
+    def test_pause_before_start_rejected(self):
+        with self.assertRaises(ValueError):
+            elapsed.resume_start(1000, 900, 1200)
+
+
 class FormatDurationTest(unittest.TestCase):
     def test_seconds_only(self):
         self.assertEqual(elapsed.format_duration(45), "45s")
@@ -116,6 +131,21 @@ class MainTest(unittest.TestCase):
 
     def test_elapsed_since_start(self):
         self.assertEqual(run(["1000"], lambda: 1125), (0, "2m 05s"))
+
+    def test_pause_prints_clock(self):
+        self.assertEqual(run(["--pause"], lambda: 1100), (0, "1100"))
+
+    def test_resume_prints_new_start(self):
+        self.assertEqual(run(["--resume", "1000", "1100"], lambda: 1400), (0, "1300"))
+
+    def test_wait_excluded_from_elapsed(self):
+        _, new_start = run(["--resume", "1000", "1100"], lambda: 1400)
+        self.assertEqual(run([new_start], lambda: 1425), (0, "2m 05s"))
+
+    def test_resume_bad_input(self):
+        self.assertEqual(run(["--resume", "1000"], lambda: 1400)[0], 2)
+        self.assertEqual(run(["--resume", "1000", "soon"], lambda: 1400)[0], 2)
+        self.assertEqual(run(["--resume", "1000", "900"], lambda: 1400)[0], 2)
 
     def test_bad_start(self):
         code, _ = run(["soon"], lambda: 1000)

@@ -44,7 +44,7 @@ The method files in `method/` are not checklists; they define how the review run
 | `method/sarif.py` | SARIF 2.1.0 export for `ledger.py --sarif` (`test_sarif.py` holds its tests) |
 | `method/hunters.md` | Wildcard, obvious-things and sink-trace hunter prompts, and when to run them as subagents |
 | `method/verifier.md` | Verification per mode: an inline disproof pass, plus fresh verifier subagents that try to disprove candidates |
-| `method/run_stats.py` | Run timer and token totals for the run summary (`test_run_stats.py` holds its tests) |
+| `method/run_stats.py` | Run timer (waits for the user excluded) and token totals for the run summary (`test_run_stats.py` holds its tests) |
 | `method/inventory.py` | Lists entry points and sinks by script, so every run seeds the same ledger units (`inventory_patterns.py` holds the per-stack patterns, `test_inventory.py` the tests) |
 | `evals/benchmark.py` | Not used during a review. Scores one run's ledger, or several runs' for stability, against a benchmark of known findings, to check the skill after changes (`CONTRIBUTING.md`) |
 
@@ -71,7 +71,10 @@ never selects `deep` mode.
 
 0. **Start the clock.** Run `python -I <skill folder>/method/run_stats.py --start` and keep the printed value.
    If the session shows a remaining token budget (a "tokens left" figure), note it too. Do this before anything
-   else, including in `diff` mode.
+   else, including in `diff` mode. The time reported is running time only: whenever the run waits for the user
+   (a question, such as which repository to review or whether to install a tool), run `run_stats.py --pause` just
+   before asking, then `run_stats.py --resume <start value> <paused value>` once they answer, and keep the
+   printed value as the new start value.
 1. **Pick the repositories.** Use the repositories or directory the user named; otherwise the current directory.
    - If it is a git repository (or inside one), review that repository.
    - If it is not a git repository but contains several (direct subdirectories with their own `.git`, such as a

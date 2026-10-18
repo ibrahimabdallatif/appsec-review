@@ -1,8 +1,11 @@
-"""Run statistics for appsec-review: elapsed time and token consumption.
+"""Run statistics for appsec-review: running time (waits for the user excluded) and token consumption.
 
 Usage:
     python -I run_stats.py --start                     print the current epoch seconds; keep the value
-    python -I run_stats.py <start epoch>               print the time elapsed since then, e.g. "12m 05s"
+    python -I run_stats.py --pause                     before waiting for the user: print the current epoch seconds
+    python -I run_stats.py --resume <start> <paused>   after the user answers: print the start moved forward by the
+                                                       wait; keep it as the new start value
+    python -I run_stats.py <start epoch>               print the running time since then, e.g. "12m 05s"
     python -I run_stats.py --tokens <budget at start> <budget at end> [subagent tokens ...]
         main-session tokens are the drop in the remaining token budget; pass "-" for both budgets when
         the session shows none. Subagent values are the counts the Agent tool reported.
@@ -23,6 +26,13 @@ def parse_start(text):
     if value <= 0:
         raise ValueError("start must be a positive epoch value")
     return value
+
+
+def resume_start(start, paused, resumed):
+    """Start value moved forward by the wait from paused to resumed, so the wait is not counted."""
+    if paused < start:
+        raise ValueError("pause must not be before start")
+    return start + max(0, resumed - paused)
 
 
 def format_duration(seconds):
@@ -90,13 +100,28 @@ def tokens_command(args):
     return 0
 
 
+def resume_command(args, clock):
+    if len(args) != 2:
+        print(__doc__)
+        return 2
+    try:
+        start, paused = parse_start(args[0]), parse_start(args[1])
+        print(resume_start(start, paused, clock()))
+    except ValueError:
+        print("--resume takes the start value and the value printed by --pause")
+        return 2
+    return 0
+
+
 def main(args, clock=now):
     if args and args[0] == "--tokens":
         return tokens_command(args[1:])
+    if args and args[0] == "--resume":
+        return resume_command(args[1:], clock)
     if len(args) != 1:
         print(__doc__)
         return 2
-    if args[0] == "--start":
+    if args[0] in ("--start", "--pause"):
         print(clock())
         return 0
     try:

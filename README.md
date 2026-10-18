@@ -142,7 +142,7 @@ Agent setup, accepted risks, SARIF, a Jenkins example and scheduling advice:
 <details>
 <summary><b>How a review runs, step by step</b></summary>
 
-1. Start a run timer and note the token budget.
+1. Start a run timer (paused while waiting for the user) and note the token budget.
 2. Pick the repositories (single or multi-repository review).
 3. Identify the stack from manifests, pick matching stack rules, and build the scripted inventory of entry points
    and sinks (`method/inventory.py`).
