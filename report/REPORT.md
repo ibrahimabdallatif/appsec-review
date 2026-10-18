@@ -1,4 +1,4 @@
-# Security report: structure and CVSS 3.1 scoring
+# Security report: structure and CVSS 4.0 scoring
 
 Use this file for the **report** every appsec-review run produces after its terminal result (SKILL.md "Report").
 The terminal result keeps the format in `SKILL.md`. A report always uses the structure, fields and scoring below,
@@ -32,7 +32,7 @@ dropping it.
 | # | Section | Content |
 |---|---|---|
 | Cover | Title block | "Confidential" badge with the light/dark mode toggle beside it, organisation · platform, `<service>` + "Source Code Review Report", one-sentence scope, and a meta grid: Version, Date of issue, Branch (or PR/commit), Review mode (`diff`, `standard` or `deep`), Findings (root causes and affected locations, with critical and high counts), Status |
-| 1.0 | Executive Summary | 1.1 Key Takeaways (what was reviewed, the 1–2 most urgent problems, what is well built; on a retest, also what changed since the previous version: fixed, new and re-rated findings). 1.2 Risk Profile (one card: root causes, affected locations, stacked bar and counts per rating). 1.3 Findings at a Glance (table: #, Vulnerability linked to its finding, Risk, CVSS 3.1, Affected file:line, Status) |
+| 1.0 | Executive Summary | 1.1 Key Takeaways (what was reviewed, the 1–2 most urgent problems, what is well built; on a retest, also what changed since the previous version: fixed, new and re-rated findings). 1.2 Risk Profile (one card: root causes, affected locations, stacked bar and counts per rating). 1.3 Findings at a Glance (table: #, Vulnerability linked to its finding, Risk, CVSS 4.0, Affected file:line, Status) |
 | 2.0 | Scope and Threat Model | 2.1 Scope of Work (repository, branch, version, stack and layer, code size, endpoints or screens, integrations). 2.2 Threat Model (from the ledger: assets, actors and each abuse path with its result: realised by a finding, blocked by a named control, or blocked on an outside fact). 2.3 Limitations (everything not verified, tools not run, dependency sources read or downloaded to check library behaviour and any that couldn't be obtained, ledger units left `blocked`, `deferred` or `out_of_scope` with their reasons, and the ledger summary counts) |
 | 3.0 | Security Controls Checklist | 3.1 Checklist Results: vulnerable / secure counts for each applicable category in section 4 below, then one line naming the categories that don't apply. 3.2 Controls Verified as Secure (the "checked and found clean" list, taken from `covered` ledger units) |
 | 4.0 | Vulnerability Findings | Single repository: 4.1 `<service>` · `<layer>`, where the layer is Backend, Web frontend or Mobile app (a repository with several layers, such as a full-stack app, gets 4.1 and 4.2). Several repositories: 4.1 Platform-wide findings, then 4.2 onwards with one section per repository (rules in section 6 of this file; 5.0 stays Remediation Plan). One finding card per issue, numbered 4.1.1, 4.1.2, … (4.2.1, … in later sections) ordered by CVSS score within its section, highest first; ties keep the order of the summary table |
@@ -67,7 +67,7 @@ lists it as a table (standard, version, what it covers in this review), and each
 | OWASP Top 10 for LLM Applications | 2025 | Prompt injection, output handling, excessive agency, RAG and memory, unbounded consumption |
 | OWASP Top 10 for Agentic Applications | 2026 | Tool misuse, identity and privilege abuse, MCP and agent supply chain |
 | SLSA / NIST SSDF | current / SP 800-218 | Build provenance, release integrity and secure development process |
-| FIRST CVSS | 3.1 | Base score and rating (section 2 of this file) |
+| FIRST CVSS | 4.0 | Base score (CVSS-B) and rating (section 2 of this file) |
 | Mozilla Web Security Guidelines, CIS/Checkov baselines, CISA KEV | current | Browser headers and cookies, containers and IaC, prioritising dependency CVEs |
 
 Keep the table to standards the review actually applied: drop a row that has no matching code in scope and
@@ -81,7 +81,7 @@ Every finding has all of these, in this order:
 1. **Number, title and key**: `4.1.n`, a short noun phrase naming the weakness (title case, no "[Security]"
    prefix, which belongs to the terminal format only), and the finding's ledger key in small type so a later run
    can be traced back to it.
-2. **Metric strip**: Severity (rating from the CVSS band), CVSS 3.1 (score and full vector), Checklist
+2. **Metric strip**: Severity (rating from the CVSS band), CVSS 4.0 (score and full `CVSS:4.0/` vector), Checklist
    (category from section 4), Verification (`Independent verifier`, `Rejection reviewed` or `Self-verified`),
    Status (`Initial Review`, later `Fixed`, `Partially Fixed`, `Not Fixed`, `Risk Accepted`).
 3. **Affected assets**: one `path:lines` per line, repository-relative.
@@ -101,25 +101,28 @@ Every finding has all of these, in this order:
 9. **Proof of concept**: the file path, then a short code excerpt (5–10 lines) with the vulnerable lines
    highlighted. Omit only when no code excerpt can show the issue (e.g. git history, contract-driven crypto).
 
-## 2. Scoring: CVSS 3.1 base score
+## 2. Scoring: CVSS 4.0 base score
 
-Every finding gets a CVSS 3.1 base vector and score. The score sets the rating; nothing else does.
+Every finding gets a CVSS 4.0 base vector and score. The score sets the rating; nothing else does. Only base
+metrics are scored (CVSS-B): leave threat (`E`) and environmental metrics out of the vector, and say once in 6.3
+that scores are CVSS-B.
 
 ### Compute, never estimate
 
-Run the calculator in this folder for every vector and copy its output:
+Run the calculator in this folder for every vector and copy its output, including the normalised `CVSS:4.0/`
+vector:
 
 ```bash
-python -I <skill folder>/report/cvss31.py "AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
-python -I <skill folder>/report/cvss31.py --selftest   # verifies the formula
+python -I <skill folder>/report/cvss40.py "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N"
+python -I <skill folder>/report/cvss40.py --selftest   # verifies against FIRST reference scores
 ```
 
-If Python is unavailable, use the FIRST CVSS 3.1 calculator formula exactly (Roundup to one decimal) and say in
-6.1 that scores were computed by hand.
+CVSS 4.0 has no closed formula (scores come from FIRST's MacroVector lookup table), so never score by hand. If
+Python is unavailable, use the FIRST calculator at https://www.first.org/cvss/calculator/4.0 and say so in 6.1.
 
 ### Rating bands
 
-| Rating | CVSS 3.1 | Meaning |
+| Rating | CVSS 4.0 | Meaning |
 |---|---|---|
 | Critical | 9.0 – 10.0 | Exposed and exploitable with severe impact; no control in place or planned |
 | High | 7.0 – 8.9 | High concern given exposure, ease of exploitation or severity of impact |
@@ -133,21 +136,29 @@ Score the realistic attacker for the deployed service, not the worst case you ca
 
 - **AV (Attack Vector)**: `N` for anything reachable through the public API or by reading central logs or the
   repository remotely; `A` when the attacker must sit on the internal network path (MITM on service-to-service
-  calls, TLS issues); `L` for local access to the host.
-- **AC (Attack Complexity)**: `H` when success depends on a condition the attacker cannot reliably control: a
-  network position, a race, a specific DB or deployment configuration, a secret from another tenant, a mitigation
-  to bypass, or an unconfirmed downstream behaviour. Otherwise `L`. Holding a credential or token is never a
-  reason for `H`: model it with PR, and report how the credential leaks as its own finding.
+  calls, TLS issues); `L` for local access to the host or device (including a malicious app on the same phone);
+  `P` when the attacker must physically handle the device.
+- **AC (Attack Complexity)**: `H` only when the attacker must defeat a security mechanism the code or platform
+  puts in place: guess or leak a secret specific to the target (another tenant's key, a CSRF token, an
+  unpredictable id), or bypass a mitigation such as ASLR or certificate pinning. Otherwise `L`.
+- **AT (Attack Requirements)**: `P` when success depends on a deployment or execution condition the attacker
+  cannot control: winning a race, a network position for MITM, a specific DB or deployment configuration, a
+  feature flag being on, or an unconfirmed downstream behaviour. Otherwise `N`. Holding a credential or token is
+  never a reason for `AC:H` or `AT:P`: model it with PR, and report how the credential leaks as its own finding.
 - **PR (Privileges Required)**: `N` for anonymous endpoints; `L` for any authenticated customer (including an
   attacker using a customer's stolen token) **and** for readers of the central log store or the repository
   (treated as low-privileged insiders); `H` only for admin or operator roles. State the log-access assumption in
   6.3.
-- **UI (User Interaction)**: `R` only when a victim must click or act; otherwise `N`.
-- **S (Scope)**: `C` when the impact crosses the reviewed component's authorization boundary: another tenant's
-  data, or credentials and tokens that unlock other services (identity provider, core banking, internal
-  providers). Otherwise `U`.
-- **C / I / A**: `H` for card data (PAN, CVV), credentials, tokens, every customer's data, or full control;
-  `L` for limited or partial data (masked names, error text, one user's non-sensitive data); `N` when untouched.
+- **UI (User Interaction)**: `P` (passive) when a victim only has to do something ordinary, such as open a page,
+  a message or a shared link; `A` (active) when they must take a deliberate step, such as click a specific
+  control, accept a prompt or install something; otherwise `N`.
+- **VC / VI / VA (Vulnerable system)**: confidentiality, integrity and availability of the reviewed service
+  itself. `H` for card data (PAN, CVV), credentials, tokens, every customer's data, or full control; `L` for
+  limited or partial data (masked names, error text, one user's non-sensitive data); `N` when untouched.
+- **SC / SI / SA (Subsequent systems)**: the same scale for systems beyond the reviewed component's authorization
+  boundary: another tenant's environment, the victim's browser session (stored or reflected XSS), and services
+  unlocked by leaked credentials or tokens (identity provider, core banking, internal providers). `N` when
+  nothing outside the reviewed service is affected. This replaces CVSS 3.1's Scope: never add `S:`.
 
 ### Compliance overrides
 
@@ -168,8 +179,8 @@ This is a sanity check only. The vector decides; when it disagrees with the term
 
 ## 3. Ordering and numbering
 
-- Sort findings by CVSS score, highest first, within each section 4.x. For equal scores, put the higher C/I impact
-  first, then `S:C` before `S:U`.
+- Sort findings by CVSS score, highest first, within each section 4.x. For equal scores, put the higher VC/VI impact
+  first, then the higher SC/SI/SA impact.
 - The numbering depends on how many 4.x sections the report has, not on how many repositories it covers.
 - **Only 4.1 (every finding is 4.1.n):** number the finding cards 4.1.1 onwards in that order (`{{FINDING_ID}}`).
   The 1.3 table lists them in the same order with a plain sequence number 1, 2, 3 (`{{SEQ}}`), where row n is
@@ -221,7 +232,8 @@ that wasn't possible, say so in 2.3.
 - Publish the report as a private artifact. Before telling the user to share it more widely, warn them that it
   contains working attack details for open issues.
 - On a retest, keep the finding numbers, update Status per finding, bump the cover version and date of issue,
-  and say in 1.1 what changed since the previous version.
+  and say in 1.1 what changed since the previous version. If the previous version was scored with CVSS 3.1,
+  re-score every finding with CVSS 4.0 and say in 1.1 that ratings may have moved because of the new version.
 
 ## 6. Multi-repository reports
 

@@ -275,8 +275,8 @@ then says so). Build it after the run summary: read `report/REPORT.md` and follo
   finding its References. Include ASVS V3, WSTG-CLNT and RFC 10017 for browser findings, and MASVS, MASTG,
   MASWE, Mobile Top 10 and RFC 8252 for mobile findings, plus PCI DSS, NIST SP 800-63B-4 or RFC 9700 where
   they apply.
-- Score every finding with a CVSS 3.1 base vector and rate it by the CVSS band. Compute each score with
-  `python -I <skill folder>/report/cvss31.py "<vector>"`; never estimate.
+- Score every finding with a CVSS 4.0 base vector and rate it by the CVSS band. Compute each score with
+  `python -I <skill folder>/report/cvss40.py "<vector>"`; never estimate.
 - Build the page from `report/report-template.html`, keeping its CSS and layout and replacing only the content.
 - Publish it privately and warn before wider sharing, because it contains attack details for open issues. When the
   session cannot publish (CI, scheduled or headless), write it to `~/.appsec-review/<repo>/report.html` instead and

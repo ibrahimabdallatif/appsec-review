@@ -9,7 +9,7 @@ so a review never loads it. For how a review runs, see [docs/how-it-works.md](do
 |---|---|---|
 | What the review checks | `rules/` category files, `rules/stacks/`, `rules/deep/` | `SKILL.md` |
 | How the review runs (ledger, hunters, verification, inventory) | `method/` | `rules/` |
-| Report structure, scoring, design | `report/` (`REPORT.md`, `cvss31.py`, `report-template.html`) | `rules/` |
+| Report structure, scoring, design | `report/` (`REPORT.md`, `cvss40.py`, `report-template.html`) | `rules/` |
 | Regression checks for the skill | `evals/` | `rules/` |
 
 Step 4 of `SKILL.md` loads files from `rules/` as checklists, so anything that is not a checklist stays outside it.
@@ -52,7 +52,8 @@ python -I method/test_sarif.py          # sarif.py (--sarif export)
 python -I method/test_threat_model.py   # threat_model.py (threat model, abuse paths, chains)
 python -I method/test_run_stats.py      # run_stats.py
 python -I evals/test_benchmark.py       # benchmark.py
-python -I report/cvss31.py --selftest   # cvss31.py
+python -I report/test_cvss40.py         # cvss40.py
+python -I report/cvss40.py --selftest   # cvss40.py against FIRST reference scores
 ```
 
 The same commands run in GitHub Actions on every push and pull request (`.github/workflows/tests.yml`), on Linux

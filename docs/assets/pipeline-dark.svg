@@ -42,7 +42,7 @@
 <text x="978" y="226" font-family="-apple-system, BlinkMacSystemFont, &apos;Segoe UI&apos;, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#e6edf3" text-anchor="start" letter-spacing="0">Proven findings</text>
 <text x="978" y="254" font-family="-apple-system, BlinkMacSystemFont, &apos;Segoe UI&apos;, Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#9198a1" text-anchor="start" letter-spacing="0">file:line + attack</text>
 <text x="978" y="276" font-family="-apple-system, BlinkMacSystemFont, &apos;Segoe UI&apos;, Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#9198a1" text-anchor="start" letter-spacing="0">fix in your style</text>
-<text x="978" y="298" font-family="-apple-system, BlinkMacSystemFont, &apos;Segoe UI&apos;, Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#9198a1" text-anchor="start" letter-spacing="0">CVSS 3.1 computed</text>
+<text x="978" y="298" font-family="-apple-system, BlinkMacSystemFont, &apos;Segoe UI&apos;, Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#9198a1" text-anchor="start" letter-spacing="0">CVSS 4.0 computed</text>
 <text x="978" y="320" font-family="-apple-system, BlinkMacSystemFont, &apos;Segoe UI&apos;, Helvetica, Arial, sans-serif" font-size="14" font-weight="400" fill="#9198a1" text-anchor="start" letter-spacing="0">coverage checked</text>
 <path d="M246 274H268" stroke="#6e7681" stroke-width="2" marker-end="url(#a)"/>
 <path d="M474 274H496" stroke="#6e7681" stroke-width="2" marker-end="url(#a)"/>

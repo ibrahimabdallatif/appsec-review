@@ -34,7 +34,7 @@
   </tr>
   <tr>
     <td><b>It knows your framework.</b><br>Rules for Spring, Node, Python, .NET, Go, web front ends, mobile apps and Supabase/Firebase, plus deep playbooks for object-level authorization, payment callbacks, idempotency and race conditions.</td>
-    <td><b>Audit-ready output.</b><br>Each finding gives <code>file:line</code>, the attack, the impact and a fix using your own helpers, mapped to OWASP, ASVS, MASVS, CWE and PCI DSS, with CVSS 3.1 computed by script, never estimated.</td>
+    <td><b>Audit-ready output.</b><br>Each finding gives <code>file:line</code>, the attack, the impact and a fix using your own helpers, mapped to OWASP, ASVS, MASVS, CWE and PCI DSS, with CVSS 4.0 computed by script, never estimated.</td>
   </tr>
 </table>
 
@@ -80,7 +80,7 @@
 ### 📊 Reporting and CI
 
 - **Audit-ready report**: private HTML report with executive summary, threat model, remediation plan and appendix
-- **CVSS 3.1 by script**: every score computed by `report/cvss31.py`, never estimated
+- **CVSS 4.0 by script**: every score computed by `report/cvss40.py`, never estimated
 - **Coverage ledger**: entry point × category units, validated against the inventory by `method/ledger.py`
 - **CI gate and SARIF**: `--fail-on <severity>`, time-limited accepted risks, SARIF export for code scanning
 - **Multi-repository reviews**: findings shared across repositories reported once as platform-wide
@@ -122,7 +122,7 @@ report says when no stack file matched.
 | **RFC 9700** | OAuth 2.0 security best current practice |
 | **RFC 8252** | OAuth 2.0 for native apps |
 | **RFC 10017** | OAuth 2.0 for browser-based apps |
-| **CVSS 3.1** | Severity scoring, computed by script |
+| **CVSS 4.0** | Severity scoring, computed by script |
 
 ## 🚀 Quick start
 
@@ -171,7 +171,7 @@ Fix:    load through orderRepository.findByIdAndCustomerId(id, principal.custome
 
 Then the "needs confirmation" findings with the exact fact to check, what was checked and found clean, the
 coverage summary, the candidates rejected by verification, and a run summary with time and tokens. Every run
-also publishes a private HTML report with CVSS 3.1 scores and standards references for each finding.
+also publishes a private HTML report with CVSS 4.0 scores and standards references for each finding.
 
 ## 🔁 In CI
 
@@ -228,7 +228,7 @@ The full picture, with a diagram: [docs/how-it-works.md](docs/how-it-works.md).
 | `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, .NET, Go, Supabase and Firebase |
 | `rules/deep/*.md` | `deep`-mode playbooks: object-level authorization, payment callbacks, payment state and idempotency, race conditions, business-logic flaws |
 | `method/` | Coverage ledger, hunter and verifier prompts, `inventory.py`, `ledger.py` validator and CI gate, `accepted_risks.py`, `sarif.py`, `run_stats.py` |
-| `report/` | Report structure (`REPORT.md`), CVSS 3.1 calculator (`cvss31.py`) and HTML template |
+| `report/` | Report structure (`REPORT.md`), CVSS 4.0 calculator (`cvss40.py`) and HTML template |
 | `docs/` | Getting started, how it works, CI pipeline guide, and the README images |
 | `evals/` | `benchmark.py`, which scores one run, or several runs for stability, against known findings |
 | `.github/workflows/tests.yml` | Runs every test suite on Linux and Windows on each push and pull request |
@@ -248,7 +248,8 @@ python -I method/test_sarif.py
 python -I method/test_threat_model.py
 python -I method/test_run_stats.py
 python -I evals/test_benchmark.py
-python -I report/cvss31.py --selftest
+python -I report/test_cvss40.py
+python -I report/cvss40.py --selftest
 ```
 
 After changing `rules/`, `method/` or the steps, score the skill against a benchmark repository with

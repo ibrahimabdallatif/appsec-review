@@ -286,7 +286,7 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
 
       <h3 class="sec" id="glance"><span class="num">1.3</span>Findings at a Glance</h3>
       <div class="tbl-wrap"><table class="tbl-findings">
-        <thead><tr><th>#</th><th>Vulnerability</th><th>Risk</th><th class="num">CVSS 3.1</th><th>Affected file</th><th>Status</th></tr></thead>
+        <thead><tr><th>#</th><th>Vulnerability</th><th>Risk</th><th class="num">CVSS 4.0</th><th>Affected file</th><th>Status</th></tr></thead>
         <!-- REPEAT per finding, same order as 4.0 -->
         <tr><td>{{SEQ}}</td><td><a href="#{{ANCHOR}}">{{FINDING_TITLE}}</a></td><td><span class="sev {{SEV_CLASS}}">{{RATING}}</span></td><td class="num">{{CVSS}}</td><td><code>{{FILE:LINES}}</code></td><td>{{STATUS}}</td></tr>
       </table></div>
@@ -340,7 +340,7 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
         <div class="f-head"><span class="id">{{FINDING_ID}}<span class="lkey">{{LEDGER_KEY}}</span></span><h4>{{FINDING_TITLE}}</h4></div>
         <dl class="metrics">
           <div><dt>Severity</dt><dd><span class="sev {{SEV_CLASS}}">{{RATING}}</span></dd></div>
-          <div><dt>CVSS 3.1</dt><dd>{{CVSS}} <span class="vec">{{VECTOR}}</span></dd></div>
+          <div><dt>CVSS 4.0</dt><dd>{{CVSS}} <span class="vec">{{VECTOR}}</span></dd></div>
           <div><dt>Checklist</dt><dd>{{CHECKLIST_CATEGORY}}</dd></div>
           <div><dt>Verification</dt><dd>{{VERIFICATION}}</dd></div>
           <div><dt>Status</dt><dd>{{STATUS}}</dd></div>
@@ -396,9 +396,9 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
         <tr><td>{{STANDARD}}</td><td>{{STANDARD_VERSION}}</td><td>{{STANDARD_USE}}</td></tr>
       </table></div>
       <h3 class="sec"><span class="num">6.3</span>Risk Rating Criteria</h3>
-      <div class="prose"><p>Each finding is rated by its CVSS 3.1 base score. Where log or repository access is a precondition, the score assumes low-privileged readers (PR:L).</p></div>
+      <div class="prose"><p>Each finding is rated by its CVSS 4.0 base score (CVSS-B: base metrics only, no threat or environmental metrics). Where log or repository access is a precondition, the score assumes low-privileged readers (PR:L).</p></div>
       <div class="tbl-wrap"><table>
-        <thead><tr><th>Risk</th><th>CVSS 3.1</th><th>Description</th></tr></thead>
+        <thead><tr><th>Risk</th><th>CVSS 4.0</th><th>Description</th></tr></thead>
         <tr><td><span class="sev s-critical">Critical</span></td><td class="num">9.0 – 10.0</td><td>Exposed and exploitable with severe impact; no control is in place or planned.</td></tr>
         <tr><td><span class="sev s-high">High</span></td><td class="num">7.0 – 8.9</td><td>High concern given exposure, ease of exploitation or severity of impact.</td></tr>
         <tr><td><span class="sev s-medium">Medium</span></td><td class="num">4.0 – 6.9</td><td>Moderate concern; a control exists but is partial or only somewhat effective.</td></tr>

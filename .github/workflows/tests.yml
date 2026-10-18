@@ -35,4 +35,6 @@ jobs:
       - name: Benchmark tests
         run: python -I evals/test_benchmark.py
       - name: CVSS calculator selftest
-        run: python -I report/cvss31.py --selftest
+        run: python -I report/cvss40.py --selftest
+      - name: CVSS calculator tests
+        run: python -I report/test_cvss40.py

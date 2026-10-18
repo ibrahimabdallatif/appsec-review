@@ -22,7 +22,7 @@ flowchart TD
     K --> N["Ledger validated<br/>method/ledger.py --inventory"]
     L --> N
     M --> N
-    N --> O["Result or report<br/>CVSS 3.1 by script"]
+    N --> O["Result or report<br/>CVSS 4.0 by script"]
     N --> P["CI gate<br/>ledger.py --fail-on"]
 ```
 
@@ -104,7 +104,7 @@ or a sink file was never read under its category, so a run cannot quietly skip p
 
 The result orders findings by severity with `file:line`, the attack, the impact and a fix that uses the codebase's
 own helpers, and ends with a run summary (`method/run_stats.py`: time and tokens). The report every run builds
-(`report/REPORT.md`) adds CVSS 3.1 vectors computed by `report/cvss31.py` and standards references per finding.
+(`report/REPORT.md`) adds CVSS 4.0 vectors computed by `report/cvss40.py` and standards references per finding.
 
 In CI, `ledger.py --fail-on <severity>` reads the finished ledger and exits non-zero on findings at or above the
 threshold ([ci-pipeline.md](ci-pipeline.md)), except findings waived by an accepted-risk file until its expiry
