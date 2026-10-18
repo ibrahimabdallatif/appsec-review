@@ -163,6 +163,43 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
 .theme-toggle:hover { border-color: #5fd3c6; }
 .theme-toggle:focus-visible { outline: 2px solid #5fd3c6; outline-offset: 2px; }
 .theme-toggle .dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid currentColor; background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
+
+/* Print: Print → Save as PDF gives a light, single-column A4 document whatever theme is on screen */
+@page { size: A4; margin: 16mm 14mm 18mm; @bottom-left { content: "Confidential"; font: 8pt system-ui, sans-serif; color: #5b6579; } @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt system-ui, sans-serif; color: #5b6579; } }
+@media print {
+  :root, :root[data-theme="dark"], :root:not([data-theme="light"]) {
+    --bg: #ffffff; --paper: #ffffff; --ink: #121a2b; --muted: #5b6579; --line: #d5dae4;
+    --accent: #0f7a72; --accent-soft: #e2f3f1; --code-bg: #f3f5f8;
+    --cover: #ffffff; --cover-ink: #121a2b; --cover-muted: #5b6579;
+    --critical: #b4232f; --high: #d0541b; --medium: #b98a00; --low: #2f7d4f; --info: #4a6fa5;
+    color-scheme: light;
+  }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 10pt; line-height: 1.5; margin: 0; }
+
+  .theme-toggle, .rail { display: none; }
+  .cover { padding: 0 0 20px; border-bottom: 2px solid var(--ink); }
+  .cover h1 { font-size: 24pt; }
+  .cover h1 span, .badge-conf { color: var(--accent); border-color: var(--accent); }
+  .cover-meta { background: var(--line); border-color: var(--line); }
+  .shell { display: block; max-width: none; padding: 24px 0 0; }
+  .doc { gap: 28px; }
+
+  section.part + section.part { break-before: page; }
+  h2, h3, h4, .part > header, .f-head { break-after: avoid; }
+  .f-head, .metrics { break-inside: avoid; }
+  .finding { border-radius: 0; break-inside: auto; }
+  .finding + .finding { margin-top: 8px; }
+  tr, .card.total, .check-row, .recs li { break-inside: avoid; }
+  .poc .t, .poc .path { break-after: avoid; }
+  thead { display: table-header-group; }
+
+  .tbl-wrap, pre { overflow: visible; }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .tbl-findings td:nth-child(2), .tbl-findings td:nth-child(5) { min-width: 0; }
+  a { color: inherit; text-decoration: none; }
+  a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 0.85em; color: var(--muted); overflow-wrap: anywhere; }
+}
 </style>
 
 <!--
@@ -249,7 +286,7 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
 
       <h3 class="sec" id="glance"><span class="num">1.3</span>Findings at a Glance</h3>
       <div class="tbl-wrap"><table class="tbl-findings">
-        <tr><th>#</th><th>Vulnerability</th><th>Risk</th><th class="num">CVSS 3.1</th><th>Affected file</th><th>Status</th></tr>
+        <thead><tr><th>#</th><th>Vulnerability</th><th>Risk</th><th class="num">CVSS 3.1</th><th>Affected file</th><th>Status</th></tr></thead>
         <!-- REPEAT per finding, same order as 4.0 -->
         <tr><td>{{SEQ}}</td><td><a href="#{{ANCHOR}}">{{FINDING_TITLE}}</a></td><td><span class="sev {{SEV_CLASS}}">{{RATING}}</span></td><td class="num">{{CVSS}}</td><td><code>{{FILE:LINES}}</code></td><td>{{STATUS}}</td></tr>
       </table></div>
@@ -259,7 +296,7 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
       <header><span class="num">2.0</span><h2>Scope and Threat Model</h2></header>
       <h3 class="sec"><span class="num">2.1</span>Scope of Work</h3>
       <div class="tbl-wrap"><table>
-        <tr><th>Item</th><th>Detail</th></tr>
+        <thead><tr><th>Item</th><th>Detail</th></tr></thead>
         <tr><td>Repository</td><td><code>{{SERVICE}}</code>, branch <code>{{BRANCH}}</code>, version {{APP_VERSION}}</td></tr>
         <tr><td>Stack</td><td>{{STACK}} · {{LAYER}}</td></tr>
         <tr><td>Code</td><td>{{CODE_SCOPE}}</td></tr>
@@ -269,7 +306,7 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
       <h3 class="sec"><span class="num">2.2</span>Threat Model</h3>
       <div class="prose"><p>{{ASSETS_AND_ACTORS}}</p></div>
       <div class="tbl-wrap"><table>
-        <tr><th>Abuse path</th><th>Result</th><th>Evidence</th></tr>
+        <thead><tr><th>Abuse path</th><th>Result</th><th>Evidence</th></tr></thead>
         <!-- REPEAT per abuse path; Result: Realised | Blocked | Blocked on an outside fact -->
         <tr><td>{{ABUSE_PATH}}</td><td>{{ABUSE_RESULT}}</td><td>{{FINDING_ID_OR_CONTROL_OR_FACT}}</td></tr>
       </table></div>
@@ -334,7 +371,7 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
       </ol>
       <h3 class="sec"><span class="num">5.2</span>Facts to Confirm</h3>
       <div class="tbl-wrap"><table>
-        <tr><th>Finding</th><th>Fact to confirm</th><th>How to check</th><th>Rating if unsafe</th></tr>
+        <thead><tr><th>Finding</th><th>Fact to confirm</th><th>How to check</th><th>Rating if unsafe</th></tr></thead>
         <!-- REPEAT per needs-confirmation finding; one "None" row when there are none -->
         <tr><td><a href="#{{ANCHOR}}">{{FINDING_ID}}</a></td><td>{{FACT}}</td><td>{{SAFE_CHECK}}</td><td><span class="sev {{SEV_CLASS}}">{{RATING}}</span></td></tr>
       </table></div>
@@ -354,14 +391,14 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
       </div>
       <h3 class="sec"><span class="num">6.2</span>Security Standards</h3>
       <div class="tbl-wrap"><table>
-        <tr><th>Standard</th><th>Version</th><th>Used for</th></tr>
+        <thead><tr><th>Standard</th><th>Version</th><th>Used for</th></tr></thead>
         <!-- REPEAT per standard in REPORT.md "Security standards" that applied to this review -->
         <tr><td>{{STANDARD}}</td><td>{{STANDARD_VERSION}}</td><td>{{STANDARD_USE}}</td></tr>
       </table></div>
       <h3 class="sec"><span class="num">6.3</span>Risk Rating Criteria</h3>
       <div class="prose"><p>Each finding is rated by its CVSS 3.1 base score. Where log or repository access is a precondition, the score assumes low-privileged readers (PR:L).</p></div>
       <div class="tbl-wrap"><table>
-        <tr><th>Risk</th><th>CVSS 3.1</th><th>Description</th></tr>
+        <thead><tr><th>Risk</th><th>CVSS 3.1</th><th>Description</th></tr></thead>
         <tr><td><span class="sev s-critical">Critical</span></td><td class="num">9.0 – 10.0</td><td>Exposed and exploitable with severe impact; no control is in place or planned.</td></tr>
         <tr><td><span class="sev s-high">High</span></td><td class="num">7.0 – 8.9</td><td>High concern given exposure, ease of exploitation or severity of impact.</td></tr>
         <tr><td><span class="sev s-medium">Medium</span></td><td class="num">4.0 – 6.9</td><td>Moderate concern; a control exists but is partial or only somewhat effective.</td></tr>
@@ -370,7 +407,7 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
       </table></div>
       <h3 class="sec"><span class="num">6.4</span>Candidates Rejected by Verification</h3>
       <div class="tbl-wrap"><table>
-        <tr><th>Candidate</th><th>Location</th><th>Reason</th><th>Disproof</th></tr>
+        <thead><tr><th>Candidate</th><th>Location</th><th>Reason</th><th>Disproof</th></tr></thead>
         <!-- REPEAT per rejected candidate; one "None" row when there are none -->
         <tr><td>{{CANDIDATE_TITLE}}</td><td><code>{{FILE:LINES}}</code></td><td>{{REASON}}</td><td><code>{{DISPROOF_PATH:LINE}}</code></td></tr>
       </table></div>

@@ -19,6 +19,10 @@ card numbers, CVVs, OTPs or tokens. Refer to them by file, line or commit.
   a fixed "Dark mode" label with `aria-pressed` carrying the state, follows the system theme until the reader
   picks one, and remembers the choice in that browser. Define every new color as a token in all three theme
   blocks so both modes stay readable.
+- **Print and PDF.** The template's `@media print` block makes Print → Save as PDF a light, single-column A4
+  document in either theme: no toggle or contents rail, each numbered section on a new page, table headers
+  repeated across pages, and a "Confidential" and page-number footer. Keep table header rows in `<thead>`, and
+  add every new color token to the print block too.
 
 ## 1. Structure
 
