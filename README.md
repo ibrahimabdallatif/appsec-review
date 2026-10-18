@@ -25,7 +25,7 @@
   <img alt="Pipeline: scope, scripted inventory, assessment in three directions, verification by a second agent, proven findings" src="docs/assets/pipeline-light.svg">
 </picture>
 
-## Why it's different
+## 🧭 Why it's different
 
 <table>
   <tr>
@@ -38,7 +38,55 @@
   </tr>
 </table>
 
-## Supported stacks
+## ✨ Features
+
+### 🔍 Code review engine
+
+- **Scripted inventory**: lists every route, handler, consumer, screen, deep link and dangerous sink per stack, so
+  each run starts from the same ground (`method/inventory.py`)
+- **Forward and backward assessment**: follows each input from entry point to sink, while a sink tracer works back
+  from every dangerous call (`deep`)
+- **STRIDE and threat model**: trust boundaries, data classes, attacker goals and abuse paths, each worked to its
+  goal or to the line that stops it
+- **Change-aware diff review**: finds the commit that added a removed control, reads the callers of changed
+  helpers, and flags security controls without a negative test
+- **Library-aware**: reads the source of the locked dependency version instead of guessing what it does
+- **Chain pass**: combines verified findings into worse end-to-end outcomes and verifies each hand-off
+
+### 🧪 Vulnerability coverage
+
+- **Access control**: IDOR/BOLA, function-level authorization, mass assignment, multi-tenancy, SSRF
+- **Authentication and sessions**: JWT, OAuth and OIDC, step-up and OTP, passwords, session handling, SAML,
+  WebAuthn and passkeys, MFA downgrade, account recovery and linking, API keys, mTLS
+- **Injection and input**: SQL and LIKE, command, expression language, CRLF, XXE, deserialization, file handling
+- **Business logic**: workflow integrity, money movement, payment callbacks, idempotency, race conditions, replay,
+  enumeration, resource limits
+- **Web protocol**: request smuggling, cache poisoning and deception, host and forwarded-header trust
+- **Client side**: DOM XSS, token storage, CSP, deep links, WebViews, mobile storage and platform APIs
+- **Cryptography and data**: secrets, crypto misuse, TLS, card and personal data (PCI DSS)
+- **Configuration and supply chain**: exposed tooling, headers and cookies, dependencies, CI, containers, IaC
+- **AI and LLM agents**: dangerous capability combinations, tool authorization, MCP identity, RAG and memory tenant
+  isolation, model output handling, spend limits
+- **Logging and errors**: missing security events, secrets in logs, verbose errors, fail-open handling
+
+### 🤖 Independent verification
+
+- **Hunters**: wildcard, obvious-things and sink-trace subagents look for what the main pass missed
+- **Fresh verifiers**: a subagent that never saw the finder's reasoning tries to disprove each candidate
+- **Rejection review**: every rejected `critical` or `bug` candidate gets a second, independent look
+- **Transparent rejections**: rejected candidates are listed with the line that disproves them, so you can
+  overrule them
+
+### 📊 Reporting and CI
+
+- **Audit-ready report**: private HTML report with executive summary, threat model, remediation plan and appendix
+- **CVSS 3.1 by script**: every score computed by `report/cvss31.py`, never estimated
+- **Coverage ledger**: entry point × category units, validated against the inventory by `method/ledger.py`
+- **CI gate and SARIF**: `--fail-on <severity>`, time-limited accepted risks, SARIF export for code scanning
+- **Multi-repository reviews**: findings shared across repositories reported once as platform-wide
+- **Benchmarks**: `evals/benchmark.py` scores runs against known findings and decoys
+
+## 🧱 Supported stacks
 
 | Stack | Frameworks |
 |---|---|
@@ -55,7 +103,28 @@ Each stack has a rule file in `rules/stacks/` and inventory patterns that list i
 in other stacks gets only the general category checks, without a scripted inventory, so coverage is weaker; the
 report says when no stack file matched.
 
-## Quick start
+## 🛡️ Standards covered
+
+> [!IMPORTANT]
+> Every finding is mapped to the standards below, and the report lists the ones each review was based on.
+
+| Standard | Used for |
+|---|---|
+| **OWASP Top 10:2025** | Web application risk categories |
+| **OWASP API Security Top 10:2023** | API risks: BOLA, broken function-level authorization, mass assignment |
+| **OWASP ASVS 5.0** (incl. V3 Web Frontend Security) | Verification requirements for back ends and browser front ends |
+| **OWASP WSTG-CLNT** | Client-side testing for web front ends |
+| **OWASP MASVS, MASTG, MASWE** | Mobile app security requirements and testing |
+| **OWASP Mobile Top 10:2024** | Mobile risk categories |
+| **CWE Top 25** | Root-cause weakness IDs on every finding |
+| **PCI DSS** | Card data handling and payment flows |
+| **NIST SP 800-63B-4** | Passwords, authenticators and session rules |
+| **RFC 9700** | OAuth 2.0 security best current practice |
+| **RFC 8252** | OAuth 2.0 for native apps |
+| **RFC 10017** | OAuth 2.0 for browser-based apps |
+| **CVSS 3.1** | Severity scoring, computed by script |
+
+## 🚀 Quick start
 
 ```sh
 git clone https://github.com/ibrahimabdallatif/appsec-review.git ~/.claude/skills/appsec-review
@@ -76,7 +145,7 @@ Then, in Claude Code, inside the repository to review:
 The skill runs only when you invoke it (`disable-model-invocation: true`). Python 3 is needed for its helper
 scripts; gitleaks, trivy, semgrep and your ecosystem's audit tool are used when installed.
 
-## Modes
+## 🎚️ Modes
 
 | Mode | Use it for | Subagents | Coverage ledger |
 |---|---|---|---|
@@ -87,7 +156,7 @@ scripts; gitleaks, trivy, semgrep and your ecosystem's audit tool are used when 
 Every mode reads all in-scope code and follows each input to its sinks; modes change how many agents run and how
 detailed the ledger is. `deep` takes several times longer and uses much more tokens than `standard`.
 
-## What you get
+## 📋 What you get
 
 Findings ordered by severity (`critical`, `bug`, `warning`, `suggestion`), each one like this (illustrative):
 
@@ -104,7 +173,7 @@ Then the "needs confirmation" findings with the exact fact to check, what was ch
 coverage summary, the candidates rejected by verification, and a run summary with time and tokens. Every run
 also publishes a private HTML report with CVSS 3.1 scores and standards references for each finding.
 
-## In CI
+## 🔁 In CI
 
 The review always runs to completion. A separate gate reads the finished ledger and fails the build on findings at
 or above a severity:
@@ -124,23 +193,30 @@ Agent setup, accepted risks, SARIF, a Jenkins example and scheduling advice:
 > Ledgers, inventories and reports describe how to attack open issues. They are kept in `~/.appsec-review/`,
 > outside your repository, and reports are published privately. Check who can see them before sharing.
 
-## Reference
+## 🗺️ Roadmap
+
+Planned improvements, several inspired by the methodology in [Strix](https://github.com/usestrix/strix), adapted
+to a static, source-only review:
+
+| Improvement | What it adds | Effort |
+|---|---|---|
+| 🩹 **Fix verification gates** | Before a fix is proposed: it closes the input class, survives a bypass review, keeps legitimate behaviour, and comes with a test that fails when the fix is reverted. A fix that can't pass is withheld and explained | Medium |
+| 📦 **Dependency reachability** | Each dependency CVE gets an evidence level (`not_imported`, `imported`, `vulnerable_symbol_used`, `reachable_call_path`), transitive CVEs are traced to the direct dependency to bump or override, and a stale vulnerability database is flagged | High |
+| 🧬 **Family sweeps** | Once one instance turns up, sweep its family: deserializer codecs, XML parser factories, archive extraction, SAML validated-vs-consumed assertions, JSON Patch operations, authentication state transitions, protocol version negotiation | Medium |
+| 🎯 **Severity calibration** | A "usually not high or critical" list and an acceptance checklist for `critical`, folded into the verifier's severity check | Low |
+| 🧾 **Richer finding fields** | `severity_change_conditions` (the one fact that would raise or lower severity) and `counterevidence` (what was checked on the other side) on every finding | Low |
+| 🔀 **Sharper diff mode** | Pre-existing weaknesses the change newly reaches, controls the change removes, and PR titles and descriptions treated as untrusted input | Low |
+| 🧩 **New rule topics** | Argument injection, Electron desktop apps, dangling DNS and subdomain takeover in IaC, package-runner confusion (`npx` in MCP and CI configs), parser differentials, deeper cloud and Kubernetes IaC | Medium |
+| 🔌 **API specs as input** | Seed the inventory from OpenAPI or Postman collections, for stacks the patterns don't cover | Medium |
+| 🧪 **Optional dynamic confirmation** | When you supply a running instance you are authorized to test, reproduce `needs_confirmation` findings with a request or a small script | High |
+| 💲 **Estimated cost** | An estimated dollar cost in the run summary next to the token totals, to compare modes | Low |
+| ⚡ **Quick mode for CI** | A time-boxed, clearly labelled partial mode that checks in priority order: authentication bypass, access control, RCE, injection, SSRF, secrets | Low |
+| 📄 **PDF report** | A PDF export of the HTML report for auditors who can't open a private link | Low |
+
+## 📚 Reference
 
 <details>
-<summary><b>Standards covered</b></summary>
-
-- OWASP Top 10:2025 and OWASP API Security Top 10:2023
-- OWASP ASVS 5.0, including V3 Web Frontend Security, and WSTG-CLNT
-- OWASP MASVS, MASTG, MASWE and Mobile Top 10:2024
-- CWE Top 25
-- PCI DSS
-- NIST SP 800-63B-4
-- RFC 9700 (OAuth security BCP), RFC 8252 (OAuth for native apps), RFC 10017 (OAuth for browser-based apps)
-
-</details>
-
-<details>
-<summary><b>How a review runs, step by step</b></summary>
+<summary><b>🪜 How a review runs, step by step</b></summary>
 
 1. Start a run timer (paused while waiting for the user) and note the token budget.
 2. Pick the repositories (single or multi-repository review).
@@ -162,7 +238,7 @@ The full picture, with a diagram: [docs/how-it-works.md](docs/how-it-works.md).
 </details>
 
 <details>
-<summary><b>Repository layout</b></summary>
+<summary><b>🗂️ Repository layout</b></summary>
 
 | Path | Contents |
 |---|---|
@@ -180,7 +256,7 @@ The full picture, with a diagram: [docs/how-it-works.md](docs/how-it-works.md).
 </details>
 
 <details>
-<summary><b>Development</b></summary>
+<summary><b>🛠️ Development</b></summary>
 
 Run the tests after changing the helper scripts (GitHub Actions runs the same commands on every push):
 
@@ -201,7 +277,7 @@ After changing `rules/`, `method/` or the steps, score the skill against a bench
 
 </details>
 
-## Credits and license
+## 📄 Credits and license
 
 MIT, see [LICENSE](LICENSE). Parts of this skill are adapted from MIT-licensed projects by Cloudflare, Vasiliy
 Uvarov, Riyan Dhiman and Mohamed AboElKheir, with ideas from Trail of Bits and autoresearch; see
