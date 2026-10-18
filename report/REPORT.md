@@ -27,17 +27,18 @@ dropping it.
 
 | # | Section | Content |
 |---|---|---|
-| Cover | Title block | "Confidential" badge with the light/dark mode toggle beside it, organisation · platform, `<service>` + "Source Code Review Report", one-sentence scope, and a meta grid: Version, Date of issue, Branch (or PR/commit), Review type, Findings (total, with critical and high counts), Status |
-| 2.0 | Executive Summary | 2.1 Project Objective (what was reviewed, the 1–2 most urgent problems, what is well built). 2.2 Disclaimer (confidential, point-in-time, what "needs confirmation" means). 2.3 Assessment Methodology (code enumeration and coverage ledger, dependency and secret checks, manual source analysis, wildcard and obvious-things hunters, and in `deep` the sink-trace hunter, verification of every candidate, reporting; name the review mode (`diff`, `standard` or `deep`), the review duration and token use from the run summary, the stack files applied, any scanners actually run, and which findings had an independent verifier and which were self-verified). 2.4 Security Standards (the standards table from "Security standards" below). 2.5 Findings Distribution (total, stacked bar, counts per rating). 2.6 Findings Distribution Chart (horizontal bars per rating). 2.7 Risk Criteria (CVSS band table, section 2 below). 2.8 Summary of Findings (table: #, Vulnerability linked to its finding, Risk, CVSS 3.1, Affected file:line, Status) |
-| 3.0 | Project Description | 3.1 Scope of Work (repository, branch, version, stack and layer, code size, endpoints or screens, integrations). 3.2 Reviewing Constraints and Limitations (the threat model in brief, from the ledger: assets, actors and each abuse path with its result; everything not verified, tools not run, dependency sources read or downloaded to check library behaviour and any that couldn't be obtained, ledger units left `blocked`, `deferred` or `out_of_scope` with their reasons, and the ledger summary counts). 3.3 Report Organization |
-| 4.0 | Check List | 4.1 Secure Code Review Checklist: vulnerable / secure counts for each category in section 4 below. 4.2 Controls Verified as Secure (the "checked and found clean" list, taken from `covered` ledger units) |
-| 5.0 | Vulnerability Findings | Single repository: 5.1 `<service>` · `<layer>`, where the layer is Backend, Web frontend or Mobile app (a repository with several layers, such as a full-stack app, gets 5.1 and 5.2). Several repositories: 5.1 Platform-wide findings, then 5.2 onwards with one section per repository (rules in section 6 of this file; 6.0 stays Recommendation). One finding card per issue, numbered 5.1.1, 5.1.2, … (5.2.1, … in later sections) ordered by CVSS score within its section, highest first; ties keep the order of the summary table |
-| 6.0 | Recommendation | 8–12 numbered, prioritised actions that generalise the findings |
+| Cover | Title block | "Confidential" badge with the light/dark mode toggle beside it, organisation · platform, `<service>` + "Source Code Review Report", one-sentence scope, and a meta grid: Version, Date of issue, Branch (or PR/commit), Review mode (`diff`, `standard` or `deep`), Findings (root causes and affected locations, with critical and high counts), Status |
+| 1.0 | Executive Summary | 1.1 Key Takeaways (what was reviewed, the 1–2 most urgent problems, what is well built; on a retest, also what changed since the previous version: fixed, new and re-rated findings). 1.2 Risk Profile (one card: root causes, affected locations, stacked bar and counts per rating). 1.3 Findings at a Glance (table: #, Vulnerability linked to its finding, Risk, CVSS 3.1, Affected file:line, Status) |
+| 2.0 | Scope and Threat Model | 2.1 Scope of Work (repository, branch, version, stack and layer, code size, endpoints or screens, integrations). 2.2 Threat Model (from the ledger: assets, actors and each abuse path with its result: realised by a finding, blocked by a named control, or blocked on an outside fact). 2.3 Limitations (everything not verified, tools not run, dependency sources read or downloaded to check library behaviour and any that couldn't be obtained, ledger units left `blocked`, `deferred` or `out_of_scope` with their reasons, and the ledger summary counts) |
+| 3.0 | Security Controls Checklist | 3.1 Checklist Results: vulnerable / secure counts for each applicable category in section 4 below, then one line naming the categories that don't apply. 3.2 Controls Verified as Secure (the "checked and found clean" list, taken from `covered` ledger units) |
+| 4.0 | Vulnerability Findings | Single repository: 4.1 `<service>` · `<layer>`, where the layer is Backend, Web frontend or Mobile app (a repository with several layers, such as a full-stack app, gets 4.1 and 4.2). Several repositories: 4.1 Platform-wide findings, then 4.2 onwards with one section per repository (rules in section 6 of this file; 5.0 stays Remediation Plan). One finding card per issue, numbered 4.1.1, 4.1.2, … (4.2.1, … in later sections) ordered by CVSS score within its section, highest first; ties keep the order of the summary table |
+| 5.0 | Remediation Plan | 5.1 Prioritised Actions: 8–12 numbered actions that generalise the findings, each naming the finding ids it closes and an effort (S, M or L). 5.2 Facts to Confirm: one row per `needs confirmation` finding with its id, the exact fact, a safe way for the owner to check it, and the rating if it turns out unsafe ("None" when there are none) |
+| 6.0 | Appendix | 6.1 Assessment Methodology (code enumeration and coverage ledger, dependency and secret checks, manual source analysis, wildcard and obvious-things hunters, and in `deep` the sink-trace hunter, verification of every candidate, reporting; name the review mode, the review duration and token use from the run summary, the stack files applied and any scanners actually run). 6.2 Security Standards (the standards table from "Security standards" below). 6.3 Risk Rating Criteria (CVSS band table, section 2 below). 6.4 Candidates Rejected by Verification (title, `file:line`, the verifier's reason and the disproof line, so the reader can overrule a wrong rejection; "None" when there are none). 6.5 Disclaimer (confidential, point-in-time, what "needs confirmation" means) |
 | Footer | | Confidentiality line and the note that secrets are referenced by location only |
 
 ### Security standards
 
-Every report is assessed against the same baseline, which `rules/00-overview.md` maps to the checks. Section 2.4
+Every report is assessed against the same baseline, which `rules/00-overview.md` maps to the checks. Section 6.2
 lists it as a table (standard, version, what it covers in this review), and each finding cites it in References.
 
 | Standard | Version | Used for |
@@ -66,18 +67,19 @@ lists it as a table (standard, version, what it covers in this review), and each
 | Mozilla Web Security Guidelines, CIS/Checkov baselines, CISA KEV | current | Browser headers and cookies, containers and IaC, prioritising dependency CVEs |
 
 Keep the table to standards the review actually applied: drop a row that has no matching code in scope and
-say so in 3.2. Examples: SAML or WebAuthn when the code has neither; PCI DSS when no card data is handled; MASVS, MASTG, MASWE, Mobile Top 10 and RFC 8252
+say so in 2.3. Examples: SAML or WebAuthn when the code has neither; PCI DSS when no card data is handled; MASVS, MASTG, MASWE, Mobile Top 10 and RFC 8252
 when no mobile app is in scope; RFC 10017 when no browser OAuth client is in scope.
 
 ### Finding card fields
 
 Every finding has all of these, in this order:
 
-1. **Number and title**: `5.1.n`, a short noun phrase naming the weakness (title case, no "[Security]" prefix,
-   which belongs to the terminal format only).
+1. **Number, title and key**: `4.1.n`, a short noun phrase naming the weakness (title case, no "[Security]"
+   prefix, which belongs to the terminal format only), and the finding's ledger key in small type so a later run
+   can be traced back to it.
 2. **Metric strip**: Severity (rating from the CVSS band), CVSS 3.1 (score and full vector), Checklist
-   (category from section 4), Status (`Initial Review`, later `Fixed`, `Partially Fixed`, `Not Fixed`,
-   `Risk Accepted`).
+   (category from section 4), Verification (`Independent verifier`, `Rejection reviewed` or `Self-verified`),
+   Status (`Initial Review`, later `Fixed`, `Partially Fixed`, `Not Fixed`, `Risk Accepted`).
 3. **Affected assets**: one `path:lines` per line, repository-relative.
 4. **References**: the identifiers the finding maps to, most specific first: OWASP Top 10:2025 (`A01`), OWASP
    API Top 10:2023 (`API1`) when an API is involved, one or two CWE ids, the ASVS 5.0 chapter or requirement
@@ -86,10 +88,13 @@ Every finding has all of these, in this order:
    when native OAuth is involved. Add PCI DSS v4.0, NIST SP 800-63B-4 or RFC 9700 when they apply. Use the
    same ids as the terminal title.
 5. **Description**: what the code does and why it is weak. Add a "Needs confirmation" tag when exploitability
-   depends on something outside the review, and say what must be confirmed.
-6. **Impact**: what an attacker gains, under which preconditions.
-7. **Recommendation**: a concrete fix that uses the codebase's existing helpers, plus the negative test to add.
-8. **Proof of concept**: the file path, then a short code excerpt (5–10 lines) with the vulnerable lines
+   depends on something outside the review, and say what must be confirmed (it is also listed in 5.2).
+6. **Attack scenario**: numbered steps: the attacker and what they hold, the request or action they send, and
+   the result. For a chain, a `Chain:` line first naming its links by finding id in order and where each hands
+   off to the next.
+7. **Impact**: what an attacker gains, under which preconditions.
+8. **Recommendation**: a concrete fix that uses the codebase's existing helpers, plus the negative test to add.
+9. **Proof of concept**: the file path, then a short code excerpt (5–10 lines) with the vulnerable lines
    highlighted. Omit only when no code excerpt can show the issue (e.g. git history, contract-driven crypto).
 
 ## 2. Scoring: CVSS 3.1 base score
@@ -106,7 +111,7 @@ python -I <skill folder>/report/cvss31.py --selftest   # verifies the formula
 ```
 
 If Python is unavailable, use the FIRST CVSS 3.1 calculator formula exactly (Roundup to one decimal) and say in
-2.3 that scores were computed by hand.
+6.1 that scores were computed by hand.
 
 ### Rating bands
 
@@ -132,7 +137,7 @@ Score the realistic attacker for the deployed service, not the worst case you ca
 - **PR (Privileges Required)**: `N` for anonymous endpoints; `L` for any authenticated customer (including an
   attacker using a customer's stolen token) **and** for readers of the central log store or the repository
   (treated as low-privileged insiders); `H` only for admin or operator roles. State the log-access assumption in
-  2.7.
+  6.3.
 - **UI (User Interaction)**: `R` only when a victim must click or act; otherwise `N`.
 - **S (Scope)**: `C` when the impact crosses the reviewed component's authorization boundary: another tenant's
   data, or credentials and tokens that unlock other services (identity provider, core banking, internal
@@ -159,23 +164,24 @@ This is a sanity check only. The vector decides; when it disagrees with the term
 
 ## 3. Ordering and numbering
 
-- Sort findings by CVSS score, highest first, within each section 5.x. For equal scores, put the higher C/I impact
+- Sort findings by CVSS score, highest first, within each section 4.x. For equal scores, put the higher C/I impact
   first, then `S:C` before `S:U`.
-- The numbering depends on how many 5.x sections the report has, not on how many repositories it covers.
-- **Only 5.1 (every finding is 5.1.n):** number the finding cards 5.1.1 onwards in that order (`{{FINDING_ID}}`).
-  The 2.8 summary table lists them in the same order with a plain sequence number 1, 2, 3 (`{{SEQ}}`), where row n
-  is finding 5.1.n. Give each card the element id `f<n>` (`{{ANCHOR}}`) and link the summary row to `#f<n>`.
-- **Several 5.x sections (e.g. 5.2 Frontend in one repository, or a multi-repository report per section 6 of this
-  file):** `{{FINDING_ID}}` and `{{SEQ}}` are both the full finding id `5.<x>.<n>`, and `{{ANCHOR}}` is
-  `f<x>-<n>` (finding 5.2.1 has the id `f2-1`). The summary table lists findings grouped by section in section
-  order.
+- The numbering depends on how many 4.x sections the report has, not on how many repositories it covers.
+- **Only 4.1 (every finding is 4.1.n):** number the finding cards 4.1.1 onwards in that order (`{{FINDING_ID}}`).
+  The 1.3 table lists them in the same order with a plain sequence number 1, 2, 3 (`{{SEQ}}`), where row n is
+  finding 4.1.n. Give each card the element id `f<n>` (`{{ANCHOR}}`) and link the table row to `#f<n>`.
+- **Several 4.x sections (e.g. 4.2 Frontend in one repository, or a multi-repository report per section 6 of this
+  file):** `{{FINDING_ID}}` and `{{SEQ}}` are both the full finding id `4.<x>.<n>`, and `{{ANCHOR}}` is
+  `f<x>-<n>` (finding 4.2.1 has the id `f2-1`). The 1.3 table lists findings grouped by section in section order.
+- Reports built before this layout numbered findings 5.x.n. On a retest of one, renumber to 4.x.n and give the
+  old id in brackets after the title, in that version only.
 
 ## 4. Checklist categories
 
-Use these categories in 4.1 and in each finding's Checklist field. Count a check as vulnerable when at
-least one finding falls in it; count what you verified as secure in 4.2. List a category as "Not applicable" in
-4.1, and say why in 3.2, when nothing in scope touches it (card data in a repository with no cardholder data,
-web frontend and mobile security in a back end with no UI, OTP step-up where no flow uses one).
+Use these categories in 3.1 and in each finding's Checklist field. Count a check as vulnerable when at
+least one finding falls in it; count what you verified as secure in 3.2. Leave a category out of the 3.1 bars and
+name it on the "Not applicable" line instead, saying why in 2.3, when nothing in scope touches it (card data in a
+repository with no cardholder data, web frontend and mobile security in a back end with no UI, OTP step-up where no flow uses one).
 
 | # | Category | Main references |
 |---|---|---|
@@ -203,15 +209,15 @@ output handling, go in 4 (Injection); secrets or personal data in prompts and tr
 secrets) or 9 (Logging); unsafe model loading and unpinned MCP servers go in 8 (Supply chain); unbounded model
 spend and agent loops go in 10 (Business logic and abuse). Cite the LLM or ASI id in References.
 
-Check that every standard in 2.4 is the current edition (rules/00-overview.md, after the standards list); if
-that wasn't possible, say so in 3.2.
+Check that every standard in 6.2 is the current edition (rules/00-overview.md, after the standards list); if
+that wasn't possible, say so in 2.3.
 
 ## 5. Publishing
 
 - Publish the report as a private artifact. Before telling the user to share it more widely, warn them that it
   contains working attack details for open issues.
-- On a retest, keep the finding numbers, update Status per finding, and bump the cover version and date of
-  issue.
+- On a retest, keep the finding numbers, update Status per finding, bump the cover version and date of issue,
+  and say in 1.1 what changed since the previous version.
 
 ## 6. Multi-repository reports
 
@@ -226,40 +232,40 @@ in sections 1 to 5 still applies.
 - Review in risk order: authentication and identity, money movement, card data, shared providers and gateways,
   then the rest.
 - If the user stops early or a repository cannot be reviewed in depth, keep its section with the label
-  "Breadth review (deep review pending)" and list it in 3.2.
+  "Breadth review (deep review pending)" and list it in 2.3.
 
 ### Structure changes
 
-- **Cover:** the organisation or workspace name instead of one service; "current branch per repository (3.1)" as
+- **Cover:** the organisation or workspace name instead of one service; "current branch per repository (2.1)" as
   the branch; Status "In progress: N of M repositories deep-reviewed" until all are done, then "Initial Review".
-- **2.1:** say which repositories were deep-reviewed so far, then the most urgent problems across all of them.
-- **2.8:** one row per finding, grouped by section in section order, with the finding id (5.2.1) in the # column
+  Bump the version for each merged repository (1.1, 1.2, …).
+- **1.1:** say which repositories were deep-reviewed so far, then the most urgent problems across all of them.
+- **1.3:** one row per finding, grouped by section in section order, with the finding id (4.2.1) in the # column
   and the repository name at the start of the affected-file column. Add one sentence above the table saying how it
   is grouped.
-- **3.1:** a table with one row per repository: name, branch reviewed, stack and layer, review depth (Deep or
+- **2.1:** a table with one row per repository: name, branch reviewed, stack and layer, review depth (Deep or
   Breadth). Then the usual code, entry points and integrations rows for the whole set.
-- **3.2:** add every repository still at breadth depth and anything shared that could not be verified (databases,
+- **2.3:** add every repository still at breadth depth and anything shared that could not be verified (databases,
   downstream systems, identity-provider settings).
-- **4.1 and 4.2:** count findings and verified controls across all repositories; name the repository in each
+- **3.1 and 3.2:** count findings and verified controls across all repositories; name the repository in each
   verified control.
-- **5.1 Platform-wide findings:** issues that come from code, configuration or libraries shared by several
+- **4.1 Platform-wide findings:** issues that come from code, configuration or libraries shared by several
   repositories. Report each once, list every affected repository and location in its assets, and use the most
   representative excerpt as the proof of concept.
-- **5.2 onwards, one section per repository** (`<repository> · <layer>`): open each with a one-paragraph note
+- **4.2 onwards, one section per repository** (`<repository> · <layer>`): open each with a one-paragraph note
   stating the review depth, the branch, what was covered and which controls held. Keep the section even when it
-  has no findings of its own, and say that its issues are listed in 5.1.
-- **Contents rail:** add one sub-entry per section 5.x.
-- **6.0:** generalise across repositories; reference findings by id.
-- **Cover version:** bump it for each merged repository (1.1, 1.2, …).
+  has no findings of its own, and say that its issues are listed in 4.1.
+- **Contents rail:** add one sub-entry per section 4.x.
+- **5.1:** generalise across repositories; reference findings by id.
 
 ### Merging rules
 
-- When a repository repeats a pattern already in 5.1, add its locations to that finding. When a repository finding
-  reappears in another repository, move it to 5.1. Never report the same root cause twice.
+- When a repository repeats a pattern already in 4.1, add its locations to that finding. When a repository finding
+  reappears in another repository, move it to 4.1. Never report the same root cause twice.
 - Give the same issue the same CVSS vector everywhere; if merging changes an earlier score, say so in that
   finding's description.
 - Before merging a standalone single-repository report, re-check each of its findings against the current code,
-  drop or correct what no longer holds, and correct any statement in 4.2 or 2.1 that the deeper review disproves.
+  drop or correct what no longer holds, and correct any statement in 3.2 or 1.1 that the deeper review disproves.
 - Cross-references between findings must survive renumbering: keep symbolic ids in the working data and resolve
   them to finding numbers and links when building the page.
 - Prefix every asset path with its repository name (an ellipsis may shorten the package path).

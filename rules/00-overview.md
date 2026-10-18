@@ -32,7 +32,7 @@ these standards:
 
 Standards change editions. These versions were current on 2026-10-16. When network access is available, check the
 publisher's page for any standard you cite whose edition may have changed since then, and cite the current
-edition; otherwise cite them as listed and say in report 3.2 that editions were not re-checked.
+edition; otherwise cite them as listed and say in report 2.3 that editions were not re-checked.
 - Mozilla Web Security Guidelines (headers and cookies), CIS/Checkov-style container and IaC baselines, and the
   CISA Known Exploited Vulnerabilities catalog for prioritising dependency CVEs
 
@@ -47,7 +47,7 @@ edition; otherwise cite them as listed and say in report 3.2 that editions were 
   repository; a repository can match several (a Next.js app is both `node-backend.md` and `web-frontend.md`;
   a React Native app is `mobile.md`).
 - When no stack file matches, apply the category files using the framework's own documentation, and say in the
-  report's 3.2 that no stack file existed for it.
+  report's 2.3 that no stack file existed for it.
 
 ## Identify the stack
 
@@ -137,7 +137,7 @@ Findings must come from the code at the reviewed commit, so a review shows what 
   history up to the reviewed commit is part of the code and may be read, as "Reviewing a change" above uses it;
   linked issue trackers and advisories may not.
 - If you remember known vulnerabilities in this project, set them aside and say so in the result's limitations
-  (report 3.2).
+  (report 2.3).
 - This doesn't limit dependency checks: advisories for third-party packages (`npm audit`, OSV, CISA KEV) and
   reading a dependency's source for its locked version ("Library behaviour" below) are still part of the review.
 - Earlier ledgers from this skill may be reused as `method/coverage-ledger.md` says, except in a benchmark run,
@@ -169,7 +169,7 @@ mark a finding "needs confirmation" or lower its severity only because library b
 4. Cite the library file and line in the finding's evidence (`node_modules/better-auth/dist/...:123` or
    `<pkg>@<version>/<path>:<line>`).
 5. Use "needs confirmation" only when the source can't be obtained (private registry, no network, compiled-only
-   package) or when the behaviour depends on deployed configuration. Say which, and list it in report 3.2.
+   package) or when the behaviour depends on deployed configuration. Say which, and list it in report 2.3.
 
 ## Reporting
 

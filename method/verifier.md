@@ -11,7 +11,7 @@ is the main defence against false positives and overstated severity.
 | `diff` | **Disproof pass** (below) for every candidate. One fresh verifier subagent only if a candidate is still `critical` after that pass; it gets all `critical` candidates in one batch. |
 | `standard` | **One** fresh verifier subagent gets every candidate (`critical`, `bug`, `warning` and `suggestion`) in one batch, on the session's model. |
 | `deep` | One fresh verifier subagent **per** `critical` or `bug` candidate, and one per category file for batched `warning` and `suggestion` candidates, in parallel, on the session's model. |
-| No subagent tool available | Disproof pass for everything. Say "self-verified; no independent verifier available" in the result and in report 3.2. |
+| No subagent tool available | Disproof pass for everything. Say "self-verified; no independent verifier available" in the result and in report 2.3. |
 
 Claude Code: use the Agent tool (`general-purpose`), with the `model` the table names; otherwise the session's
 model. A verifier must not be an agent that hunted, and must not see another verifier's conclusion (except the
@@ -23,7 +23,7 @@ The cheap, inline form of verification. Do it yourself **after** the whole asses
 still hunting. For each candidate, re-open every cited line and work through steps 1–5 of the verifier prompt
 below as if someone else wrote the candidate: look for the control that stops it, then decide `confirmed`,
 `needs_confirmation`, `rejected` or `hardening`. Record the decision in the same form. In the result, mark
-findings decided this way as self-verified (report 2.3 says which findings had an independent verifier).
+findings decided this way as self-verified (each report finding card shows how it was verified).
 
 Keep the verifier's input small: it opens files itself, so send the paths, not file contents. Give each
 verifier: the candidate(s) exactly as recorded, the repository path and branch, the stack and stack

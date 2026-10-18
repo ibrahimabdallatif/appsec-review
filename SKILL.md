@@ -266,9 +266,9 @@ accepted-risk file unless the user asks, and never shorten a review because a cr
 Every run produces a report without being asked, including a `diff` run and a run with no findings (the report
 then says so). Build it after the run summary: read `report/REPORT.md` and follow it exactly:
 
-- Use its section structure (2.0 Executive Summary to 6.0 Recommendation) and finding card fields, and its
+- Use its section structure (1.0 Executive Summary to 6.0 Appendix) and finding card fields, and its
   multi-repository rules when more than one repository is in scope.
-- State the security standards the review is based on in 2.4 (REPORT.md "Security standards") and give every
+- State the security standards the review is based on in 6.2 (REPORT.md "Security standards") and give every
   finding its References. Include ASVS V3, WSTG-CLNT and RFC 10017 for browser findings, and MASVS, MASTG,
   MASWE, Mobile Top 10 and RFC 8252 for mobile findings, plus PCI DSS, NIST SP 800-63B-4 or RFC 9700 where
   they apply.

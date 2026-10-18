@@ -143,8 +143,8 @@ review"); the validator enforces all of these. Keep rejected findings so later r
    closed without real checks. Add what is missing and review it now.
 5. **Validate**: `python -I <skill folder>/method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json
    --inventory ~/.appsec-review/<repo>/inventory.json`. Fix every error before reporting: an inventory error
-   means an entry point without a unit or a sink file nobody read under its category. The summary it prints gives the counts for the result and report sections 3.2
-   and 4.1.
+   means an entry point without a unit or a sink file nobody read under its category. The summary it prints gives the counts for the result and report sections 2.3
+   and 3.1.
 
 ## Later runs on the same repository
 
