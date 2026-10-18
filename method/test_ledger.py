@@ -202,8 +202,13 @@ class CheckFindingTest(unittest.TestCase):
         self.assertEqual(ledger.check_finding(nc), [])
 
     def test_rejected_with_disproof_ok(self):
-        rejected = finding(decision="rejected", severity=None, disproof="src/api/Guard.java:42 owner check")
+        rejected = finding(decision="rejected", severity=None, disproof="src/api/Guard.java:42 owner check",
+                           proposed_severity="warning")
         self.assertEqual(ledger.check_finding(rejected), [])
+
+    def test_check_finding_reports_rejection_review(self):
+        rejected = finding(decision="rejected", severity=None, disproof="a.ts:1", proposed_severity="critical")
+        self.assertIn("rejection_reviewed", " ".join(ledger.check_finding(rejected)))
 
     def test_hardening_cannot_be_critical(self):
         self.assertTrue(ledger.check_finding(finding(decision="hardening")))
@@ -228,6 +233,33 @@ class CheckRejectionProofTest(unittest.TestCase):
     def test_disproof_only_on_rejected(self):
         self.assertTrue(ledger.check_rejection_proof(finding(disproof="src/a.ts:10"), "x"))
         self.assertEqual(ledger.check_rejection_proof(finding(), "x"), [])
+
+
+class CheckRejectionReviewTest(unittest.TestCase):
+    def rejected(self, **fields):
+        return finding(decision="rejected", severity=None, disproof="a.ts:1", **fields)
+
+    def test_rejected_needs_proposed_severity(self):
+        self.assertTrue(ledger.check_rejection_review(self.rejected(), "x"))
+        self.assertTrue(ledger.check_rejection_review(self.rejected(proposed_severity="huge"), "x"))
+
+    def test_low_severity_needs_no_review(self):
+        self.assertEqual(ledger.check_rejection_review(self.rejected(proposed_severity="warning"), "x"), [])
+
+    def test_critical_and_bug_need_review(self):
+        for severity in ("critical", "bug"):
+            self.assertTrue(ledger.check_rejection_review(self.rejected(proposed_severity=severity), "x"))
+            reviewed = self.rejected(proposed_severity=severity, rejection_reviewed=True)
+            self.assertEqual(ledger.check_rejection_review(reviewed, "x"), [])
+
+    def test_review_must_be_true(self):
+        unreviewed = self.rejected(proposed_severity="bug", rejection_reviewed="yes")
+        self.assertTrue(ledger.check_rejection_review(unreviewed, "x"))
+
+    def test_fields_only_on_rejected(self):
+        self.assertTrue(ledger.check_rejection_review(finding(proposed_severity="bug"), "x"))
+        self.assertTrue(ledger.check_rejection_review(finding(rejection_reviewed=True), "x"))
+        self.assertEqual(ledger.check_rejection_review(finding(), "x"), [])
 
 
 class CheckSeverityIfConfirmedTest(unittest.TestCase):

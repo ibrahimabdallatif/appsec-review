@@ -9,9 +9,14 @@ A benchmark lists the findings a review of one repository at one commit must fin
 an id, a minimum severity, and a matcher: substrings for its file paths and a regex for its key and title.
 The scorer reports which expected findings the run found, missed or downgraded, and its extra findings.
 
+A benchmark can also list decoys under "absent": code that looks vulnerable but is safe, with the same matcher
+(id, paths_any, text). A reported finding that matches a decoy is a false positive; a rejected one is correct.
+The scorer prints the false positives and the precision over the labelled findings (expected and decoys).
+
 Given several ledgers from fresh runs of the same commit, it reports how often each expected finding was found
 (STABLE in every run, FLAKY in some, LOST in none) and which extra findings only some runs produced. A flaky
-finding points at the rule, prompt or inventory pattern that needs work.
+finding points at the rule, prompt or inventory pattern that needs work. Each decoy that any run reported is
+listed with the number of runs that reported it.
 """
 import json
 import re
@@ -19,6 +24,7 @@ import sys
 
 SEVERITY_ORDER = ("suggestion", "warning", "bug", "critical")
 REQUIRED_EXPECTED = ("id", "min_severity", "paths_any", "text")
+REQUIRED_ABSENT = ("id", "paths_any", "text")
 
 
 def load_json(path):
@@ -31,18 +37,31 @@ def severity_rank(severity):
     return SEVERITY_ORDER.index(severity) if severity in SEVERITY_ORDER else -1
 
 
+def check_matcher(item, label, required):
+    """Missing keys and a bad text regex for one expected finding or decoy."""
+    errors = ["%s: missing '%s'" % (label, key) for key in required if key not in item]
+    try:
+        re.compile(item.get("text", ""))
+    except re.error as exc:
+        errors.append("%s: bad regex (%s)" % (label, exc))
+    return errors
+
+
+def check_expected(item):
+    label = "expected %s" % item.get("id")
+    errors = check_matcher(item, label, REQUIRED_EXPECTED)
+    if item.get("min_severity") not in SEVERITY_ORDER:
+        errors.append("%s: min_severity must be one of %s" % (label, ", ".join(SEVERITY_ORDER)))
+    return errors
+
+
 def check_benchmark(benchmark):
     """Error strings for a malformed benchmark; empty when valid."""
     errors = []
     for item in benchmark.get("expected", []):
-        label = "expected %s" % item.get("id")
-        errors += ["%s: missing '%s'" % (label, key) for key in REQUIRED_EXPECTED if key not in item]
-        if item.get("min_severity") not in SEVERITY_ORDER:
-            errors.append("%s: min_severity must be one of %s" % (label, ", ".join(SEVERITY_ORDER)))
-        try:
-            re.compile(item.get("text", ""))
-        except re.error as exc:
-            errors.append("%s: bad regex (%s)" % (label, exc))
+        errors += check_expected(item)
+    for item in benchmark.get("absent", []):
+        errors += check_matcher(item, "absent %s" % item.get("id"), REQUIRED_ABSENT)
     if not benchmark.get("expected"):
         errors.append("benchmark: 'expected' is empty")
     return errors
@@ -88,8 +107,30 @@ def classify(expected, best):
     return "found"
 
 
+def is_reported(finding):
+    return finding.get("decision") != "rejected"
+
+
+def classify_decoy(hits):
+    """reported (a false positive), rejected (verification caught it) or clean (never raised)."""
+    if any(is_reported(f) for f in hits):
+        return "reported"
+    return "rejected" if hits else "clean"
+
+
+def score_decoys(benchmark, findings, used):
+    """Per-decoy results; marks every matching finding as used so it is not listed as an extra."""
+    decoys = []
+    for absent in benchmark.get("absent", []):
+        hits = [f for f in findings if matches(absent, f)]
+        used.update(id(f) for f in hits)
+        reported = [f.get("key") for f in hits if is_reported(f)]
+        decoys.append({"id": absent["id"], "status": classify_decoy(hits), "matched": reported})
+    return decoys
+
+
 def score(benchmark, ledger):
-    """Per-expected results plus extra findings that match nothing."""
+    """Per-expected results, per-decoy results, and extra findings that match nothing."""
     findings = ledger.get("findings", [])
     results, used = [], set()
     for expected in benchmark["expected"]:
@@ -102,8 +143,9 @@ def score(benchmark, ledger):
                         "matched": best.get("key") if best else None,
                         "severity": effective(best)[0] if best else None,
                         "decision": effective(best)[1] if best else None})
-    extras = [f.get("key") for f in findings if id(f) not in used and f.get("decision") != "rejected"]
-    return {"results": results, "extras": extras}
+    decoys = score_decoys(benchmark, findings, used)
+    extras = [f.get("key") for f in findings if id(f) not in used and is_reported(f)]
+    return {"results": results, "decoys": decoys, "extras": extras}
 
 
 def recall(results, only_confirmed=False):
@@ -111,6 +153,31 @@ def recall(results, only_confirmed=False):
     pool = [r for r in results if r["human_confirmed"]] if only_confirmed else results
     found = sum(1 for r in pool if r["status"] in ("found", "needs_confirmation"))
     return found, len(pool)
+
+
+def false_positives(scored):
+    return [d for d in scored.get("decoys", []) if d["status"] == "reported"]
+
+
+def precision(scored):
+    """(true, reported) over labelled findings: expected ones reported at any severity, plus reported decoys."""
+    true = sum(1 for r in scored["results"] if r["status"] in ("found", "needs_confirmation", "downgraded"))
+    return true, true + len(false_positives(scored))
+
+
+def format_decoys(scored):
+    decoys = scored.get("decoys", [])
+    if not decoys:
+        return []
+    lines = []
+    for d in decoys:
+        detail = " <- %s" % ", ".join(d["matched"]) if d["matched"] else ""
+        status = "FALSE-POSITIVE" if d["status"] == "reported" else d["status"].upper()
+        lines.append("%-18s %-26s decoy%s" % (status, d["id"], detail))
+    true, reported = precision(scored)
+    lines.append("False positives: %d/%d decoys reported" % (len(false_positives(scored)), len(decoys)))
+    lines.append("Precision on labelled findings: %d/%d" % (true, reported))
+    return lines
 
 
 def format_report(scored):
@@ -123,6 +190,7 @@ def format_report(scored):
     h_found, h_total = recall(scored["results"], only_confirmed=True)
     if h_total:
         lines.append("Recall on human-confirmed findings: %d/%d" % (h_found, h_total))
+    lines += format_decoys(scored)
     lines.append("Extra findings not in the benchmark (%d): %s" % (len(scored["extras"]), ", ".join(scored["extras"])))
     return "\n".join(lines)
 
@@ -151,6 +219,25 @@ def extra_counts(scored_runs):
     return counts
 
 
+def decoy_counts(scored_runs):
+    """Per decoy id: the number of runs that reported it as a finding."""
+    counts = {}
+    for scored in scored_runs:
+        for d in scored.get("decoys", []):
+            counts[d["id"]] = counts.get(d["id"], 0) + (1 if d["status"] == "reported" else 0)
+    return counts
+
+
+def format_decoy_stability(scored_runs):
+    counts = decoy_counts(scored_runs)
+    if not counts:
+        return []
+    runs = len(scored_runs)
+    lines = ["FALSE-POSITIVE %-26s %d/%d runs" % (id_, n, runs) for id_, n in counts.items() if n]
+    lines.append("Decoys never reported: %d/%d" % (sum(1 for n in counts.values() if not n), len(counts)))
+    return lines
+
+
 def stability_label(hits, runs):
     if hits == runs:
         return "STABLE"
@@ -172,6 +259,7 @@ def format_stability(scored_runs):
     mean = sum(recall(s["results"])[0] for s in scored_runs) / float(runs)
     lines.append("Found in every run: %d/%d expected findings" % (stable, len(counts)))
     lines.append("Mean recall per run: %.1f/%d" % (mean, len(counts)))
+    lines += format_decoy_stability(scored_runs)
     partial = sorted((k, n) for k, n in extra_counts(scored_runs).items() if n < runs)
     lines.append("Extras reported by some runs only (%d): %s"
                  % (len(partial), ", ".join("%s %d/%d" % (k, n, runs) for k, n in partial)))
@@ -182,14 +270,15 @@ def run_single(benchmark, ledger):
     scored = score(benchmark, ledger)
     print(format_report(scored))
     missed = [r for r in scored["results"] if r["status"] in ("missed", "rejected", "downgraded")]
-    return 1 if missed else 0
+    return 1 if missed or false_positives(scored) else 0
 
 
 def run_many(benchmark, ledgers):
     scored_runs = [score(benchmark, ledger) for ledger in ledgers]
     print(format_stability(scored_runs))
     unstable = [c for c in hit_counts(scored_runs).values() if c["hits"] < len(ledgers)]
-    return 1 if unstable else 0
+    noisy = [n for n in decoy_counts(scored_runs).values() if n]
+    return 1 if unstable or noisy else 0
 
 
 def main(args):

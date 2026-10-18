@@ -47,6 +47,33 @@ class CheckBenchmarkTest(unittest.TestCase):
         self.assertIn("paths_any", errors)
 
 
+def absent(id_="admin-guard", paths=("admin.ts",), text=r"admin"):
+    return {"id": id_, "paths_any": list(paths), "text": text}
+
+
+class CheckAbsentTest(unittest.TestCase):
+    def test_valid_decoy(self):
+        self.assertEqual(benchmark.check_benchmark({"expected": [expected()], "absent": [absent()]}), [])
+
+    def test_decoy_missing_key_and_bad_regex(self):
+        bad = absent(text="(")
+        del bad["paths_any"]
+        errors = " ".join(benchmark.check_benchmark({"expected": [expected()], "absent": [bad]}))
+        self.assertIn("absent admin-guard: missing 'paths_any'", errors)
+        self.assertIn("bad regex", errors)
+
+
+class CheckMatcherTest(unittest.TestCase):
+    def test_reports_missing_keys(self):
+        self.assertEqual(benchmark.check_matcher({"text": "x"}, "e", ("id", "text")), ["e: missing 'id'"])
+
+
+class CheckExpectedTest(unittest.TestCase):
+    def test_valid_and_bad_severity(self):
+        self.assertEqual(benchmark.check_expected(expected()), [])
+        self.assertIn("min_severity", " ".join(benchmark.check_expected(expected(min_severity="x"))))
+
+
 class FindingTextTest(unittest.TestCase):
     def test_joins_key_and_title(self):
         self.assertEqual(benchmark.finding_text({"key": "a/b", "title": "T"}), "a/b T")
@@ -116,6 +143,57 @@ class ScoreTest(unittest.TestCase):
         self.assertEqual(benchmark.score({"expected": [expected()]}, ledger)["extras"], [])
 
 
+def admin_finding(decision="confirmed", key="admin/no-guard"):
+    severity = None if decision == "rejected" else "bug"
+    return finding(key=key, title="Admin route has no guard", decision=decision, severity=severity,
+                   paths=("src/admin.ts",))
+
+
+class DecoyTest(unittest.TestCase):
+    def test_is_reported(self):
+        self.assertTrue(benchmark.is_reported(finding()))
+        self.assertFalse(benchmark.is_reported(finding(decision="rejected")))
+
+    def test_classify_decoy(self):
+        self.assertEqual(benchmark.classify_decoy([]), "clean")
+        self.assertEqual(benchmark.classify_decoy([admin_finding("rejected")]), "rejected")
+        self.assertEqual(benchmark.classify_decoy([admin_finding("rejected"), admin_finding()]), "reported")
+
+    def test_score_decoys_marks_used(self):
+        used, hit = set(), admin_finding()
+        decoys = benchmark.score_decoys({"absent": [absent()]}, [hit, finding()], used)
+        self.assertEqual(decoys, [{"id": "admin-guard", "status": "reported", "matched": ["admin/no-guard"]}])
+        self.assertEqual(used, {id(hit)})
+
+    def test_score_without_absent(self):
+        self.assertEqual(benchmark.score({"expected": [expected()]}, {"findings": []})["decoys"], [])
+
+    def test_decoy_hit_is_not_an_extra(self):
+        scored = benchmark.score({"expected": [expected()], "absent": [absent()]},
+                                 {"findings": [finding(), admin_finding()]})
+        self.assertEqual(scored["extras"], [])
+        self.assertEqual(len(benchmark.false_positives(scored)), 1)
+
+    def test_precision(self):
+        bench = {"expected": [expected(), expected(id_="cors", paths=("main.ts",), text="cors")],
+                 "absent": [absent()]}
+        scored = benchmark.score(bench, {"findings": [finding(severity="bug"), admin_finding()]})
+        self.assertEqual(benchmark.precision(scored), (1, 2))
+
+    def test_format_decoys(self):
+        bench = {"expected": [expected()], "absent": [absent(), absent(id_="safe-sql", paths=("db.ts",))]}
+        lines = benchmark.format_decoys(benchmark.score(bench, {"findings": [finding(), admin_finding()]}))
+        text = "\n".join(lines)
+        self.assertIn("FALSE-POSITIVE     admin-guard", text)
+        self.assertIn("<- admin/no-guard", text)
+        self.assertIn("CLEAN              safe-sql", text)
+        self.assertIn("False positives: 1/2 decoys reported", text)
+        self.assertIn("Precision on labelled findings: 1/2", text)
+
+    def test_format_decoys_empty(self):
+        self.assertEqual(benchmark.format_decoys({"results": [], "decoys": []}), [])
+
+
 class RecallTest(unittest.TestCase):
     def test_counts_found_and_needs_confirmation(self):
         results = [{"status": "found", "human_confirmed": True}, {"status": "needs_confirmation",
@@ -133,10 +211,28 @@ class FormatReportTest(unittest.TestCase):
         self.assertIn("Extra findings not in the benchmark (0)", text)
 
 
-def scored_run(statuses, extras=()):
+def scored_run(statuses, extras=(), decoys=()):
     results = [{"id": "e%d" % i, "status": st, "min_severity": "bug", "human_confirmed": False}
                for i, st in enumerate(statuses)]
-    return {"results": results, "extras": list(extras)}
+    decoy_results = [{"id": "d%d" % i, "status": st, "matched": []} for i, st in enumerate(decoys)]
+    return {"results": results, "decoys": decoy_results, "extras": list(extras)}
+
+
+class DecoyStabilityTest(unittest.TestCase):
+    def setUp(self):
+        self.runs = [scored_run(["found"], decoys=["reported", "clean"]),
+                     scored_run(["found"], decoys=["rejected", "clean"])]
+
+    def test_decoy_counts(self):
+        self.assertEqual(benchmark.decoy_counts(self.runs), {"d0": 1, "d1": 0})
+
+    def test_format_decoy_stability(self):
+        text = "\n".join(benchmark.format_decoy_stability(self.runs))
+        self.assertIn("FALSE-POSITIVE d0                         1/2 runs", text)
+        self.assertIn("Decoys never reported: 1/2", text)
+
+    def test_no_decoys(self):
+        self.assertEqual(benchmark.format_decoy_stability([scored_run(["found"])]), [])
 
 
 class StabilityTest(unittest.TestCase):
@@ -205,6 +301,21 @@ class MainTest(unittest.TestCase):
         bench = self.write({"expected": [expected()]})
         self.assertEqual(self.run_main([bench, self.write({"findings": [finding()]}),
                                         self.write({"findings": []})]), 1)
+
+    def test_reported_decoy_returns_1(self):
+        bench = self.write({"expected": [expected()], "absent": [absent()]})
+        self.assertEqual(self.run_main([bench, self.write({"findings": [finding(), admin_finding()]})]), 1)
+
+    def test_rejected_decoy_returns_0(self):
+        bench = self.write({"expected": [expected()], "absent": [absent()]})
+        run = self.write({"findings": [finding(), admin_finding("rejected")]})
+        self.assertEqual(self.run_main([bench, run]), 0)
+
+    def test_decoy_in_one_of_many_runs_returns_1(self):
+        bench = self.write({"expected": [expected()], "absent": [absent()]})
+        clean = self.write({"findings": [finding()]})
+        noisy = self.write({"findings": [finding(), admin_finding()]})
+        self.assertEqual(self.run_main([bench, clean, noisy]), 1)
 
     def test_bad_benchmark_returns_2(self):
         self.assertEqual(self.run_main([self.write({"expected": []}), self.write({"findings": []})]), 2)

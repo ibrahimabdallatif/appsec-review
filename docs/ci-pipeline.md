@@ -197,6 +197,7 @@ credential to `ANTHROPIC_API_KEY`, run the review, then run the gate and fail th
 
 ## Cost and time
 
-A `standard` run uses the main session plus at most two subagents (one hunter, one verifier). Time and tokens grow
+A `standard` run uses the main session plus one hunter and one verifier subagent, and one more verifier when a
+`critical` or `bug` candidate is rejected or chains are found, all on the session's model. Time and tokens grow
 with the size of the repository, because every in-scope module is read. The run summary at the end of the review
 output gives the time and token figures for each build; use them to set the job timeout and schedule.

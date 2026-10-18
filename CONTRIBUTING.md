@@ -71,12 +71,16 @@ After changing `rules/`, `method/` or the steps in `SKILL.md`, check that the sk
    repository's vulnerabilities. Each names the repository, the commit, and the expected findings with a minimum
    severity and a matcher (path substrings and a key/title regex). Set `human_confirmed: true` on findings a
    person has checked in the code; set `expect_confirmed: true` where "needs confirmation" counts as a miss.
+   List decoys under `absent` (`id`, `paths_any`, `text`): code that looks vulnerable but is safe, such as a
+   guarded admin route or a parameterised query built in pieces. They measure false positives.
 2. Check out the benchmark's commit, run `/appsec-review whole repo` (or `deep`, matching the benchmark), and
    score the run: `python -I <skill folder>/evals/benchmark.py ~/.appsec-review/benchmarks/<repo>.json
    ~/.appsec-review/<repo>/coverage-ledger.json`. To score a fresh run on its own, move the old ledger out of
    `~/.appsec-review/<repo>/` first; otherwise findings carried from earlier runs count too.
 3. Every expected finding should be `FOUND`. `MISSED`, `REJECTED` or `DOWNGRADED` means the change lost recall:
-   fix it before keeping the change. Review the extra findings it lists, and add the real ones to the benchmark.
+   fix it before keeping the change. Every decoy should be `CLEAN` or `REJECTED`; `FALSE-POSITIVE` means the
+   change lost precision, and the scorer prints the precision over labelled findings. Review the extra findings
+   it lists: add the real ones to `expected` and the false ones to `absent`.
 4. **Stability.** One run proves little, because runs vary. After a significant change, run the same mode three
    to five times on the benchmark commit, and keep the runs independent:
    - start each run in a **new Claude Code session**, so it can't reuse what an earlier run found;
@@ -88,7 +92,7 @@ After changing `rules/`, `method/` or the steps in `SKILL.md`, check that the sk
    another run. Score them together: `python -I <skill folder>/evals/benchmark.py
    ~/.appsec-review/benchmarks/<repo>.json ~/.appsec-review/benchmark-runs/<repo>/standard-*.json`. Each
    expected finding is `STABLE` (found in every run), `FLAKY` or
-   `LOST`. Fix what makes a finding flaky (a missing sink pattern, an unclear rule, a hunter prompt) before
+   `LOST`, and each decoy any run reported is listed with its run count. Fix what makes a finding flaky (a missing sink pattern, an unclear rule, a hunter prompt) before
    keeping the change. Extras that only some runs report are either noise or real findings the other runs
    missed; check them.
 

@@ -28,7 +28,8 @@ When that looks useful, review the whole repository:
 ```
 
 This runs `standard` mode: it builds the inventory of entry points and sinks, reads every in-scope module, starts
-one hunter subagent, verifies the candidates with one verifier subagent, and keeps a coverage ledger in
+one hunter subagent, verifies the candidates with one verifier subagent (and a second one for any rejected
+`critical` or `bug` candidate), and keeps a coverage ledger in
 `~/.appsec-review/<repo>/`.
 
 | You want | Type |
@@ -68,6 +69,9 @@ After the findings come:
 - **Rejected by verification**: candidates a verifier disproved, each with the line of code that stops the
   attack. If you think a rejection is wrong, you can overrule it.
 - **Run summary**: mode, time, tokens and subagents used, and counts of findings and affected locations.
+
+The review then asks what to do next: whether to generate a report (when you didn't ask for one) and whether to
+fix a specific finding, all of them, or none for now. Non-interactive runs (CI) skip these questions.
 
 ## 4. Fix and re-check
 

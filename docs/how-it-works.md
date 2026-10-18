@@ -71,7 +71,7 @@ Installed scanners add their hits too. Everything found at this stage is a **can
 | Mode | Hunters | Verifiers |
 |---|---|---|
 | `diff` | Both hunter lists run inline | Disproof pass; one verifier subagent only if a `critical` survives it |
-| `standard` | One subagent with both hunter lists | One verifier subagent for all `critical`, `bug` and `warning` candidates |
+| `standard` | One subagent with both hunter lists | One verifier subagent for all candidates |
 | `deep` | Two subagents: wildcard + obvious-things, and the sink tracer | One verifier per `critical`/`bug` candidate, plus one per category for the rest |
 
 ## 4. Verification
@@ -83,7 +83,9 @@ The agent that found a candidate never decides whether it is real (`method/verif
 2. **Fresh verifier subagents.** A new agent gets the candidate and the file paths, not the finder's reasoning,
    and tries to refute it. It must restate the attack precisely, rebuild the strongest control on the path, and
    check the severity against the evidence. It may reject a candidate only by citing the `path:line` of the code
-   that disproves it; "not sure" is never a rejection.
+   that disproves it; "not sure" is never a rejection. A rejected `critical` or `bug` candidate goes to a second
+   fresh verifier, which checks whether the cited line really stops the attack on every path; the ledger
+   validator fails a rejected serious candidate without that review.
 
 Decisions are `confirmed`, `hardening`, `needs_confirmation` (with the one external fact that decides it) or
 `rejected`. Rejected candidates are listed at the end of the result so you can overrule them.

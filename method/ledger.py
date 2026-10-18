@@ -43,6 +43,7 @@ DECISIONS = ("confirmed", "needs_confirmation", "rejected", "hardening")
 SEVERITIES = ("critical", "bug", "warning", "suggestion")
 HARDENING_SEVERITIES = ("warning", "suggestion")
 NO_SEVERITY = ("needs_confirmation", "rejected")
+REVIEWED_REJECTIONS = ("critical", "bug")
 REQUIRED_TOP = ("repo", "source_ref", "profile", "scope", "units", "findings")
 REQUIRED_UNIT = ("id", "surface", "area", "status", "reviewed_paths", "checks", "finding_keys", "unresolved")
 REQUIRED_FINDING = ("key", "title", "decision", "severity", "paths")
@@ -176,6 +177,7 @@ def check_finding(finding):
         errors.append("%s: confirmed needs a severity" % label)
     errors += check_title(finding, label)
     errors += check_rejection_proof(finding, label)
+    errors += check_rejection_review(finding, label)
     errors += check_severity_if_confirmed(finding, label)
     errors += check_paths(finding["paths"], label)
     return errors
@@ -197,6 +199,20 @@ def check_rejection_proof(finding, label):
             return ["%s: rejected needs a 'disproof' citing path:line" % label]
     elif disproof:
         return ["%s: only rejected findings carry 'disproof'" % label]
+    return []
+
+
+def check_rejection_review(finding, label):
+    """A rejected critical or bug candidate needs a second verifier to uphold the rejection."""
+    proposed = finding.get("proposed_severity")
+    if finding.get("decision") != "rejected":
+        if proposed is not None or "rejection_reviewed" in finding:
+            return ["%s: only rejected findings carry proposed_severity and rejection_reviewed" % label]
+        return []
+    if proposed not in SEVERITIES:
+        return ["%s: rejected needs the candidate's proposed_severity" % label]
+    if proposed in REVIEWED_REJECTIONS and finding.get("rejection_reviewed") is not True:
+        return ["%s: rejected %s candidate needs rejection_reviewed true (second verifier)" % (label, proposed)]
     return []
 
 

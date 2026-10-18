@@ -9,12 +9,13 @@ is the main defence against false positives and overstated severity.
 | Review mode (SKILL.md "Review modes") | Verifiers |
 |---|---|
 | `diff` | **Disproof pass** (below) for every candidate. One fresh verifier subagent only if a candidate is still `critical` after that pass; it gets all `critical` candidates in one batch. |
-| `standard` | **One** fresh verifier subagent gets all `critical`, `bug` and `warning` candidates in one batch, on the session's model. `suggestion` candidates get the disproof pass only. |
+| `standard` | **One** fresh verifier subagent gets every candidate (`critical`, `bug`, `warning` and `suggestion`) in one batch, on the session's model. |
 | `deep` | One fresh verifier subagent **per** `critical` or `bug` candidate, and one per category file for batched `warning` and `suggestion` candidates, in parallel, on the session's model. |
 | No subagent tool available | Disproof pass for everything. Say "self-verified; no independent verifier available" in the result and in report 3.2. |
 
 Claude Code: use the Agent tool (`general-purpose`), with the `model` the table names; otherwise the session's
-model. A verifier must not be an agent that hunted, and must not see another verifier's conclusion.
+model. A verifier must not be an agent that hunted, and must not see another verifier's conclusion (except the
+`disproof` line in a rejection review).
 
 ## Disproof pass
 
@@ -115,6 +116,29 @@ severity is null for rejected and needs_confirmation. severity_if_confirmed is s
 needs_confirmation. disproof is set only for rejected.
 ```
 
+## Rejection review
+
+A wrong rejection drops a real finding without anyone noticing, so one verifier's rejection is not final for a
+serious candidate. In every mode, each `critical` or `bug` candidate (by the severity proposed before
+verification, chains included) that a verifier subagent rejected goes to one more fresh verifier: in `diff` and
+`standard`, one for all of them in one batch; in `deep`, one per candidate. It must not be an agent that hunted or
+the verifier that rejected it. Give it what a verifier gets, plus the rejected `disproof` line but not the
+verifier's reason, and the verifier prompt with this addition:
+
+```text
+Another reviewer rejected these candidates, citing the line in "disproof" as the control that stops
+each one. Don't take that line on trust. Read the cited control and every path from the entry point
+to the sink, including update, delete, batch, admin, job, retry and consumer paths. Keep a candidate
+rejected only if the cited control, or another you cite, runs before the sink on every path, fails
+closed on errors and empty values, and binds the object or action to the caller. Otherwise decide
+confirmed or needs_confirmation, with the severity the evidence supports.
+```
+
+Its decision stands. An upheld rejection stays `rejected` with `rejection_reviewed: true` in the ledger; an
+overturned one is reported with the new decision. If the two disagree on the facts and the review can't settle
+them from source, report the candidate as `needs_confirmation` with both views. Rejected `warning` and
+`suggestion` candidates, and rejections from the disproof pass alone, skip this review.
+
 ## Chains
 
 Chain candidates from the chain pass (`method/threat-model.md`, section 3) go to a fresh verifier like any
@@ -140,8 +164,8 @@ the disproof; the links keep their own verdicts.
   `suggestion`.
 - **Escalation check.** If a verifier or the disproof pass raises a candidate **to `critical`**, send it to one
   more fresh verifier before accepting it. In `deep` mode, also do this when a verifier raises any severity,
-  changes the root cause, or turns `needs_confirmation` into `confirmed`. Lowering severity, rejecting, or
-  rewording never needs another verifier.
+  changes the root cause, or turns `needs_confirmation` into `confirmed`. Lowering severity or rewording never
+  needs another verifier; rejecting a `critical` or `bug` candidate does ("Rejection review").
 - **Malformed results** (prose around the JSON, missing candidates): don't repair them. Re-run that candidate with
   a fresh verifier once; if it fails again, report the candidate as "needs confirmation: verification failed".
 - **Disagreement.** If you believe a verifier is wrong, don't overrule it silently. Either give the candidate and

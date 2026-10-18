@@ -55,7 +55,7 @@ Pick the mode once, before step 4, and state it at the top of the result. **Neve
 | Mode | When | Subagents | Ledger |
 |---|---|---|---|
 | `diff` | Default when the user names nothing, or names a diff, branch, PR or files | None, except one verifier if a `critical` candidate survives the disproof pass | None |
-| `standard` | The user asks for a whole repository, an endpoint, or several repositories | At most two: one combined hunter (`model: sonnet`), and one verifier for all `critical`, `bug` and `warning` candidates in one batch (session's model) | Module × category |
+| `standard` | The user asks for a whole repository, an endpoint, or several repositories | One combined hunter and one verifier for all candidates in one batch, plus one rejection reviewer when a `critical` or `bug` candidate is rejected, all on the session's model | Module × category |
 | `deep` | **Only** when the user explicitly says "deep" (`/appsec-review deep`, "deep review", "deep mode") | Two hunters (wildcard and obvious-things, and a backward sink tracer) and one verifier per `critical`/`bug` candidate, on the session's model; adds the `rules/deep/` playbooks | Entry point × category |
 
 Modes change how many subagents run and how detailed the ledger is, **never how much code is read**. Every mode
@@ -133,7 +133,8 @@ never selects `deep` mode.
      `p/swift`
 8. **Verify.** Merge your candidates, the hunters' and the tools' by root cause, then verify them as
    `method/verifier.md` says for the mode: a disproof pass for all, plus fresh verifier subagents where the mode
-   calls for them. The verifier's decision stands: `confirmed` and `hardening`
+   calls for them, and the rejection review for every rejected `critical` or `bug` candidate. The verifier's
+   decision stands: `confirmed` and `hardening`
    become findings, `needs_confirmation` is reported with the exact missing fact, `rejected` is dropped. Never
    verify your own candidates in the same pass that found them. Then run the chain pass over the findings that
    were not rejected (`method/threat-model.md`, section 3) and verify each chain as `method/verifier.md`
@@ -196,11 +197,12 @@ ledger; a platform-wide finding uses one finding key, linked from units in every
   an outside fact), and how each finding was verified (independent verifier or self-verified disproof pass).
 - List the candidates **rejected by verification** after that: title, `file:line`, the verifier's reason and the
   disproof line. The user can overrule a wrong rejection.
-- Finish every run, including one stopped early or failed, with the run summary below.
+- Finish every run, including one stopped early or failed, with the run summary below, then the next-steps
+  questions.
 
 ### Run summary
 
-The last block of every result:
+The last block of every result, followed only by the next-steps questions:
 
 ```
 Run summary
@@ -230,7 +232,23 @@ Run summary
   write it in the same form. Add `; <n> needs confirmation` before the rejected count when there are any.
 - In a multi-repository review, also give the time for each repository (start a new timer value for each).
 - Never print secret values, card numbers, CVVs, OTPs or tokens. Refer to them by location only.
-- Report only. Change code only when the user asks for fixes, and then update or add the matching negative tests.
+- Report only. Change code only when the user asks for fixes (including through the next-steps questions), and
+  then update or add the matching negative tests.
+
+### Next steps
+
+After the run summary, ask the user what to do next, with the question tool when the session has one, otherwise
+as a short closing question. Ask only what applies:
+
+- **Report.** When the user didn't ask for a report, ask whether to generate one with the findings (see Report).
+  Skip it when a report was asked for or is already being built.
+- **Fixes.** When there is at least one finding, ask whether to fix a specific finding (offer the findings by
+  title, most severe first; the user can name others), fix all of them, or neither for now. Leave out findings
+  rejected by verification, and note that `needs confirmation` findings are fixed only after their fact is
+  confirmed or the user chooses to fix them anyway.
+
+Act on the answers in that order: build the report first, then fix (rules above). Skip the questions in a
+non-interactive run (CI, scheduled or headless), where no one can answer.
 
 ## CI gate
 

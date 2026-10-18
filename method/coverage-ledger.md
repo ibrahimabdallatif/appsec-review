@@ -114,8 +114,10 @@ per repository.
 
 Finding decisions come from `method/verifier.md`: `confirmed` and `hardening` (`warning` or `suggestion`) have a
 severity; `needs_confirmation` and `rejected` have `null`. A `needs_confirmation` finding also has
-`severity_if_confirmed`, and a `rejected` one has `disproof` with the `path:line` of the stopping control; the
-validator enforces both. Keep rejected findings so later runs don't repeat them.
+`severity_if_confirmed`, and a `rejected` one has `disproof` with the `path:line` of the stopping control and
+`proposed_severity`, the severity the candidate had before verification. A rejected `critical` or `bug`
+candidate also has `rejection_reviewed: true` once a second verifier upheld it (`method/verifier.md`, "Rejection
+review"); the validator enforces all of these. Keep rejected findings so later runs don't repeat them.
 
 `stopped_early` is `true` only when the user stopped the run; it is the one case where in-scope units may stay
 `deferred`. A large repository is not a reason to defer: review every unit, and if the run is long, say so.
@@ -159,7 +161,9 @@ If a ledger already exists, read it first:
 - Bring a ledger written under older rules up to date before validating: add the `threat_model` and abuse
   paths if it has none, review its `deferred` units, add
   `severity_if_confirmed` to each `needs_confirmation` finding, and re-verify each `rejected` finding that has no
-  `disproof` line (keep it rejected only if a verifier cites one; otherwise it becomes `needs_confirmation`).
+  `disproof` line (keep it rejected only if a verifier cites one; otherwise it becomes `needs_confirmation`),
+  and add `proposed_severity` to each `rejected` finding and send the `critical` and `bug` ones to rejection
+  review.
 - An earlier `rejected` finding suppresses only that same claim on unchanged code, not review of its unit.
 - Append a `runs` entry and update `source_ref`. Never imply that one run covered everything; say how many units
   are covered, blocked and deferred.
