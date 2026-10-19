@@ -39,6 +39,26 @@
   </tr>
 </table>
 
+## ⚖️ How it compares
+
+appsec-review adapts its hunters, verifier and coverage ledger from Cloudflare's
+[security-audit](https://github.com/cloudflare/security-audit-skill) ([NOTICE.md](NOTICE.md)). It is also compared
+with Claude Code's built-in [`/security-review`](https://github.com/anthropics/claude-code-security-review). All
+three make an agent try to disprove a finding before it is reported. They are built for different jobs:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/comparison-dark.svg">
+  <img alt="Comparison of appsec-review, Claude Code /security-review and Cloudflare security-audit" src="docs/assets/comparison-light.svg">
+</picture>
+
+Use appsec-review for PR reviews, web, API, mobile and Supabase/Firebase apps, audit deliverables, CI gates and a
+predictable cost. Use `/security-review` for a quick, zero-setup check of a branch's high-confidence issues. Use
+security-audit for native code, messaging-heavy systems, proving bugs by running the code, or the widest coverage of
+a large codebase when cost matters less.
+
+<sub>Compared in October 2026 with security-audit at commit `c1c8a8c` and claude-code-security-review at commit
+`0c6a49f`.</sub>
+
 ## ✨ Features
 
 ### 🔍 Code review engine
@@ -207,42 +227,6 @@ Agent setup, accepted risks, SARIF, a Jenkins example and scheduling advice:
 > [!WARNING]
 > Ledgers, inventories and reports describe how to attack open issues. They are kept in `~/.appsec-review/`,
 > outside your repository, and reports are published privately. Check who can see them before sharing.
-
-## ⚖️ How it compares
-
-appsec-review adapts its hunters, verifier and coverage ledger from Cloudflare's
-[security-audit](https://github.com/cloudflare/security-audit-skill) ([NOTICE.md](NOTICE.md)). It is also compared
-with Claude Code's built-in [`/security-review`](https://github.com/anthropics/claude-code-security-review). All
-three make an agent try to disprove a finding before it is reported. They are built for different jobs:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/comparison-dark.svg">
-  <img alt="Comparison of appsec-review, Claude Code /security-review and Cloudflare security-audit; the table below has the same content in detail" src="docs/assets/comparison-light.svg">
-</picture>
-
-| | appsec-review | Claude Code `/security-review` | Cloudflare security-audit |
-|---|---|---|---|
-| Shape | One skill, three modes | Built-in slash command, also a GitHub Action | One skill: guidance or full audit |
-| Agents per run | Fixed by mode: 0–1 (`diff`) up to two hunters plus verifiers (`deep`) | One finder, plus one false-positive filter per finding | Recon agents, one hunter per ledger unit, critics and verifiers; optional cap on agent calls |
-| Subagent model | The session's model | The session's model; the Action defaults to a pinned Opus model | Not named |
-| Verification | Disproof pass for all; fresh verifiers scaled by mode; rejected serious candidates reviewed again | Filter subagent per finding; findings below 8/10 confidence dropped | Fresh verifier per candidate in every profile; final records checked a second time |
-| Change review | `diff` mode reads all changed code and what it calls, plus history, callers and tests | Diff against `origin/HEAD`; reports only issues the change adds | Scoped run |
-| Rules | Framework-neutral categories plus stack files and deep playbooks | One prompt with five categories; excludes denial of service, rate limiting, outdated dependencies, theoretical races and most open redirects | Framework-neutral attack classes |
-| Standards and scoring | OWASP, ASVS, MASVS, CWE, PCI DSS; CVSS 4.0 by script | High, medium or low, plus a confidence score | Likelihood × impact |
-| Output | HTML and Markdown report | Markdown; the Action posts PR comments and a JSON results file | `findings.json` against a schema, plus Markdown reports |
-| CI | `--fail-on` gate, accepted risks, SARIF | GitHub Action with a findings count; no severity gate | — |
-| Scope per run | One PR up to every repository in a folder | Pending changes on one branch | One repository |
-| Native code | — | — | Yes |
-| Runs target code | No, reads code only | No, reads code only | Yes, in an OS-enforced sandbox |
-| License | MIT | MIT | MIT |
-
-Use appsec-review for PR reviews, web, API, mobile and Supabase/Firebase apps, audit deliverables, CI gates and a
-predictable cost. Use `/security-review` for a quick, zero-setup check of a branch's high-confidence issues. Use
-security-audit for native code, messaging-heavy systems, proving bugs by running the code, or the widest coverage of
-a large codebase when cost matters less.
-
-<sub>Compared in October 2026 with security-audit at commit `c1c8a8c` and claude-code-security-review at commit
-`0c6a49f`.</sub>
 
 ## 📚 Reference
 
