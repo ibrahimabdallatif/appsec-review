@@ -16,7 +16,7 @@ directions miss different things. Hunters run alongside the main assessment (SKI
 
 Context block to put before each hunter prompt:
 
-- repository path and branch, stack and layer, the stack files picked;
+- repository path and branch, stack and layer (with several layers, the folders of each), the stack files picked;
 - the entry points and trust boundaries you mapped in steps 2–5;
 - the abuse paths from the ledger (`method/threat-model.md`), as extra targets: report candidates that
   realise one with its unit id in the trace (`standard` and `deep` only);

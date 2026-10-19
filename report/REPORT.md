@@ -34,10 +34,10 @@ dropping it.
 | # | Section | Content |
 |---|---|---|
 | Cover | Title block | "Confidential" badge with the light/dark mode toggle beside it, organisation · platform, `<service>` + "Source Code Review Report", one-sentence scope, and a meta grid: Version, Date of issue, Branch (or PR/commit), Review mode (`diff`, `standard` or `deep`), Findings (root causes and affected locations, with critical and high counts), Status |
-| 1.0 | Executive Summary | 1.1 Key Takeaways (what was reviewed, the 1–2 most urgent problems, what is well built; on a retest, also what changed since the previous version: fixed, new and re-rated findings). 1.2 Risk Profile (one card: root causes, affected locations, stacked bar and counts per rating). 1.3 Findings at a Glance (table: #, Vulnerability linked to its finding, Risk, CVSS 4.0, Affected file:line, Status) |
-| 2.0 | Scope and Threat Model | 2.1 Scope of Work (repository, branch, version, stack and layer, code size, endpoints or screens, integrations). 2.2 Threat Model (from the ledger: assets, actors and each abuse path with its result: realised by a finding, blocked by a named control, or blocked on an outside fact). 2.3 Limitations (everything not verified, tools not run, dependency sources read or downloaded to check library behaviour and any that couldn't be obtained, ledger units left `blocked`, `deferred` or `out_of_scope` with their reasons, and the ledger summary counts) |
+| 1.0 | Executive Summary | 1.1 Key Takeaways (what was reviewed, the 1–2 most urgent problems, what is well built; on a retest, also what changed since the previous version: fixed, new and re-rated findings). 1.2 Risk Profile (one card: root causes, affected locations, stacked bar and counts per rating; with several layers, one more card per layer, section 7). 1.3 Findings at a Glance (table: #, Vulnerability linked to its finding, Risk, CVSS 4.0, Affected file:line, Status; with several layers, grouped by layer) |
+| 2.0 | Scope and Threat Model | 2.1 Scope of Work (repository, branch, version, stack and layer, code size, endpoints or screens, integrations; with several layers, one Layer row per layer naming its folders). 2.2 Threat Model (from the ledger: assets, actors and each abuse path with its result: realised by a finding, blocked by a named control, or blocked on an outside fact). 2.3 Limitations (everything not verified, tools not run, dependency sources read or downloaded to check library behaviour and any that couldn't be obtained, ledger units left `blocked`, `deferred` or `out_of_scope` with their reasons, and the ledger summary counts) |
 | 3.0 | Security Controls Checklist | 3.1 Checklist Results: vulnerable / secure counts for each applicable category in section 4 below, then one line naming the categories that don't apply. 3.2 Controls Verified as Secure (the "checked and found clean" list, taken from `covered` ledger units) |
-| 4.0 | Vulnerability Findings | Single repository: 4.1 `<service>` · `<layer>`, where the layer is Backend, Web frontend or Mobile app (a repository with several layers, such as a full-stack app, gets 4.1 and 4.2). Several repositories: 4.1 Platform-wide findings, then 4.2 onwards with one section per repository (rules in section 6 of this file; 5.0 stays Remediation Plan). One finding card per issue, numbered 4.1.1, 4.1.2, … (4.2.1, … in later sections) ordered by CVSS score within its section, highest first; ties keep the order of the summary table |
+| 4.0 | Vulnerability Findings | Single repository: 4.1 `<service>` · `<layer>`, where the layer is Backend, Web frontend or Mobile app. A repository with several layers, such as a full-stack app, gets one section per layer, never one mixed section (section 7 of this file). Several repositories: 4.1 Platform-wide findings, then 4.2 onwards with one section per repository (rules in section 6 of this file; 5.0 stays Remediation Plan). One finding card per issue, numbered 4.1.1, 4.1.2, … (4.2.1, … in later sections) ordered by CVSS score within its section, highest first; ties keep the order of the summary table |
 | 5.0 | Remediation Plan | 5.1 Prioritised Actions: 8–12 numbered actions that generalise the findings, each naming the finding ids it closes and an effort (S, M or L). 5.2 Facts to Confirm: one row per `needs confirmation` finding with its id, the exact fact, a safe way for the owner to check it, and the rating if it turns out unsafe ("None" when there are none) |
 | 6.0 | Appendix | 6.1 Assessment Methodology (code enumeration and coverage ledger, dependency and secret checks, manual source analysis, wildcard and obvious-things hunters, and in `deep` the sink-trace hunter, verification of every candidate, reporting; name the review mode, the review duration and token use from the run summary, the stack files applied and any scanners actually run). 6.2 Security Standards (the standards table from "Security standards" below). 6.3 Risk Rating Criteria (CVSS band table, section 2 below). 6.4 Candidates Rejected by Verification (title, `file:line`, the verifier's reason and the disproof line, so the reader can overrule a wrong rejection; "None" when there are none). 6.5 Disclaimer (confidential, point-in-time, what "needs confirmation" means) |
 | Footer | | Confidentiality line and the note that secrets are referenced by location only |
@@ -319,3 +319,32 @@ in sections 1 to 5 still applies.
 - Cross-references between findings must survive renumbering: keep symbolic ids in the working data and resolve
   them to finding numbers and links when building the page.
 - Prefix every asset path with its repository name (an ellipsis may shorten the package path).
+
+## 7. Repositories with several layers
+
+Use these rules whenever a reviewed repository has more than one layer (a back end with a web front end, a back end
+with a mobile app, or all three), so a reader can see each layer's findings on their own. They apply to a
+single-repository report and to each such repository in a multi-repository report. The layer of each finding is the
+`layer` field in the ledger, chosen by the rules in `rules/00-overview.md` ("Findings in a repository with several
+layers").
+
+- **4.0:** one section per layer, in the order Backend, Web frontend, Mobile app, titled `<service>` · `<layer>`
+  (4.1 `shop` · Backend, 4.2 `shop` · Web frontend). Never put two layers' findings in one section. Open each
+  section with one sentence naming the folders it covers. Keep a layer's section with "None" when it has no
+  findings, and say which controls held there. In a multi-repository report the repository gets one section per
+  layer in the same way (4.3 `shop` · Backend, 4.4 `shop` · Web frontend), after 4.1 Platform-wide findings.
+- **Numbering:** several 4.x sections, so ids and anchors follow section 3 ("Several 4.x sections"): 4.1.1,
+  4.2.1, with anchors `f1-1`, `f2-1`.
+- **Cross-references:** when one weakness has a matching finding in another layer (the page renders unescaped
+  HTML that the API stored without validation), each card's Description links the other by id. A back-end
+  finding that the front end only hides gets one line in the front-end section pointing to it.
+- **1.2 Risk Profile:** keep the total card, then add one card per layer below it with that layer's root causes,
+  locations, bar and counts, so the counts per layer add up to the total.
+- **1.3 Findings at a Glance:** one group per layer, in section order, each opened by a group row naming the
+  section (`4.1 Backend`). The # column holds the full finding id.
+- **2.1 Scope of Work:** one Layer row per layer: its stack, folders, and entry points or screens.
+- **3.1 and 3.2:** count across layers, and name the layer in each verified control (`Backend: …`).
+- **5.1 Prioritised Actions:** say which layer each action changes; an action that changes both names both.
+- **Markdown copy:** the same sections and groups, with the per-layer counts as one table (rows per layer, columns
+  per rating, plus a Total row).
+- **Contents rail:** one sub-entry per layer section, linking its heading id (`s1`, `s2` for 4.1, 4.2).

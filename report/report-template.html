@@ -104,6 +104,10 @@ td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
 .total .head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
 .total .big { font-family: var(--display); font-size: 3.4rem; font-weight: 700; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .total .sub { color: var(--muted); font-size: 0.9rem; }
+.total.layer { margin-top: 12px; gap: 12px; }
+.total.layer .big { font-size: 2.2rem; }
+.total .layer-name { font-weight: 600; }
+.tbl-findings tr.grp td { background: var(--accent-soft); font-weight: 600; }
 .stack { display: flex; height: 12px; border-radius: 999px; overflow: hidden; gap: 2px; }
 .stack span { background: var(--c); }
 .legend { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
@@ -210,6 +214,9 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
   {{ANCHOR}} = f1, f2 (element id and 1.3 link). All three follow the same order.
   Several 4.x sections (4.2 Frontend, or several repositories per REPORT.md "Multi-repository reports"):
   {{SEQ}} and {{FINDING_ID}} = 4.2.1, {{ANCHOR}} = f2-1, and the rail gets one sub-entry per section.
+  A repository with several layers (REPORT.md section 7) gets one 4.x section per layer, never a mixed one,
+  plus the LAYERS ONLY blocks below; delete those blocks for a repository with one layer.
+  Every 4.x heading: {{SECTION_NUM}} = 4.1, 4.2; {{SECTION_ANCHOR}} = s1, s2.
   No external fonts or scripts: the report is confidential, so it uses the system font stacks only.
   Severity classes: s-critical | s-high | s-medium | s-low | s-info
 -->
@@ -247,6 +254,7 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
       <li><a href="#scope">2.0 Scope and Threat Model</a></li>
       <li><a href="#checklist">3.0 Security Controls Checklist</a></li>
       <li><a href="#findings">4.0 Vulnerability Findings</a></li>
+      <!-- LAYERS ONLY, REPEAT per 4.x section: <li class="sub"><a href="#{{SECTION_ANCHOR}}">{{SECTION_NUM}} {{LAYER}}</a></li> -->
       <li><a href="#remediation">5.0 Remediation Plan</a></li>
       <li><a href="#appendix">6.0 Appendix</a></li>
     </ol>
@@ -283,10 +291,29 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
           <div class="s-info"><b>{{N_INFO}}</b><span>Informational</span></div>
         </div>
       </div>
+      <!-- LAYERS ONLY, REPEAT per layer in section order; counts are that layer's, drop a span or legend entry when 0 -->
+      <div class="card total layer">
+        <div class="head"><span class="layer-name">{{LAYER}}</span><span class="big">{{LAYER_TOTAL}}</span><span class="sub">root causes in {{LAYER_LOCATIONS}} affected locations</span></div>
+        <div class="stack" aria-hidden="true">
+          <span class="s-critical" style="flex:{{L_CRITICAL}}"></span>
+          <span class="s-high" style="flex:{{L_HIGH}}"></span>
+          <span class="s-medium" style="flex:{{L_MEDIUM}}"></span>
+          <span class="s-low" style="flex:{{L_LOW}}"></span>
+          <span class="s-info" style="flex:{{L_INFO}}"></span>
+        </div>
+        <div class="legend">
+          <div class="s-critical"><b>{{L_CRITICAL}}</b><span>Critical</span></div>
+          <div class="s-high"><b>{{L_HIGH}}</b><span>High</span></div>
+          <div class="s-medium"><b>{{L_MEDIUM}}</b><span>Medium</span></div>
+          <div class="s-low"><b>{{L_LOW}}</b><span>Low</span></div>
+          <div class="s-info"><b>{{L_INFO}}</b><span>Informational</span></div>
+        </div>
+      </div>
 
       <h3 class="sec" id="glance"><span class="num">1.3</span>Findings at a Glance</h3>
       <div class="tbl-wrap"><table class="tbl-findings">
         <thead><tr><th>#</th><th>Vulnerability</th><th>Risk</th><th class="num">CVSS 4.0</th><th>Affected file</th><th>Status</th></tr></thead>
+        <!-- LAYERS ONLY, before each layer's rows: <tr class="grp"><td colspan="6">{{SECTION_NUM}} {{LAYER}}</td></tr> -->
         <!-- REPEAT per finding, same order as 4.0 -->
         <tr><td>{{SEQ}}</td><td><a href="#{{ANCHOR}}">{{FINDING_TITLE}}</a></td><td><span class="sev {{SEV_CLASS}}">{{RATING}}</span></td><td class="num">{{CVSS}}</td><td><code>{{FILE:LINES}}</code></td><td>{{STATUS}}</td></tr>
       </table></div>
@@ -333,7 +360,9 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
 
     <section class="part" id="findings">
       <header><span class="num">4.0</span><h2>Vulnerability Findings</h2></header>
-      <h3 class="sec"><span class="num">4.1</span>{{SERVICE}} · {{LAYER}}</h3>
+      <!-- REPEAT this heading and its findings per 4.x section (one per layer when the repository has several) -->
+      <h3 class="sec" id="{{SECTION_ANCHOR}}"><span class="num">{{SECTION_NUM}}</span>{{SERVICE}} · {{LAYER}}</h3>
+      <!-- LAYERS ONLY: <p class="na">Covers {{LAYER_FOLDERS}}.</p> -->
 
       <!-- REPEAT per finding, highest CVSS first -->
       <article class="finding {{SEV_CLASS}}" id="{{ANCHOR}}">

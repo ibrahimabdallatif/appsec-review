@@ -21,6 +21,9 @@ by their severity, needs_confirmation findings by severity_if_confirmed, and rej
 --accepted waives findings a team has accepted until an expiry date (see accepted_risks.py); waived findings
 are still printed. It needs --fail-on or --sarif.
 
+A repository with more than one layer (back end, web front end, mobile app) lists them in "layers", and every
+finding then names its "layer", so the report and the result keep each layer's findings apart.
+
 --sarif writes the reported findings of a valid ledger as SARIF 2.1.0 (see sarif.py), with accepted risks marked
 as suppressed, for GitHub code scanning or Jenkins Warnings. It does not change the exit code.
 """
@@ -47,6 +50,7 @@ REVIEWED_REJECTIONS = ("critical", "bug")
 REQUIRED_TOP = ("repo", "source_ref", "profile", "scope", "units", "findings")
 REQUIRED_UNIT = ("id", "surface", "area", "status", "reviewed_paths", "checks", "finding_keys", "unresolved")
 REQUIRED_FINDING = ("key", "title", "decision", "severity", "paths")
+LAYERS = ("backend", "web-frontend", "mobile")
 
 EVIDENCE_STATES = ("covered", "finding", "blocked")
 EXCUSED_STATES = ("not_applicable", "out_of_scope")
@@ -183,6 +187,37 @@ def check_finding(finding):
     return errors
 
 
+def declared_layers(ledger):
+    """The layers the ledger lists, or every known layer when it lists none."""
+    layers = ledger.get("layers")
+    return list(layers) if isinstance(layers, list) and layers else list(LAYERS)
+
+
+def check_layers(ledger):
+    """An optional "layers" list names known layers, each once."""
+    if "layers" not in ledger:
+        return []
+    layers = ledger["layers"]
+    if not isinstance(layers, list) or not layers or not all(isinstance(n, str) for n in layers):
+        return ["ledger: layers must be a non-empty list of layer names"]
+    errors = ["ledger: unknown layer '%s'" % name for name in layers if name not in LAYERS]
+    return errors + ["ledger: duplicate layer '%s'" % d for d in duplicates(layers)]
+
+
+def check_finding_layer(finding, ledger):
+    """With more than one layer, every finding names one of them, so its findings are reported apart."""
+    label = "finding %s" % finding.get("key")
+    layers = declared_layers(ledger)
+    layer = finding.get("layer")
+    if layer is None:
+        if len(ledger.get("layers") or []) > 1:
+            return ["%s: needs a layer (one of %s)" % (label, ", ".join(layers))]
+        return []
+    if layer not in layers:
+        return ["%s: layer must be one of %s" % (label, ", ".join(layers))]
+    return []
+
+
 def check_title(finding, label):
     """Titles name the weakness for people reading results, SARIF and reports: never a candidate id like 'C9'."""
     title = finding.get("title")
@@ -253,7 +288,7 @@ def validate(ledger, areas=None):
     """Return a list of error strings; empty means the ledger is valid."""
     if not isinstance(ledger, dict):
         return ["ledger: top level must be an object"]
-    errors = check_top(ledger)
+    errors = check_top(ledger) + check_layers(ledger)
     if errors:
         return errors
     areas = areas if areas is not None else allowed_areas()
@@ -265,6 +300,7 @@ def validate(ledger, areas=None):
         errors += check_deferral(unit, ledger.get("stopped_early") is True)
     for finding in findings:
         errors += check_finding(finding)
+        errors += check_finding_layer(finding, ledger)
     errors += threat_model.check_abuse(ledger)
     errors += threat_model.check_chains(findings, gate_severity)
     return errors + check_links(units, findings)
@@ -300,6 +336,16 @@ def findings_line(ledger):
         parts.append("%d needs confirmation" % pending)
     parts.append("%d rejected by verification" % (len(findings) - len(reported)))
     return "Findings: %d root causes: %s" % (len(reported), " ; ".join(parts))
+
+
+def layers_line(ledger):
+    """Reported root causes per layer for a ledger with several layers, else None."""
+    layers = ledger.get("layers") or []
+    if len(layers) < 2:
+        return None
+    reported = [f for f in ledger["findings"] if f["decision"] != "rejected"]
+    counts = count_by(reported, "layer")
+    return "Findings by layer: " + " ; ".join("%s %d" % (name, counts.get(name, 0)) for name in layers)
 
 
 def entry_surface(entry, profile):
@@ -460,6 +506,8 @@ def main(args):
         return 1
     print(json.dumps(summary(ledger), indent=2, sort_keys=True))
     print(findings_line(ledger))
+    if layers_line(ledger):
+        print(layers_line(ledger))
     today = datetime.date.today()
     if parsed["sarif"]:
         write_sarif(parsed["sarif"], ledger, entries, today)

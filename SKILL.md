@@ -87,7 +87,8 @@ never selects `deep` mode.
    branch first, and report paths relative to its root (prefixed with the repository name in a multi-repository
    review).
 2. **Identify the stack.** For each repository, read its manifests and record languages, frameworks, versions and
-   layer (back end, web front end, mobile app, or several), as `00-overview.md` describes. Pick the stack files
+   layer (back end, web front end, mobile app, or several, with the folders of each), as `00-overview.md`
+   describes. Pick the stack files
    whose `detect` front matter matches; a repository can match several. In `standard` and `deep`, then build the
    inventory: `python -I <skill folder>/method/inventory.py <repo> --out ~/.appsec-review/<repo>/inventory.json`
    (add `--only <path>` for an endpoint or files review). Compare the stacks it detected with yours and re-run it
@@ -168,7 +169,8 @@ Review each repository in depth first; build the combined result only from those
    new one, and move an earlier repository finding to platform-wide when it reappears. Everything else stays with
    its repository.
 4. **Merge after each repository.** Update the combined result as soon as a repository's deep review is done:
-   terminal output grouped as platform-wide first, then one group per repository; for a report, follow the
+   terminal output grouped as platform-wide first, then one group per repository (split by layer when the
+   repository has several); for a report, follow the
    multi-repository rules in `report/REPORT.md`, publish after the first repository, and update the same artifact
    after each later one (unless the user asked for one report at the end). Re-check scores so the same issue has
    the same vector in every repository.
@@ -186,6 +188,11 @@ ledger; a platform-wide finding uses one finding key, linked from units in every
 - Order findings by severity (`critical`, `bug`, `warning`, `suggestion`), using the title format from
   `00-overview.md`: `[Security] <issue> (<OWASP/API/CWE ref>)`. In a multi-repository review, group them as
   platform-wide first, then by repository, and order by severity within each group.
+- **Keep layers apart.** When a repository has more than one layer (a back end with a web front end or a mobile
+  app), group its findings under one heading per layer, in the order Backend, Web frontend, Mobile app, and
+  order by severity within each. Place each finding by the rules in `00-overview.md` ("Findings in a repository
+  with several layers"), and record it as the finding's `layer` in the ledger. Keep a layer's heading with "None"
+  when it has no findings.
 - For each finding give `file:line`, the attack (preconditions, request, result), the impact, and a concrete fix
   that uses the codebase's existing helpers and conventions.
 - "Needs confirmation" findings stay in the main list, placed by the severity they have if confirmed, with a label
@@ -214,6 +221,7 @@ Run summary
 - Tokens: <python -I <skill folder>/method/run_stats.py --tokens <budget at start> <budget at end> <tokens per subagent ...>>
 - Subagents: <number started, by role and model>
 - Findings: <root causes> root causes: <n> critical ; <n> bug ; <n> warning ; <n> suggestion ; <n> rejected by verification
+- Findings by layer: backend <n> ; web-frontend <n>   (only when the repository has several layers)
 - <mode note>
 ```
 
@@ -232,7 +240,9 @@ Run summary
     branch against its base plus uncommitted changes, or name a branch (for example
     `/appsec-review feature/login against main`)."
 - **Findings.** One line. In `standard` and `deep`, copy the `Findings:` line `method/ledger.py` prints. In `diff`,
-  write it in the same form. Add `; <n> needs confirmation` before the rejected count when there are any.
+  write it in the same form. Add `; <n> needs confirmation` before the rejected count when there are any. For a
+  repository with several layers, add the `Findings by layer:` line `method/ledger.py` prints under it (in
+  `diff`, write it in the same form).
 - In a multi-repository review, also give the time for each repository (start a new timer value for each).
 - Never print secret values, card numbers, CVVs, OTPs or tokens. Refer to them by location only.
 - Report only. Change code only when the user asks for fixes (including through the next-steps questions), and

@@ -30,6 +30,7 @@ per repository.
   "dirty": false,
   "profile": "standard|deep",
   "scope": "diff|repo|endpoint|files",
+  "layers": ["backend", "web-frontend"],
   "base_ref": "<merge-base sha for a diff review, else null>",
   "stopped_early": false,
   "runs": [{"date": "2026-10-15", "source_ref": "<sha>", "scope": "repo", "note": "first full review"}],
@@ -68,13 +69,13 @@ per repository.
   "findings": [
     {"key": "cards/reveal-without-step-up", "title": "Card reveal without OTP step-up",
      "decision": "confirmed", "severity": "critical", "paths": ["src/main/java/.../CardController.java"],
-     "source_ref": "<sha>"},
+     "layer": "backend", "source_ref": "<sha>"},
     {"key": "cards/owner-check-in-cms", "title": "Card ownership relies on CMS scoping",
      "decision": "needs_confirmation", "severity": null, "severity_if_confirmed": "critical",
-     "paths": ["src/main/java/.../CardService.java"], "source_ref": "<sha>"},
+     "paths": ["src/main/java/.../CardService.java"], "layer": "backend", "source_ref": "<sha>"},
     {"key": "cards/otp-header-brute-force", "title": "OTP brute force on header path",
      "decision": "rejected", "severity": null, "disproof": "src/main/java/.../OtpFilter.java:57 attempt counter",
-     "paths": ["src/main/java/.../OtpController.java"], "source_ref": "<sha>"}
+     "paths": ["src/main/java/.../OtpController.java"], "layer": "backend", "source_ref": "<sha>"}
   ]
 }
 ```
@@ -92,6 +93,10 @@ per repository.
   never a working candidate id such as `C9`. It is what the result, SARIF and reports show.
 - **finding key**: a stable root-cause key such as `cards/reveal-without-step-up`. No line numbers or severities.
   One root cause seen from several entry points is one finding linked from several units.
+- **layers** and **layer**: the repository's layers from step 2 (`backend`, `web-frontend`, `mobile`), in that
+  order. Leave `layers` out for a repository with one layer. When it lists two or more, every finding needs a
+  `layer` from the list, chosen as `rules/00-overview.md` ("Findings in a repository with several layers") says;
+  the validator enforces it and prints the reported findings per layer.
 - **threat_model** and **abuse paths**: written as `method/threat-model.md` says. An abuse path unit has area
   `abuse-path`, surface `abuse/<slug>`, and an `abuse` object whose `actor` and `asset` come from the threat
   model. A ledger needs at least 3 and one per asset. Closed `covered`, one check cites the `path:line` of the

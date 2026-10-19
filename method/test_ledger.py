@@ -336,6 +336,18 @@ class ValidateTest(unittest.TestCase):
                             unit(surface="<repo>", area="wildcard")], [finding()], profile="standard")
         self.assertEqual(ledger.validate(data, AREAS), [])
 
+    def test_layered_ledger_needs_finding_layers(self):
+        data = self.valid()
+        data["layers"] = ["backend", "web-frontend"]
+        self.assertIn("needs a layer", " ".join(ledger.validate(data, AREAS)))
+        data["findings"][0]["layer"] = "backend"
+        self.assertEqual(ledger.validate(data, AREAS), [])
+
+    def test_bad_layers_list_stops_validation(self):
+        data = self.valid()
+        data["layers"] = ["desktop"]
+        self.assertEqual(ledger.validate(data, AREAS), ["ledger: unknown layer 'desktop'"])
+
     def test_deferred_unit_needs_stopped_early(self):
         data = self.valid()
         data["units"].append(unit(area="obvious-things", status="deferred", reviewed_paths=[], checks=[],
@@ -409,6 +421,64 @@ class FindingsLineTest(unittest.TestCase):
         self.assertEqual(ledger.findings_line(ledger_with([], findings)),
                          "Findings: 1 root causes: 0 critical ; 0 bug ; 0 warning ; 0 suggestion ; "
                          "1 needs confirmation ; 0 rejected by verification")
+
+
+class DeclaredLayersTest(unittest.TestCase):
+    def test_listed_layers(self):
+        self.assertEqual(ledger.declared_layers({"layers": ["backend"]}), ["backend"])
+
+    def test_every_layer_when_none_listed(self):
+        self.assertEqual(ledger.declared_layers({}), list(ledger.LAYERS))
+
+
+class CheckLayersTest(unittest.TestCase):
+    def test_absent_ok(self):
+        self.assertEqual(ledger.check_layers({}), [])
+
+    def test_known_layers_ok(self):
+        self.assertEqual(ledger.check_layers({"layers": ["backend", "web-frontend"]}), [])
+
+    def test_empty_or_not_names(self):
+        for value in ([], "backend", [{"name": "backend"}]):
+            self.assertIn("non-empty list", " ".join(ledger.check_layers({"layers": value})), value)
+
+    def test_unknown_and_duplicate(self):
+        errors = " ".join(ledger.check_layers({"layers": ["backend", "backend", "desktop"]}))
+        self.assertIn("unknown layer 'desktop'", errors)
+        self.assertIn("duplicate layer 'backend'", errors)
+
+
+class CheckFindingLayerTest(unittest.TestCase):
+    TWO = {"layers": ["backend", "web-frontend"]}
+
+    def test_single_layer_needs_none(self):
+        self.assertEqual(ledger.check_finding_layer(finding(), {}), [])
+        self.assertEqual(ledger.check_finding_layer(finding(), {"layers": ["backend"]}), [])
+
+    def test_several_layers_need_one(self):
+        self.assertIn("needs a layer", " ".join(ledger.check_finding_layer(finding(), self.TWO)))
+
+    def test_listed_layer_ok(self):
+        self.assertEqual(ledger.check_finding_layer(finding(layer="web-frontend"), self.TWO), [])
+
+    def test_layer_outside_list(self):
+        errors = ledger.check_finding_layer(finding(layer="mobile"), self.TWO)
+        self.assertIn("layer must be one of backend, web-frontend", " ".join(errors))
+
+    def test_unknown_layer_without_list(self):
+        self.assertTrue(ledger.check_finding_layer(finding(layer="desktop"), {}))
+
+
+class LayersLineTest(unittest.TestCase):
+    def test_none_for_one_layer(self):
+        self.assertIsNone(ledger.layers_line(ledger_with([], [finding()])))
+
+    def test_counts_reported_per_layer(self):
+        findings = [finding(layer="backend"), finding(key="b", layer="backend"),
+                    finding(key="r", decision="rejected", severity=None, disproof="a.ts:1", layer="web-frontend")]
+        data = ledger_with([], findings)
+        data["layers"] = ["backend", "web-frontend"]
+        self.assertEqual(ledger.layers_line(data), "Findings by layer: backend 2 ; web-frontend 0")
 
 
 def inventory_with(entries=(), sinks=(), source_ref="abc123"):
@@ -694,6 +764,14 @@ class MainTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, os.path.dirname(out), ignore_errors=True)
         self.assertEqual(self.run_main([self.write({"repo": "x"}), "--sarif", out]), 1)
         self.assertFalse(os.path.exists(out))
+
+    def test_prints_findings_by_layer(self):
+        data = ledger_with([unit(status="finding", finding_keys=["cards-idor"])], [finding(layer="backend")])
+        data["layers"] = ["backend", "web-frontend"]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(ledger.main([self.write(data)]), 0)
+        self.assertIn("Findings by layer: backend 1 ; web-frontend 0", out.getvalue())
 
     def test_no_gate_ignores_findings(self):
         self.assertEqual(self.run_main([self.gated()]), 0)

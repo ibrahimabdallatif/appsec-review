@@ -57,7 +57,9 @@ Before assessing, record for each repository:
   and its lock file, `pyproject.toml`/`requirements*.txt`, `go.mod`, `*.csproj`, `composer.json`, `Gemfile`,
   `pubspec.yaml`, `Podfile`);
 - the layer: back end (serves an API or pages), web front end (runs in the browser), mobile app, or several of
-  these (server-rendered frameworks, monorepos with several apps);
+  these (server-rendered frameworks, monorepos with several apps). With several, record which folders belong to
+  each layer (for example `server/` and `api/` are the back end, `client/` and `web/` the web front end), so every
+  finding can be placed in one;
 - the entry points, using the stack file: routes, handlers and controllers; middleware, filters and guards; message
   consumers and scheduled jobs; for front ends, routes, screens, forms, API clients, deep links and message
   listeners.
@@ -191,6 +193,23 @@ mark a finding "needs confirmation" or lower its severity only because library b
 - Never quote secret values, card data, OTPs or tokens in a finding. Refer to them by location only.
 - Respect conventions the repository documents (CLAUDE.md, AGENTS.md, docs), such as anti-enumeration responses or
   where rate limiting lives. Flag changes that break them.
+
+### Findings in a repository with several layers
+
+When a repository has more than one layer (a back end and a web front end, or a back end and a mobile app), its
+findings are reported per layer, never mixed. Give every finding exactly one layer:
+
+- The layer whose code must change to fix it, taken from its affected paths and the layer folders recorded under
+  "Identify the stack". Token storage in the browser is the web front end; a missing server-side check is the
+  back end even when the UI hides the button.
+- One root cause stays one finding. If the front end and the back end each have their own weakness (the page
+  renders unescaped HTML, and the API stores it without validation), report two findings, one per layer, and
+  cross-reference them. If the only missing control is on the server, it is a back-end finding, and the front-end
+  section says the server is where it is fixed.
+- A chain goes in the layer of its most severe link (the back end on a tie); its `Chain:` line names the other
+  layer's links.
+- Shared build and deployment files (CI workflows, a root Dockerfile, a lock file used by both) go in the layer
+  they build; when they build both, the back end.
 
 The "who should be able to do this" list and the "Judge the code, not its reputation" rule are adapted from the
 secure-code-review skill in mohamed-osama-aboelkheir/appsec-untangled-resources (MIT License, copyright 2026
