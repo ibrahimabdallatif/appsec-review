@@ -1,0 +1,363 @@
+{
+  "meta": {
+    "service": "acme-shop",
+    "service_title": "Acme Shop",
+    "organisation": "Acme Corp (fictional)",
+    "platform": "E-commerce",
+    "repository": "acme-shop",
+    "branch": "main",
+    "commit": "0000000",
+    "app_version": "2.4.0",
+    "version": "1.0",
+    "date": "2026-10-19",
+    "date_long": "19 October 2026",
+    "mode": "deep",
+    "status": "Initial Review",
+    "scope_sentence": "Sample report for a fictional online shop. Every name, path, line of code and finding in it is invented to show the report format.",
+    "stack": "Node.js 22 with Express 5 and PostgreSQL · React 19 single-page app",
+    "code_scope": "214 source files, about 18,600 lines (`api/` and `web/`), tests and generated code excluded",
+    "endpoints": "41 HTTP routes in `api/src/routes/`, 1 payment webhook, 23 React screens",
+    "integrations": "Payment provider (webhook callbacks), transactional email service, object storage for product images",
+    "skill_ref": "sample",
+    "duration": "38m 12s",
+    "tokens": "1,284,500 tokens (main session and subagents)"
+  },
+  "summary": {
+    "reviewed": "This deep review covered the Acme Shop API and its React storefront on branch `main`, ahead of the 2.5 release that opens the shop to guest checkout.",
+    "urgent": "Two problems need fixing before release. The API decodes admin tokens without checking their signature, so anyone can forge an admin session ({ref:jwt}). The payment webhook trusts any caller, so an attacker can mark an unpaid order as paid ({ref:webhook}).",
+    "well_built": "Database access is parameterised throughout, passwords are hashed with Argon2id, session cookies are `HttpOnly` and `SameSite=Lax`, and file uploads are type-checked and stored outside the web root."
+  },
+  "layers": [
+    {
+      "name": "Backend",
+      "folders": "`api/`",
+      "stack": "Node.js 22, Express 5, PostgreSQL 16 via `pg`",
+      "entry_points": "41 routes, 1 webhook",
+      "controls_held": "parameterised queries, Argon2id password hashing, upload type checks"
+    },
+    {
+      "name": "Web frontend",
+      "folders": "`web/`",
+      "stack": "React 19, Vite 6, React Router 7",
+      "entry_points": "23 screens",
+      "controls_held": "React output escaping outside one component, no secrets in the bundle"
+    }
+  ],
+  "findings": [
+    {
+      "key": "jwt",
+      "layer": "Backend",
+      "ledger_key": "api/src/middleware/auth.js#requireAdmin",
+      "title": "Admin Token Signature Not Verified",
+      "vector": "AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:N/SI:N/SA:N",
+      "category": "Authentication and tokens",
+      "verification": "Independent verifier",
+      "status": "Initial Review",
+      "assets": ["api/src/middleware/auth.js:12-19"],
+      "references": "A07:2025, API2:2023, CWE-347, CWE-287, ASVS V9.1",
+      "description": "`requireAdmin` reads the bearer token with `jwt.decode`, which parses the token without checking its signature, and then trusts the `role` claim. Every route under `/api/admin` relies on this middleware.",
+      "attack": [
+        "The attacker, with no account, builds a token with the payload `{\"sub\":\"1\",\"role\":\"admin\"}` and any signature.",
+        "They send `GET /api/admin/customers` with that token in the `Authorization` header.",
+        "The middleware accepts the token and the API returns every customer record."
+      ],
+      "impact": "Full admin access without credentials: read and change every customer, order and product, and issue refunds.",
+      "recommendation": "Replace `jwt.decode` with `jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] })`, as `requireUser` already does in the same file. Add a test that a token signed with another key gets 401.",
+      "poc_path": "acme-shop/api/src/middleware/auth.js",
+      "poc_language": "js",
+      "poc": [
+        "function requireAdmin(req, res, next) {",
+        "  const token = (req.headers.authorization || '').replace('Bearer ', '');",
+        "  const claims = jwt.decode(token);",
+        "  if (!claims || claims.role !== 'admin') {",
+        "    return res.status(403).json({ error: 'forbidden' });",
+        "  }",
+        "  req.user = claims;",
+        "  next();",
+        "}"
+      ],
+      "highlight": [3, 4]
+    },
+    {
+      "key": "webhook",
+      "layer": "Backend",
+      "ledger_key": "api/src/routes/webhooks.js#POST /api/webhooks/payment",
+      "title": "Payment Webhook Accepts Unsigned Callbacks",
+      "vector": "AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N",
+      "category": "Business logic and abuse",
+      "verification": "Independent verifier",
+      "status": "Initial Review",
+      "assets": ["api/src/routes/webhooks.js:18-31"],
+      "references": "A08:2025, API6:2023, CWE-345, ASVS V2.3",
+      "description": "The payment webhook marks an order as paid from the `orderId` and `status` in the request body. It never checks the provider's `Payment-Signature` header, and the route is public so the provider can reach it.",
+      "attack": [
+        "The attacker places an order and stops at the payment page.",
+        "They send `POST /api/webhooks/payment` with `{\"orderId\":\"<their order>\",\"status\":\"succeeded\"}`.",
+        "The order moves to `paid` and is released for shipping."
+      ],
+      "impact": "Goods shipped without payment, for any order the attacker can create.",
+      "recommendation": "Verify the `Payment-Signature` header with the provider SDK's `constructEvent` and the webhook secret before reading the body, and re-fetch the payment from the provider by id before changing the order. Add a test that an unsigned callback gets 400 and leaves the order unchanged.",
+      "poc_path": "acme-shop/api/src/routes/webhooks.js",
+      "poc_language": "js",
+      "poc": [
+        "router.post('/payment', express.json(), async (req, res) => {",
+        "  const { orderId, status } = req.body;",
+        "  if (status === 'succeeded') {",
+        "    await orders.markPaid(orderId);",
+        "  }",
+        "  res.sendStatus(200);",
+        "});"
+      ],
+      "highlight": [2, 4]
+    },
+    {
+      "key": "idor",
+      "layer": "Backend",
+      "ledger_key": "api/src/routes/orders.js#GET /api/orders/:id",
+      "title": "Order Details Readable by Any Customer",
+      "vector": "AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N",
+      "category": "Access control and IDOR",
+      "verification": "Independent verifier",
+      "status": "Initial Review",
+      "assets": ["api/src/routes/orders.js:42-51", "api/src/db/orders.js:30-34"],
+      "references": "A01:2025, API1:2023, CWE-639, ASVS V8.2",
+      "description": "`GET /api/orders/:id` loads the order by id only. The query has no `customer_id` filter and the handler does not compare the owner with `req.user.id`. Order ids are sequential.",
+      "attack": [
+        "The attacker signs up as an ordinary customer.",
+        "They request `GET /api/orders/1`, `/2`, `/3` and so on.",
+        "Each response returns another customer's name, delivery address, phone number and items."
+      ],
+      "impact": "Any customer can read every other customer's order history and personal data.",
+      "recommendation": "Load the order with `orders.findForCustomer(id, req.user.id)` (the helper the order list already uses) and return 404 when it finds nothing. Add a test that customer B gets 404 for customer A's order.",
+      "poc_path": "acme-shop/api/src/routes/orders.js",
+      "poc_language": "js",
+      "poc": [
+        "router.get('/:id', requireUser, async (req, res) => {",
+        "  const order = await orders.findById(req.params.id);",
+        "  if (!order) {",
+        "    return res.sendStatus(404);",
+        "  }",
+        "  res.json(order);",
+        "});"
+      ],
+      "highlight": [2]
+    },
+    {
+      "key": "errors",
+      "layer": "Backend",
+      "ledger_key": "api/src/app.js#errorHandler",
+      "title": "Stack Traces Returned in Error Responses",
+      "vector": "AV:N/AC:L/AT:N/PR:N/UI:N/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N",
+      "category": "Logging and error handling",
+      "verification": "Self-verified",
+      "status": "Initial Review",
+      "assets": ["api/src/app.js:88-92"],
+      "references": "A10:2025, CWE-209, ASVS V16.5",
+      "description": "The global error handler sends `err.stack` to the client in every environment. A malformed request body is enough to trigger it.",
+      "attack": [
+        "The attacker sends `POST /api/cart` with an invalid JSON body.",
+        "The response contains the full stack trace, with file paths and library versions."
+      ],
+      "impact": "Reveals internal paths, library versions and query fragments that help plan further attacks.",
+      "recommendation": "Return `{ error: 'internal_error', requestId }` to the client and log the stack server side with the same request id.",
+      "poc_path": "acme-shop/api/src/app.js",
+      "poc_language": "js",
+      "poc": [
+        "app.use((err, req, res, next) => {",
+        "  logger.error(err);",
+        "  res.status(err.status || 500).json({ error: err.message, stack: err.stack });",
+        "});"
+      ],
+      "highlight": [3]
+    },
+    {
+      "key": "coupon",
+      "layer": "Backend",
+      "ledger_key": "api/src/services/coupons.js#redeem",
+      "title": "Single-Use Coupon Redeemable Twice in a Race",
+      "vector": "AV:N/AC:L/AT:P/PR:L/UI:N/VC:N/VI:L/VA:N/SC:N/SI:N/SA:N",
+      "category": "Business logic and abuse",
+      "verification": "Independent verifier",
+      "status": "Initial Review",
+      "needs_confirmation": true,
+      "fact": "The transaction isolation level used for `coupons.redeem` in production.",
+      "safe_check": "Run `SHOW default_transaction_isolation;` on a production read replica.",
+      "unsafe_rating": "Low",
+      "assets": ["api/src/services/coupons.js:21-33"],
+      "references": "A06:2025, API6:2023, CWE-362, ASVS V2.3",
+      "description": "`redeem` reads `used_at`, checks it is empty and then updates it in a separate statement. Two requests sent together can both pass the check. Whether this works depends on the database isolation level, which is not in the repository.",
+      "attack": [
+        "The attacker holds one single-use coupon and two carts.",
+        "They send both checkout requests with the coupon at the same moment.",
+        "Both orders get the discount."
+      ],
+      "impact": "A single-use discount applied more than once. The loss per coupon is small, but the same pattern is easy to script.",
+      "recommendation": "Redeem with one conditional update, `UPDATE coupons SET used_at = now() WHERE code = $1 AND used_at IS NULL RETURNING id`, and reject the checkout when no row comes back. Add a test that fires two redemptions in parallel.",
+      "poc_path": "acme-shop/api/src/services/coupons.js",
+      "poc_language": "js",
+      "poc": [
+        "async function redeem(code, orderId) {",
+        "  const coupon = await db.one('SELECT * FROM coupons WHERE code = $1', [code]);",
+        "  if (coupon.used_at) {",
+        "    throw new CouponUsedError();",
+        "  }",
+        "  await db.none('UPDATE coupons SET used_at = now(), order_id = $2 WHERE id = $1', [coupon.id, orderId]);",
+        "}"
+      ],
+      "highlight": [3, 6]
+    },
+    {
+      "key": "xss",
+      "layer": "Web frontend",
+      "ledger_key": "web/src/components/ReviewList.jsx#ReviewBody",
+      "title": "Stored XSS in Product Reviews",
+      "vector": "AV:N/AC:L/AT:N/PR:L/UI:P/VC:N/VI:N/VA:N/SC:H/SI:L/SA:N",
+      "category": "Web frontend and mobile security",
+      "verification": "Independent verifier",
+      "status": "Initial Review",
+      "assets": ["web/src/components/ReviewList.jsx:27-33"],
+      "references": "A05:2025, CWE-79, ASVS V3.2, WSTG-CLNT-03",
+      "description": "Review text is rendered with `dangerouslySetInnerHTML` so that line breaks show. The API stores review text as submitted, so any customer can store markup that runs in other shoppers' browsers.",
+      "attack": [
+        "The attacker, signed in as a customer, posts a review containing `<img src=x onerror=...>`.",
+        "Another shopper opens the product page.",
+        "The script runs in the shopper's session and can act as them on the storefront."
+      ],
+      "impact": "Actions in a victim's session, such as changing the delivery address of an open order. The session cookie itself is `HttpOnly`.",
+      "recommendation": "Render the text as a React child and use CSS `white-space: pre-line` for line breaks. Add a test that a review containing `<img>` renders as text.",
+      "poc_path": "acme-shop/web/src/components/ReviewList.jsx",
+      "poc_language": "jsx",
+      "poc": [
+        "function ReviewBody({ review }) {",
+        "  return (",
+        "    <div",
+        "      className=\"review-body\"",
+        "      dangerouslySetInnerHTML={{ __html: review.text.replace(/\\n/g, '<br>') }}",
+        "    />",
+        "  );",
+        "}"
+      ],
+      "highlight": [5]
+    },
+    {
+      "key": "storage",
+      "layer": "Web frontend",
+      "ledger_key": "web/src/api/client.js#saveToken",
+      "title": "Refresh Token Kept in localStorage",
+      "vector": "AV:N/AC:H/AT:P/PR:N/UI:P/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N",
+      "category": "Web frontend and mobile security",
+      "verification": "Rejection reviewed",
+      "status": "Initial Review",
+      "assets": ["web/src/api/client.js:9-14"],
+      "references": "A07:2025, CWE-922, ASVS V3.3, RFC 10017",
+      "description": "The storefront stores the long-lived refresh token in `localStorage`, where any script on the page can read it. Combined with {ref:xss}, an attacker could take the token and keep access after the victim leaves the page.",
+      "attack": [
+        "The attacker gets script running on the storefront (for example through {ref:xss}).",
+        "The script reads `localStorage.refreshToken` and sends it to the attacker.",
+        "The attacker uses the token to get new access tokens for the victim's account."
+      ],
+      "impact": "Long-lived access to one customer's account. It needs a separate script-injection flaw first.",
+      "recommendation": "Have the API set the refresh token as an `HttpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/auth/refresh`, and keep only the short-lived access token in memory.",
+      "poc_path": "acme-shop/web/src/api/client.js",
+      "poc_language": "js",
+      "poc": [
+        "export function saveTokens({ accessToken, refreshToken }) {",
+        "  memory.accessToken = accessToken;",
+        "  localStorage.setItem('refreshToken', refreshToken);",
+        "}"
+      ],
+      "highlight": [3]
+    },
+    {
+      "key": "csp",
+      "layer": "Web frontend",
+      "ledger_key": "web/index.html#csp",
+      "title": "No Content Security Policy",
+      "vector": null,
+      "category": "Web frontend and mobile security",
+      "verification": "Self-verified",
+      "status": "Initial Review",
+      "assets": ["web/index.html:1-12", "web/vite.config.js:8-20"],
+      "references": "A02:2025, CWE-1021, ASVS V3.4",
+      "description": "Neither the HTML nor the static host sends a `Content-Security-Policy`. A policy would not fix {ref:xss}, but it would stop an injected script from loading code or sending data to another host.",
+      "attack": [
+        "No direct attack. This is hardening that limits what an injected script can do."
+      ],
+      "impact": "No direct impact today. Without a policy, any script injection has full reach.",
+      "recommendation": "Send `Content-Security-Policy: default-src 'self'; img-src 'self' https://images.acme.example; object-src 'none'; base-uri 'none'` from the static host, first in report-only mode.",
+      "poc_path": "acme-shop/web/index.html",
+      "poc_language": "html",
+      "poc": [
+        "<head>",
+        "  <meta charset=\"UTF-8\" />",
+        "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />",
+        "  <title>Acme Shop</title>",
+        "</head>"
+      ],
+      "highlight": [1]
+    }
+  ],
+  "assets_and_actors": "Assets: customer accounts and personal data, orders and their payment state, coupons, and the admin console. Actors: anonymous visitors, signed-in customers, admins, and the payment provider calling the webhook.",
+  "threats": [
+    {"path": "Anonymous visitor gains admin access", "result": "Realised", "evidence": "{ref:jwt}"},
+    {"path": "Order marked paid without payment", "result": "Realised", "evidence": "{ref:webhook}"},
+    {"path": "Customer reads another customer's data", "result": "Realised", "evidence": "{ref:idor}"},
+    {"path": "Script runs in another shopper's session", "result": "Realised", "evidence": "{ref:xss}"},
+    {"path": "Coupon reused across orders", "result": "Blocked on an outside fact", "evidence": "Database isolation level ({ref:coupon})"},
+    {"path": "SQL injection through product search", "result": "Blocked", "evidence": "Parameterised query in `api/src/db/products.js:22`"}
+  ],
+  "limitations": [
+    "Infrastructure, the CDN and the static host configuration were not in scope. Response headers were judged from the repository only.",
+    "The production database isolation level could not be checked (see 5.2).",
+    "No dynamic testing was done. Every attack was traced in the code and checked by a second agent.",
+    "Ledger: 64 units, 61 `covered`, 3 `out_of_scope` (generated API client, Storybook stories, seed scripts)."
+  ],
+  "checklist": [
+    {"category": "Access control and IDOR", "checks": 9},
+    {"category": "Authentication and tokens", "checks": 8},
+    {"category": "Injection and input validation", "checks": 10},
+    {"category": "Cryptography and secrets", "checks": 6},
+    {"category": "Transport security", "checks": 3},
+    {"category": "Security misconfiguration and supply chain", "checks": 7},
+    {"category": "Logging and error handling", "checks": 5},
+    {"category": "Business logic and abuse", "checks": 7},
+    {"category": "Web frontend and mobile security", "checks": 8}
+  ],
+  "not_applicable": "OTP step-up and one-time proofs (no flow uses one), Card data protection (card entry is hosted by the payment provider)",
+  "secure_controls": [
+    "Backend: every SQL query uses `pg` parameters, including dynamic sorting through an allow-list (`api/src/db/products.js:22`).",
+    "Backend: passwords are hashed with Argon2id and compared in constant time (`api/src/services/users.js:40`).",
+    "Backend: `requireUser` verifies token signature, expiry and algorithm (`api/src/middleware/auth.js:4-10`).",
+    "Backend: uploads are checked by content type and size and stored outside the web root (`api/src/routes/uploads.js:15`).",
+    "Web frontend: no API keys or secrets in the built bundle; `VITE_` variables hold public values only.",
+    "Web frontend: every other component renders user content through React escaping."
+  ],
+  "remediation": [
+    {"action": "Verify the signature and algorithm of every token in `requireAdmin` (Backend).", "closes": ["jwt"], "effort": "S"},
+    {"action": "Check the provider signature on the payment webhook and re-fetch the payment before changing an order (Backend).", "closes": ["webhook"], "effort": "M"},
+    {"action": "Scope every order and address lookup to the signed-in customer (Backend).", "closes": ["idor"], "effort": "S"},
+    {"action": "Render review text as plain text and add a lint rule against `dangerouslySetInnerHTML` (Web frontend).", "closes": ["xss"], "effort": "S"},
+    {"action": "Move the refresh token to an `HttpOnly` cookie (Backend and Web frontend).", "closes": ["storage"], "effort": "M"},
+    {"action": "Return generic error bodies with a request id (Backend).", "closes": ["errors"], "effort": "S"},
+    {"action": "Make coupon redemption a single conditional update (Backend).", "closes": ["coupon"], "effort": "S"},
+    {"action": "Add a Content Security Policy, first in report-only mode (Web frontend).", "closes": ["csp"], "effort": "M"}
+  ],
+  "methodology": {
+    "enumeration": "`inventory.py` listed 41 routes, 1 webhook, 23 screens and 57 sinks across `api/` and `web/`; the coverage ledger tracked each one to a result.",
+    "dependencies": "`npm audit` and gitleaks were run; neither reported an issue in scope. osv-scanner and semgrep were not installed.",
+    "verification": "Every candidate was checked by a fresh verifier agent that did not see the finder's reasoning; one rejection was reviewed and overruled ({ref:storage})."
+  },
+  "standards": [
+    {"name": "OWASP Top 10", "version": "2025", "use": "Web application risk categories"},
+    {"name": "OWASP API Security Top 10", "version": "2023", "use": "API risks (object level authorization, business flows)"},
+    {"name": "OWASP ASVS", "version": "5.0", "use": "Verification requirements, including V3 Web Frontend Security"},
+    {"name": "MITRE/CISA CWE Top 25", "version": "2025", "use": "Weakness ids for every finding"},
+    {"name": "OWASP WSTG", "version": "current", "use": "Penetration-testing categories, including WSTG-CLNT for the browser"},
+    {"name": "IETF RFC 10017", "version": "2026", "use": "OAuth 2.0 for browser-based applications"},
+    {"name": "FIRST CVSS", "version": "4.0", "use": "Base score (CVSS-B) and rating"}
+  ],
+  "rejected": [
+    {"title": "SQL injection in product search", "location": "api/src/routes/products.js:15", "reason": "The search term is passed as a query parameter, never concatenated.", "disproof": "api/src/db/products.js:22"},
+    {"title": "Open redirect after login", "location": "web/src/screens/Login.jsx:48", "reason": "The `next` value is checked against an allow-list of in-app paths.", "disproof": "web/src/lib/redirect.js:6"}
+  ]
+}

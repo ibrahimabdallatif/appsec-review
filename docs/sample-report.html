@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acme Shop Code Review</title>
+<style>
+/* Layout: dark cover band, then a two-column report (sticky contents rail + document column); findings are dossier cards with a metric strip */
+:root {
+  --bg: #f3f5f8;
+  --paper: #ffffff;
+  --ink: #121a2b;
+  --muted: #5b6579;
+  --line: #e1e5ee;
+  --accent: #0f7a72;
+  --accent-soft: #e2f3f1;
+  --code-bg: #f0f2f7;
+  --cover: #0e1626;
+  --cover-ink: #eef2fa;
+  --cover-muted: #9aa6bf;
+  --critical: #b4232f;
+  --high: #d0541b;
+  --medium: #b98a00;
+  --low: #2f7d4f;
+  --info: #4a6fa5;
+  --display: system-ui, -apple-system, "Segoe UI Variable Display", "Segoe UI", Roboto, sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d121c; --paper: #151c29; --ink: #e5eaf3; --muted: #9aa5b9; --line: #263042;
+    --accent: #3cc2b4; --accent-soft: #15302f; --code-bg: #1d2636;
+    --cover: #080c14; --cover-ink: #eef2fa; --cover-muted: #8f9bb3;
+    --critical: #ff6670; --high: #ff9a5c; --medium: #e8c14a; --low: #6fcf97; --info: #8fb0e6;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d121c; --paper: #151c29; --ink: #e5eaf3; --muted: #9aa5b9; --line: #263042;
+  --accent: #3cc2b4; --accent-soft: #15302f; --code-bg: #1d2636;
+  --cover: #080c14; --cover-ink: #eef2fa; --cover-muted: #8f9bb3;
+  --critical: #ff6670; --high: #ff9a5c; --medium: #e8c14a; --low: #6fcf97; --info: #8fb0e6;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.62; }
+h1, h2, h3, h4 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.22; }
+p { margin: 0; }
+a { color: var(--accent); }
+code { font-family: var(--mono); font-size: 0.84em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.eyebrow { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+
+/* Cover */
+.cover { background: var(--cover); color: var(--cover-ink); padding: 56px 16px 48px; }
+.cover-in { max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 40px; align-items: end; }
+@media (max-width: 860px) { .cover-in { grid-template-columns: minmax(0, 1fr); } }
+.cover .eyebrow { color: var(--cover-muted); }
+.cover h1 { font-size: clamp(2rem, 4.6vw, 3.1rem); font-weight: 700; letter-spacing: -0.02em; margin-top: 14px; }
+.cover h1 span { color: #5fd3c6; }
+.cover .sub { color: var(--cover-muted); margin-top: 14px; max-width: 54ch; }
+.cover-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; }
+.cover-meta div { background: var(--cover); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cover-meta dt { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cover-muted); }
+.cover-meta dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+.badge-conf { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid #5fd3c6; color: #5fd3c6; padding: 3px 10px; border-radius: 999px; }
+
+/* Shell */
+.shell { max-width: 1160px; margin: 0 auto; padding: 32px 16px 80px; display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 40px; }
+@media (max-width: 960px) { .shell { grid-template-columns: minmax(0, 1fr); } .rail { display: none; } }
+.rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; max-height: calc(100vh - 40px); overflow-y: auto; padding-right: 6px; }
+.rail ol { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 0.86rem; }
+.rail a { display: block; text-decoration: none; color: var(--muted); padding: 5px 10px; border-left: 2px solid var(--line); }
+.rail a:hover, .rail a:focus-visible { color: var(--ink); border-left-color: var(--accent); outline: none; }
+.rail .sub a { padding-left: 22px; font-size: 0.8rem; }
+.doc { display: flex; flex-direction: column; gap: 56px; min-width: 0; }
+
+section.part { display: flex; flex-direction: column; gap: 20px; scroll-margin-top: 20px; }
+.part > header { display: flex; align-items: baseline; gap: 14px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.part > header .num { font-family: var(--mono); color: var(--accent); font-size: 0.9rem; }
+.part > header h2 { font-size: 1.45rem; font-weight: 600; letter-spacing: -0.01em; }
+h3.sec { font-size: 1.05rem; font-weight: 600; display: flex; gap: 10px; align-items: baseline; scroll-margin-top: 20px; }
+h3.sec .num { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); font-weight: 400; }
+.prose { display: flex; flex-direction: column; gap: 12px; max-width: 72ch; }
+.prose ul { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: 4px; }
+
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; min-width: 0; }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; background: var(--code-bg); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
+.tbl-findings td:nth-child(2) { min-width: 240px; }
+.tbl-findings td:nth-child(5) { min-width: 220px; }
+.tbl-findings a { color: inherit; text-decoration: none; font-weight: 500; }
+.tbl-findings a:hover { color: var(--accent); text-decoration: underline; }
+
+/* Severity */
+.sev { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.82rem; color: var(--c); white-space: nowrap; }
+.sev::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--c); }
+.s-critical { --c: var(--critical); } .s-high { --c: var(--high); } .s-medium { --c: var(--medium); } .s-low { --c: var(--low); } .s-info { --c: var(--info); }
+
+/* Risk profile */
+.total { display: flex; flex-direction: column; gap: 18px; }
+.total .head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.total .big { font-family: var(--display); font-size: 3.4rem; font-weight: 700; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.total .sub { color: var(--muted); font-size: 0.9rem; }
+.total.layer { margin-top: 12px; gap: 12px; }
+.total.layer .big { font-size: 2.2rem; }
+.total .layer-name { font-weight: 600; }
+.tbl-findings tr.grp td { background: var(--accent-soft); font-weight: 600; }
+.stack { display: flex; height: 12px; border-radius: 999px; overflow: hidden; gap: 2px; }
+.stack span { background: var(--c); }
+.legend { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 520px) { .legend { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.legend div { display: flex; flex-direction: column; gap: 2px; }
+.legend b { font-family: var(--display); font-size: 1.4rem; font-variant-numeric: tabular-nums; color: var(--c); }
+.legend span { font-size: 0.75rem; color: var(--muted); }
+
+/* Checklist */
+.check { display: flex; flex-direction: column; gap: 10px; }
+.check-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto; gap: 14px; align-items: center; font-size: 0.88rem; }
+@media (max-width: 560px) { .check-row { grid-template-columns: minmax(0, 1fr) auto; } .check-row .split { grid-column: 1 / -1; order: 3; } }
+.split { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: var(--code-bg); }
+.split .vul { background: var(--critical); }
+.split .sec { background: var(--accent); }
+.check-row .counts { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+.key { display: flex; gap: 18px; font-size: 0.8rem; color: var(--muted); }
+.na { color: var(--muted); font-size: 0.85rem; margin: 10px 0 0; }
+.key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+/* Findings */
+.finding { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; scroll-margin-top: 20px; }
+.f-head { padding: 20px 22px 16px; display: flex; flex-direction: column; gap: 8px; border-top: 4px solid var(--c); }
+.f-head .id { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+.f-head .lkey { font-size: 0.7rem; opacity: 0.8; }
+.f-head h4 { font-size: 1.12rem; font-weight: 600; letter-spacing: -0.005em; }
+.metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+@media (max-width: 640px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.metrics div { padding: 12px 22px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid var(--line); min-width: 0; }
+.metrics div:last-child { border-right: 0; }
+.metrics dt { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.metrics dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.metrics .vec { font-family: var(--mono); font-size: 0.68rem; font-weight: 400; color: var(--muted); }
+.f-body { padding: 18px 22px 22px; display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px 22px; }
+@media (max-width: 640px) { .f-body { grid-template-columns: minmax(0, 1fr); gap: 4px; } .f-body dd { margin-bottom: 12px; } }
+.f-body dt { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.f-body dd { margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.f-body ol { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 3px; }
+.f-body ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 3px; }
+.assets { display: flex; flex-direction: column; gap: 4px; }
+.poc { grid-column: 1 / -1; background: var(--code-bg); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.poc .t { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.poc .path { font-family: var(--mono); font-size: 0.76rem; color: var(--muted); overflow-wrap: anywhere; }
+pre { margin: 0; font-family: var(--mono); font-size: 0.78rem; line-height: 1.55; overflow-x: auto; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+pre .hl { background: color-mix(in srgb, var(--critical) 16%, transparent); display: inline-block; width: 100%; }
+.confirm { align-self: flex-start; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--medium); border: 1px solid var(--medium); border-radius: 999px; padding: 1px 8px; }
+.recs { counter-reset: r; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 760px) { .recs { grid-template-columns: minmax(0, 1fr); } }
+.recs li { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px 12px 46px; position: relative; counter-increment: r; font-size: 0.9rem; }
+.recs li::before { content: counter(r, decimal-leading-zero); position: absolute; left: 14px; top: 12px; font-family: var(--mono); font-size: 0.78rem; color: var(--accent); }
+.recs .meta { display: block; margin-top: 6px; font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
+footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(--line); padding-top: 16px; }
+footer.end p { margin: 0; }
+footer.end p + p { margin-top: 6px; }
+
+/* Theme toggle */
+.cover-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.theme-toggle { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cover-ink); background: transparent; border: 1px solid rgba(255,255,255,0.25); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.theme-toggle:hover { border-color: #5fd3c6; }
+.theme-toggle:focus-visible { outline: 2px solid #5fd3c6; outline-offset: 2px; }
+.theme-toggle .dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid currentColor; background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
+
+/* Print: Print → Save as PDF gives a light, single-column A4 document whatever theme is on screen */
+@page { size: A4; margin: 16mm 14mm 18mm; @bottom-left { content: "Confidential"; font: 8pt system-ui, sans-serif; color: #5b6579; } @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt system-ui, sans-serif; color: #5b6579; } }
+@media print {
+  :root, :root[data-theme="dark"], :root:not([data-theme="light"]) {
+    --bg: #ffffff; --paper: #ffffff; --ink: #121a2b; --muted: #5b6579; --line: #d5dae4;
+    --accent: #0f7a72; --accent-soft: #e2f3f1; --code-bg: #f3f5f8;
+    --cover: #ffffff; --cover-ink: #121a2b; --cover-muted: #5b6579;
+    --critical: #b4232f; --high: #d0541b; --medium: #b98a00; --low: #2f7d4f; --info: #4a6fa5;
+    color-scheme: light;
+  }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-size: 10pt; line-height: 1.5; margin: 0; }
+
+  .theme-toggle, .rail { display: none; }
+  .cover { padding: 0 0 20px; border-bottom: 2px solid var(--ink); }
+  .cover h1 { font-size: 24pt; }
+  .cover h1 span, .badge-conf { color: var(--accent); border-color: var(--accent); }
+  .cover-meta { background: var(--line); border-color: var(--line); }
+  .shell { display: block; max-width: none; padding: 24px 0 0; }
+  .doc { gap: 28px; }
+
+  section.part + section.part { break-before: page; }
+  h2, h3, h4, .part > header, .f-head { break-after: avoid; }
+  .f-head, .metrics { break-inside: avoid; }
+  .finding { border-radius: 0; break-inside: auto; }
+  .finding + .finding { margin-top: 8px; }
+  tr, .card.total, .check-row, .recs li { break-inside: avoid; }
+  .poc .t, .poc .path { break-after: avoid; }
+  thead { display: table-header-group; }
+
+  .tbl-wrap, pre { overflow: visible; }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .tbl-findings td:nth-child(2), .tbl-findings td:nth-child(5) { min-width: 0; }
+  a { color: inherit; text-decoration: none; }
+  a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 0.85em; color: var(--muted); overflow-wrap: anywhere; }
+}
+</style>
+
+
+<div class="cover">
+  <div class="cover-in">
+    <div>
+      <div class="cover-top">
+        <span class="badge-conf">Confidential</span>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false"><i class="dot" aria-hidden="true"></i><span>Dark mode</span></button>
+      </div>
+      <p class="eyebrow" style="margin-top:22px">Acme Corp (fictional) · E-commerce</p>
+      <h1>acme-shop<br><span>Source Code Review Report</span></h1>
+      <p class="sub">Sample report for a fictional online shop. Every name, path, line of code and finding in it is invented to show the report format.</p>
+    </div>
+    <dl class="cover-meta">
+      <div><dt>Version</dt><dd>1.0</dd></div>
+      <div><dt>Date of issue</dt><dd>19 October 2026</dd></div>
+      <div><dt>Branch</dt><dd><code style="background:transparent;padding:0;color:inherit">main</code></dd></div>
+      <div><dt>Review mode</dt><dd>deep</dd></div>
+      <div><dt>Findings</dt><dd>8 in 10 locations (1 critical, 2 high)</dd></div>
+      <div><dt>Status</dt><dd>Initial Review</dd></div>
+    </dl>
+  </div>
+</div>
+
+<div class="shell">
+  <nav class="rail" aria-label="Contents">
+    <span class="eyebrow">Contents</span>
+    <ol>
+      <li><a href="#exec">1.0 Executive Summary</a></li>
+      <li class="sub"><a href="#profile">1.2 Risk Profile</a></li>
+      <li class="sub"><a href="#glance">1.3 Findings at a Glance</a></li>
+      <li><a href="#scope">2.0 Scope and Threat Model</a></li>
+      <li><a href="#checklist">3.0 Security Controls Checklist</a></li>
+      <li><a href="#findings">4.0 Vulnerability Findings</a></li>
+      <li class="sub"><a href="#s1">4.1 Backend</a></li>
+      <li class="sub"><a href="#s2">4.2 Web frontend</a></li>
+      <li><a href="#remediation">5.0 Remediation Plan</a></li>
+      <li><a href="#appendix">6.0 Appendix</a></li>
+    </ol>
+  </nav>
+
+  <main class="doc">
+
+    <section class="part" id="exec">
+      <header><span class="num">1.0</span><h2>Executive Summary</h2></header>
+      <h3 class="sec"><span class="num">1.1</span>Key Takeaways</h3>
+      <div class="prose">
+        <p>This deep review covered the Acme Shop API and its React storefront on branch <code>main</code>, ahead of the 2.5 release that opens the shop to guest checkout.</p>
+        <p>Two problems need fixing before release. The API decodes admin tokens without checking their signature, so anyone can forge an admin session (<a href="#f1-1">4.1.1</a>). The payment webhook trusts any caller, so an attacker can mark an unpaid order as paid (<a href="#f1-2">4.1.2</a>).</p>
+        <p>Database access is parameterised throughout, passwords are hashed with Argon2id, session cookies are <code>HttpOnly</code> and <code>SameSite=Lax</code>, and file uploads are type-checked and stored outside the web root.</p>
+      </div>
+
+      <h3 class="sec" id="profile"><span class="num">1.2</span>Risk Profile</h3>
+      <div class="card total">
+        <div class="head"><span class="big">8</span><span class="sub">root causes in 10 affected locations</span></div>
+        <div class="stack" aria-hidden="true">
+          <span class="s-critical" style="flex:1"></span>
+          <span class="s-high" style="flex:2"></span>
+          <span class="s-medium" style="flex:2"></span>
+          <span class="s-low" style="flex:2"></span>
+          <span class="s-info" style="flex:1"></span>
+        </div>
+        <div class="legend">
+          <div class="s-critical"><b>1</b><span>Critical</span></div>
+          <div class="s-high"><b>2</b><span>High</span></div>
+          <div class="s-medium"><b>2</b><span>Medium</span></div>
+          <div class="s-low"><b>2</b><span>Low</span></div>
+          <div class="s-info"><b>1</b><span>Informational</span></div>
+        </div>
+      </div>
+      <div class="card total layer">
+        <div class="head"><span class="layer-name">Backend</span><span class="big">5</span><span class="sub">root causes in 6 affected locations</span></div>
+        <div class="stack" aria-hidden="true">
+          <span class="s-critical" style="flex:1"></span>
+          <span class="s-high" style="flex:2"></span>
+          <span class="s-medium" style="flex:1"></span>
+          <span class="s-low" style="flex:1"></span>
+        </div>
+        <div class="legend">
+          <div class="s-critical"><b>1</b><span>Critical</span></div>
+          <div class="s-high"><b>2</b><span>High</span></div>
+          <div class="s-medium"><b>1</b><span>Medium</span></div>
+          <div class="s-low"><b>1</b><span>Low</span></div>
+        </div>
+      </div>
+      <div class="card total layer">
+        <div class="head"><span class="layer-name">Web frontend</span><span class="big">3</span><span class="sub">root causes in 4 affected locations</span></div>
+        <div class="stack" aria-hidden="true">
+          <span class="s-medium" style="flex:1"></span>
+          <span class="s-low" style="flex:1"></span>
+          <span class="s-info" style="flex:1"></span>
+        </div>
+        <div class="legend">
+          <div class="s-medium"><b>1</b><span>Medium</span></div>
+          <div class="s-low"><b>1</b><span>Low</span></div>
+          <div class="s-info"><b>1</b><span>Informational</span></div>
+        </div>
+      </div>
+
+      <h3 class="sec" id="glance"><span class="num">1.3</span>Findings at a Glance</h3>
+      <div class="tbl-wrap"><table class="tbl-findings">
+        <thead><tr><th>#</th><th>Vulnerability</th><th>Risk</th><th class="num">CVSS 4.0</th><th>Affected file</th><th>Status</th></tr></thead>
+        <tr class="grp"><td colspan="6">4.1 Backend</td></tr>
+        <tr><td>4.1.1</td><td><a href="#f1-1">Admin Token Signature Not Verified</a></td><td><span class="sev s-critical">Critical</span></td><td class="num">9.3</td><td><code>api/src/middleware/auth.js:12-19</code></td><td>Initial Review</td></tr>
+        <tr><td>4.1.2</td><td><a href="#f1-2">Payment Webhook Accepts Unsigned Callbacks</a></td><td><span class="sev s-high">High</span></td><td class="num">8.7</td><td><code>api/src/routes/webhooks.js:18-31</code></td><td>Initial Review</td></tr>
+        <tr><td>4.1.3</td><td><a href="#f1-3">Order Details Readable by Any Customer</a></td><td><span class="sev s-high">High</span></td><td class="num">7.1</td><td><code>api/src/routes/orders.js:42-51</code></td><td>Initial Review</td></tr>
+        <tr><td>4.1.4</td><td><a href="#f1-4">Stack Traces Returned in Error Responses</a></td><td><span class="sev s-medium">Medium</span></td><td class="num">6.9</td><td><code>api/src/app.js:88-92</code></td><td>Initial Review</td></tr>
+        <tr><td>4.1.5</td><td><a href="#f1-5">Single-Use Coupon Redeemable Twice in a Race</a></td><td><span class="sev s-low">Low</span></td><td class="num">2.3</td><td><code>api/src/services/coupons.js:21-33</code></td><td>Initial Review</td></tr>
+        <tr class="grp"><td colspan="6">4.2 Web frontend</td></tr>
+        <tr><td>4.2.1</td><td><a href="#f2-1">Stored XSS in Product Reviews</a></td><td><span class="sev s-medium">Medium</span></td><td class="num">6.2</td><td><code>web/src/components/ReviewList.jsx:27-33</code></td><td>Initial Review</td></tr>
+        <tr><td>4.2.2</td><td><a href="#f2-2">Refresh Token Kept in localStorage</a></td><td><span class="sev s-low">Low</span></td><td class="num">2.3</td><td><code>web/src/api/client.js:9-14</code></td><td>Initial Review</td></tr>
+        <tr><td>4.2.3</td><td><a href="#f2-3">No Content Security Policy</a></td><td><span class="sev s-info">Informational</span></td><td class="num">0.0</td><td><code>web/index.html:1-12</code></td><td>Initial Review</td></tr>
+      </table></div>
+    </section>
+
+    <section class="part" id="scope">
+      <header><span class="num">2.0</span><h2>Scope and Threat Model</h2></header>
+      <h3 class="sec"><span class="num">2.1</span>Scope of Work</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Item</th><th>Detail</th></tr></thead>
+        <tr><td>Repository</td><td><code>acme-shop</code>, branch <code>main</code>, version 2.4.0</td></tr>
+        <tr><td>Stack</td><td>Node.js 22 with Express 5 and PostgreSQL · React 19 single-page app · Backend and Web frontend</td></tr>
+        <tr><td>Layer</td><td>Backend: Node.js 22, Express 5, PostgreSQL 16 via <code>pg</code> in <code>api/</code>; 41 routes, 1 webhook</td></tr>
+        <tr><td>Layer</td><td>Web frontend: React 19, Vite 6, React Router 7 in <code>web/</code>; 23 screens</td></tr>
+        <tr><td>Code</td><td>214 source files, about 18,600 lines (<code>api/</code> and <code>web/</code>), tests and generated code excluded</td></tr>
+        <tr><td>Entry points</td><td>41 HTTP routes in <code>api/src/routes/</code>, 1 payment webhook, 23 React screens</td></tr>
+        <tr><td>Integrations</td><td>Payment provider (webhook callbacks), transactional email service, object storage for product images</td></tr>
+      </table></div>
+      <h3 class="sec"><span class="num">2.2</span>Threat Model</h3>
+      <div class="prose"><p>Assets: customer accounts and personal data, orders and their payment state, coupons, and the admin console. Actors: anonymous visitors, signed-in customers, admins, and the payment provider calling the webhook.</p></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Abuse path</th><th>Result</th><th>Evidence</th></tr></thead>
+        <tr><td>Anonymous visitor gains admin access</td><td>Realised</td><td><a href="#f1-1">4.1.1</a></td></tr>
+        <tr><td>Order marked paid without payment</td><td>Realised</td><td><a href="#f1-2">4.1.2</a></td></tr>
+        <tr><td>Customer reads another customer&#x27;s data</td><td>Realised</td><td><a href="#f1-3">4.1.3</a></td></tr>
+        <tr><td>Script runs in another shopper&#x27;s session</td><td>Realised</td><td><a href="#f2-1">4.2.1</a></td></tr>
+        <tr><td>Coupon reused across orders</td><td>Blocked on an outside fact</td><td>Database isolation level (<a href="#f1-5">4.1.5</a>)</td></tr>
+        <tr><td>SQL injection through product search</td><td>Blocked</td><td>Parameterised query in <code>api/src/db/products.js:22</code></td></tr>
+      </table></div>
+      <h3 class="sec"><span class="num">2.3</span>Limitations</h3>
+      <div class="prose"><ul>
+        <li>Infrastructure, the CDN and the static host configuration were not in scope. Response headers were judged from the repository only.</li>
+        <li>The production database isolation level could not be checked (see 5.2).</li>
+        <li>No dynamic testing was done. Every attack was traced in the code and checked by a second agent.</li>
+        <li>Ledger: 64 units, 61 <code>covered</code>, 3 <code>out_of_scope</code> (generated API client, Storybook stories, seed scripts).</li>
+      </ul></div>
+    </section>
+
+    <section class="part" id="checklist">
+      <header><span class="num">3.0</span><h2>Security Controls Checklist</h2></header>
+      <h3 class="sec"><span class="num">3.1</span>Checklist Results</h3>
+      <div class="card check">
+        <div class="key"><span><i style="background:var(--critical)"></i>Vulnerable</span><span><i style="background:var(--accent)"></i>Secure</span></div>
+        <div class="check-row"><span>Access control and IDOR</span><div class="split"><span class="vul" style="flex:1"></span><span class="sec" style="flex:8"></span></div><span class="counts">1 / 9</span></div>
+        <div class="check-row"><span>Authentication and tokens</span><div class="split"><span class="vul" style="flex:1"></span><span class="sec" style="flex:7"></span></div><span class="counts">1 / 8</span></div>
+        <div class="check-row"><span>Injection and input validation</span><div class="split"><span class="vul" style="flex:0"></span><span class="sec" style="flex:10"></span></div><span class="counts">0 / 10</span></div>
+        <div class="check-row"><span>Cryptography and secrets</span><div class="split"><span class="vul" style="flex:0"></span><span class="sec" style="flex:6"></span></div><span class="counts">0 / 6</span></div>
+        <div class="check-row"><span>Transport security</span><div class="split"><span class="vul" style="flex:0"></span><span class="sec" style="flex:3"></span></div><span class="counts">0 / 3</span></div>
+        <div class="check-row"><span>Security misconfiguration and supply chain</span><div class="split"><span class="vul" style="flex:0"></span><span class="sec" style="flex:7"></span></div><span class="counts">0 / 7</span></div>
+        <div class="check-row"><span>Logging and error handling</span><div class="split"><span class="vul" style="flex:1"></span><span class="sec" style="flex:4"></span></div><span class="counts">1 / 5</span></div>
+        <div class="check-row"><span>Business logic and abuse</span><div class="split"><span class="vul" style="flex:2"></span><span class="sec" style="flex:5"></span></div><span class="counts">2 / 7</span></div>
+        <div class="check-row"><span>Web frontend and mobile security</span><div class="split"><span class="vul" style="flex:3"></span><span class="sec" style="flex:5"></span></div><span class="counts">3 / 8</span></div>
+      </div>
+      <p class="na">Not applicable: OTP step-up and one-time proofs (no flow uses one), Card data protection (card entry is hosted by the payment provider) (see 2.3).</p>
+      <h3 class="sec"><span class="num">3.2</span>Controls Verified as Secure</h3>
+      <div class="prose"><ul>
+        <li>Backend: every SQL query uses <code>pg</code> parameters, including dynamic sorting through an allow-list (<code>api/src/db/products.js:22</code>).</li>
+        <li>Backend: passwords are hashed with Argon2id and compared in constant time (<code>api/src/services/users.js:40</code>).</li>
+        <li>Backend: <code>requireUser</code> verifies token signature, expiry and algorithm (<code>api/src/middleware/auth.js:4-10</code>).</li>
+        <li>Backend: uploads are checked by content type and size and stored outside the web root (<code>api/src/routes/uploads.js:15</code>).</li>
+        <li>Web frontend: no API keys or secrets in the built bundle; <code>VITE_</code> variables hold public values only.</li>
+        <li>Web frontend: every other component renders user content through React escaping.</li>
+      </ul></div>
+    </section>
+
+    <section class="part" id="findings">
+      <header><span class="num">4.0</span><h2>Vulnerability Findings</h2></header>
+      <h3 class="sec" id="s1"><span class="num">4.1</span>acme-shop · Backend</h3>
+      <p class="na">Covers <code>api/</code>.</p>
+
+      <article class="finding s-critical" id="f1-1">
+        <div class="f-head"><span class="id">4.1.1<span class="lkey">api/src/middleware/auth.js#requireAdmin</span></span><h4>Admin Token Signature Not Verified</h4></div>
+        <dl class="metrics">
+          <div><dt>Severity</dt><dd><span class="sev s-critical">Critical</span></dd></div>
+          <div><dt>CVSS 4.0</dt><dd>9.3 <span class="vec">CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:N/SI:N/SA:N</span></dd></div>
+          <div><dt>Checklist</dt><dd>Authentication and tokens</dd></div>
+          <div><dt>Verification</dt><dd>Independent verifier</dd></div>
+          <div><dt>Status</dt><dd>Initial Review</dd></div>
+        </dl>
+        <dl class="f-body">
+          <dt>Affected assets</dt><dd class="assets"><code>api/src/middleware/auth.js:12-19</code></dd>
+          <dt>References</dt><dd><p>A07:2025, API2:2023, CWE-347, CWE-287, ASVS V9.1</p></dd>
+          <dt>Description</dt><dd><p><code>requireAdmin</code> reads the bearer token with <code>jwt.decode</code>, which parses the token without checking its signature, and then trusts the <code>role</code> claim. Every route under <code>/api/admin</code> relies on this middleware.</p></dd>
+          <dt>Attack scenario</dt><dd><ol><li>The attacker, with no account, builds a token with the payload <code>{&quot;sub&quot;:&quot;1&quot;,&quot;role&quot;:&quot;admin&quot;}</code> and any signature.</li><li>They send <code>GET /api/admin/customers</code> with that token in the <code>Authorization</code> header.</li><li>The middleware accepts the token and the API returns every customer record.</li></ol></dd>
+          <dt>Impact</dt><dd><p>Full admin access without credentials: read and change every customer, order and product, and issue refunds.</p></dd>
+          <dt>Recommendation</dt><dd><p>Replace <code>jwt.decode</code> with <code>jwt.verify(token, config.jwtSecret, { algorithms: [&#x27;HS256&#x27;] })</code>, as <code>requireUser</code> already does in the same file. Add a test that a token signed with another key gets 401.</p></dd>
+          <div class="poc">
+            <span class="t">Proof of concept</span>
+            <span class="path">acme-shop/api/src/middleware/auth.js</span>
+<pre>function requireAdmin(req, res, next) {
+  const token = (req.headers.authorization || &#x27;&#x27;).replace(&#x27;Bearer &#x27;, &#x27;&#x27;);
+<span class="hl">  const claims = jwt.decode(token);</span>
+<span class="hl">  if (!claims || claims.role !== &#x27;admin&#x27;) {</span>
+    return res.status(403).json({ error: &#x27;forbidden&#x27; });
+  }
+  req.user = claims;
+  next();
+}</pre>
+          </div>
+        </dl>
+      </article>
+
+      <article class="finding s-high" id="f1-2">
+        <div class="f-head"><span class="id">4.1.2<span class="lkey">api/src/routes/webhooks.js#POST /api/webhooks/payment</span></span><h4>Payment Webhook Accepts Unsigned Callbacks</h4></div>
+        <dl class="metrics">
+          <div><dt>Severity</dt><dd><span class="sev s-high">High</span></dd></div>
+          <div><dt>CVSS 4.0</dt><dd>8.7 <span class="vec">CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N</span></dd></div>
+          <div><dt>Checklist</dt><dd>Business logic and abuse</dd></div>
+          <div><dt>Verification</dt><dd>Independent verifier</dd></div>
+          <div><dt>Status</dt><dd>Initial Review</dd></div>
+        </dl>
+        <dl class="f-body">
+          <dt>Affected assets</dt><dd class="assets"><code>api/src/routes/webhooks.js:18-31</code></dd>
+          <dt>References</dt><dd><p>A08:2025, API6:2023, CWE-345, ASVS V2.3</p></dd>
+          <dt>Description</dt><dd><p>The payment webhook marks an order as paid from the <code>orderId</code> and <code>status</code> in the request body. It never checks the provider&#x27;s <code>Payment-Signature</code> header, and the route is public so the provider can reach it.</p></dd>
+          <dt>Attack scenario</dt><dd><ol><li>The attacker places an order and stops at the payment page.</li><li>They send <code>POST /api/webhooks/payment</code> with <code>{&quot;orderId&quot;:&quot;&lt;their order&gt;&quot;,&quot;status&quot;:&quot;succeeded&quot;}</code>.</li><li>The order moves to <code>paid</code> and is released for shipping.</li></ol></dd>
+          <dt>Impact</dt><dd><p>Goods shipped without payment, for any order the attacker can create.</p></dd>
+          <dt>Recommendation</dt><dd><p>Verify the <code>Payment-Signature</code> header with the provider SDK&#x27;s <code>constructEvent</code> and the webhook secret before reading the body, and re-fetch the payment from the provider by id before changing the order. Add a test that an unsigned callback gets 400 and leaves the order unchanged.</p></dd>
+          <div class="poc">
+            <span class="t">Proof of concept</span>
+            <span class="path">acme-shop/api/src/routes/webhooks.js</span>
+<pre>router.post(&#x27;/payment&#x27;, express.json(), async (req, res) =&gt; {
+<span class="hl">  const { orderId, status } = req.body;</span>
+  if (status === &#x27;succeeded&#x27;) {
+<span class="hl">    await orders.markPaid(orderId);</span>
+  }
+  res.sendStatus(200);
+});</pre>
+          </div>
+        </dl>
+      </article>
+
+      <article class="finding s-high" id="f1-3">
+        <div class="f-head"><span class="id">4.1.3<span class="lkey">api/src/routes/orders.js#GET /api/orders/:id</span></span><h4>Order Details Readable by Any Customer</h4></div>
+        <dl class="metrics">
+          <div><dt>Severity</dt><dd><span class="sev s-high">High</span></dd></div>
+          <div><dt>CVSS 4.0</dt><dd>7.1 <span class="vec">CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N</span></dd></div>
+          <div><dt>Checklist</dt><dd>Access control and IDOR</dd></div>
+          <div><dt>Verification</dt><dd>Independent verifier</dd></div>
+          <div><dt>Status</dt><dd>Initial Review</dd></div>
+        </dl>
+        <dl class="f-body">
+          <dt>Affected assets</dt><dd class="assets"><code>api/src/routes/orders.js:42-51</code></dd>
+          <dt>Affected assets</dt><dd class="assets"><code>api/src/db/orders.js:30-34</code></dd>
+          <dt>References</dt><dd><p>A01:2025, API1:2023, CWE-639, ASVS V8.2</p></dd>
+          <dt>Description</dt><dd><p><code>GET /api/orders/:id</code> loads the order by id only. The query has no <code>customer_id</code> filter and the handler does not compare the owner with <code>req.user.id</code>. Order ids are sequential.</p></dd>
+          <dt>Attack scenario</dt><dd><ol><li>The attacker signs up as an ordinary customer.</li><li>They request <code>GET /api/orders/1</code>, <code>/2</code>, <code>/3</code> and so on.</li><li>Each response returns another customer&#x27;s name, delivery address, phone number and items.</li></ol></dd>
+          <dt>Impact</dt><dd><p>Any customer can read every other customer&#x27;s order history and personal data.</p></dd>
+          <dt>Recommendation</dt><dd><p>Load the order with <code>orders.findForCustomer(id, req.user.id)</code> (the helper the order list already uses) and return 404 when it finds nothing. Add a test that customer B gets 404 for customer A&#x27;s order.</p></dd>
+          <div class="poc">
+            <span class="t">Proof of concept</span>
+            <span class="path">acme-shop/api/src/routes/orders.js</span>
+<pre>router.get(&#x27;/:id&#x27;, requireUser, async (req, res) =&gt; {
+<span class="hl">  const order = await orders.findById(req.params.id);</span>
+  if (!order) {
+    return res.sendStatus(404);
+  }
+  res.json(order);
+});</pre>
+          </div>
+        </dl>
+      </article>
+
+      <article class="finding s-medium" id="f1-4">
+        <div class="f-head"><span class="id">4.1.4<span class="lkey">api/src/app.js#errorHandler</span></span><h4>Stack Traces Returned in Error Responses</h4></div>
+        <dl class="metrics">
+          <div><dt>Severity</dt><dd><span class="sev s-medium">Medium</span></dd></div>
+          <div><dt>CVSS 4.0</dt><dd>6.9 <span class="vec">CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N</span></dd></div>
+          <div><dt>Checklist</dt><dd>Logging and error handling</dd></div>
+          <div><dt>Verification</dt><dd>Self-verified</dd></div>
+          <div><dt>Status</dt><dd>Initial Review</dd></div>
+        </dl>
+        <dl class="f-body">
+          <dt>Affected assets</dt><dd class="assets"><code>api/src/app.js:88-92</code></dd>
+          <dt>References</dt><dd><p>A10:2025, CWE-209, ASVS V16.5</p></dd>
+          <dt>Description</dt><dd><p>The global error handler sends <code>err.stack</code> to the client in every environment. A malformed request body is enough to trigger it.</p></dd>
+          <dt>Attack scenario</dt><dd><ol><li>The attacker sends <code>POST /api/cart</code> with an invalid JSON body.</li><li>The response contains the full stack trace, with file paths and library versions.</li></ol></dd>
+          <dt>Impact</dt><dd><p>Reveals internal paths, library versions and query fragments that help plan further attacks.</p></dd>
+          <dt>Recommendation</dt><dd><p>Return <code>{ error: &#x27;internal_error&#x27;, requestId }</code> to the client and log the stack server side with the same request id.</p></dd>
+          <div class="poc">
+            <span class="t">Proof of concept</span>
+            <span class="path">acme-shop/api/src/app.js</span>
+<pre>app.use((err, req, res, next) =&gt; {
+  logger.error(err);
+<span class="hl">  res.status(err.status || 500).json({ error: err.message, stack: err.stack });</span>
+});</pre>
+          </div>
+        </dl>
+      </article>
+
+      <article class="finding s-low" id="f1-5">
+        <div class="f-head"><span class="id">4.1.5<span class="lkey">api/src/services/coupons.js#redeem</span></span><h4>Single-Use Coupon Redeemable Twice in a Race</h4></div>
+        <dl class="metrics">
+          <div><dt>Severity</dt><dd><span class="sev s-low">Low</span></dd></div>
+          <div><dt>CVSS 4.0</dt><dd>2.3 <span class="vec">CVSS:4.0/AV:N/AC:L/AT:P/PR:L/UI:N/VC:N/VI:L/VA:N/SC:N/SI:N/SA:N</span></dd></div>
+          <div><dt>Checklist</dt><dd>Business logic and abuse</dd></div>
+          <div><dt>Verification</dt><dd>Independent verifier</dd></div>
+          <div><dt>Status</dt><dd>Initial Review</dd></div>
+        </dl>
+        <dl class="f-body">
+          <dt>Affected assets</dt><dd class="assets"><code>api/src/services/coupons.js:21-33</code></dd>
+          <dt>References</dt><dd><p>A06:2025, API6:2023, CWE-362, ASVS V2.3</p></dd>
+          <dt>Description</dt><dd><span class="confirm">Needs confirmation</span><p><code>redeem</code> reads <code>used_at</code>, checks it is empty and then updates it in a separate statement. Two requests sent together can both pass the check. Whether this works depends on the database isolation level, which is not in the repository.</p></dd>
+          <dt>Attack scenario</dt><dd><ol><li>The attacker holds one single-use coupon and two carts.</li><li>They send both checkout requests with the coupon at the same moment.</li><li>Both orders get the discount.</li></ol></dd>
+          <dt>Impact</dt><dd><p>A single-use discount applied more than once. The loss per coupon is small, but the same pattern is easy to script.</p></dd>
+          <dt>Recommendation</dt><dd><p>Redeem with one conditional update, <code>UPDATE coupons SET used_at = now() WHERE code = $1 AND used_at IS NULL RETURNING id</code>, and reject the checkout when no row comes back. Add a test that fires two redemptions in parallel.</p></dd>
+          <div class="poc">
+            <span class="t">Proof of concept</span>
+            <span class="path">acme-shop/api/src/services/coupons.js</span>
+<pre>async function redeem(code, orderId) {
+  const coupon = await db.one(&#x27;SELECT * FROM coupons WHERE code = $1&#x27;, [code]);
+<span class="hl">  if (coupon.used_at) {</span>
+    throw new CouponUsedError();
+  }
+<span class="hl">  await db.none(&#x27;UPDATE coupons SET used_at = now(), order_id = $2 WHERE id = $1&#x27;, [coupon.id, orderId]);</span>
+}</pre>
+          </div>
+        </dl>
+      </article>
+
+      <h3 class="sec" id="s2"><span class="num">4.2</span>acme-shop · Web frontend</h3>
+      <p class="na">Covers <code>web/</code>.</p>
+
+      <article class="finding s-medium" id="f2-1">
+        <div class="f-head"><span class="id">4.2.1<span class="lkey">web/src/components/ReviewList.jsx#ReviewBody</span></span><h4>Stored XSS in Product Reviews</h4></div>
+        <dl class="metrics">
+          <div><dt>Severity</dt><dd><span class="sev s-medium">Medium</span></dd></div>
+          <div><dt>CVSS 4.0</dt><dd>6.2 <span class="vec">CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:P/VC:N/VI:N/VA:N/SC:H/SI:L/SA:N</span></dd></div>
+          <div><dt>Checklist</dt><dd>Web frontend and mobile security</dd></div>
+          <div><dt>Verification</dt><dd>Independent verifier</dd></div>
+          <div><dt>Status</dt><dd>Initial Review</dd></div>
+        </dl>
+        <dl class="f-body">
+          <dt>Affected assets</dt><dd class="assets"><code>web/src/components/ReviewList.jsx:27-33</code></dd>
+          <dt>References</dt><dd><p>A05:2025, CWE-79, ASVS V3.2, WSTG-CLNT-03</p></dd>
+          <dt>Description</dt><dd><p>Review text is rendered with <code>dangerouslySetInnerHTML</code> so that line breaks show. The API stores review text as submitted, so any customer can store markup that runs in other shoppers&#x27; browsers.</p></dd>
+          <dt>Attack scenario</dt><dd><ol><li>The attacker, signed in as a customer, posts a review containing <code>&lt;img src=x onerror=...&gt;</code>.</li><li>Another shopper opens the product page.</li><li>The script runs in the shopper&#x27;s session and can act as them on the storefront.</li></ol></dd>
+          <dt>Impact</dt><dd><p>Actions in a victim&#x27;s session, such as changing the delivery address of an open order. The session cookie itself is <code>HttpOnly</code>.</p></dd>
+          <dt>Recommendation</dt><dd><p>Render the text as a React child and use CSS <code>white-space: pre-line</code> for line breaks. Add a test that a review containing <code>&lt;img&gt;</code> renders as text.</p></dd>
+          <div class="poc">
+            <span class="t">Proof of concept</span>
+            <span class="path">acme-shop/web/src/components/ReviewList.jsx</span>
+<pre>function ReviewBody({ review }) {
+  return (
+    &lt;div
+      className=&quot;review-body&quot;
+<span class="hl">      dangerouslySetInnerHTML={{ __html: review.text.replace(/\n/g, &#x27;&lt;br&gt;&#x27;) }}</span>
+    /&gt;
+  );
+}</pre>
+          </div>
+        </dl>
+      </article>
+
+      <article class="finding s-low" id="f2-2">
+        <div class="f-head"><span class="id">4.2.2<span class="lkey">web/src/api/client.js#saveToken</span></span><h4>Refresh Token Kept in localStorage</h4></div>
+        <dl class="metrics">
+          <div><dt>Severity</dt><dd><span class="sev s-low">Low</span></dd></div>
+          <div><dt>CVSS 4.0</dt><dd>2.3 <span class="vec">CVSS:4.0/AV:N/AC:H/AT:P/PR:N/UI:P/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N</span></dd></div>
+          <div><dt>Checklist</dt><dd>Web frontend and mobile security</dd></div>
+          <div><dt>Verification</dt><dd>Rejection reviewed</dd></div>
+          <div><dt>Status</dt><dd>Initial Review</dd></div>
+        </dl>
+        <dl class="f-body">
+          <dt>Affected assets</dt><dd class="assets"><code>web/src/api/client.js:9-14</code></dd>
+          <dt>References</dt><dd><p>A07:2025, CWE-922, ASVS V3.3, RFC 10017</p></dd>
+          <dt>Description</dt><dd><p>The storefront stores the long-lived refresh token in <code>localStorage</code>, where any script on the page can read it. Combined with <a href="#f2-1">4.2.1</a>, an attacker could take the token and keep access after the victim leaves the page.</p></dd>
+          <dt>Attack scenario</dt><dd><ol><li>The attacker gets script running on the storefront (for example through <a href="#f2-1">4.2.1</a>).</li><li>The script reads <code>localStorage.refreshToken</code> and sends it to the attacker.</li><li>The attacker uses the token to get new access tokens for the victim&#x27;s account.</li></ol></dd>
+          <dt>Impact</dt><dd><p>Long-lived access to one customer&#x27;s account. It needs a separate script-injection flaw first.</p></dd>
+          <dt>Recommendation</dt><dd><p>Have the API set the refresh token as an <code>HttpOnly</code>, <code>Secure</code>, <code>SameSite=Strict</code> cookie scoped to <code>/api/auth/refresh</code>, and keep only the short-lived access token in memory.</p></dd>
+          <div class="poc">
+            <span class="t">Proof of concept</span>
+            <span class="path">acme-shop/web/src/api/client.js</span>
+<pre>export function saveTokens({ accessToken, refreshToken }) {
+  memory.accessToken = accessToken;
+<span class="hl">  localStorage.setItem(&#x27;refreshToken&#x27;, refreshToken);</span>
+}</pre>
+          </div>
+        </dl>
+      </article>
+
+      <article class="finding s-info" id="f2-3">
+        <div class="f-head"><span class="id">4.2.3<span class="lkey">web/index.html#csp</span></span><h4>No Content Security Policy</h4></div>
+        <dl class="metrics">
+          <div><dt>Severity</dt><dd><span class="sev s-info">Informational</span></dd></div>
+          <div><dt>CVSS 4.0</dt><dd>0.0 <span class="vec">No vector (informational)</span></dd></div>
+          <div><dt>Checklist</dt><dd>Web frontend and mobile security</dd></div>
+          <div><dt>Verification</dt><dd>Self-verified</dd></div>
+          <div><dt>Status</dt><dd>Initial Review</dd></div>
+        </dl>
+        <dl class="f-body">
+          <dt>Affected assets</dt><dd class="assets"><code>web/index.html:1-12</code></dd>
+          <dt>Affected assets</dt><dd class="assets"><code>web/vite.config.js:8-20</code></dd>
+          <dt>References</dt><dd><p>A02:2025, CWE-1021, ASVS V3.4</p></dd>
+          <dt>Description</dt><dd><p>Neither the HTML nor the static host sends a <code>Content-Security-Policy</code>. A policy would not fix <a href="#f2-1">4.2.1</a>, but it would stop an injected script from loading code or sending data to another host.</p></dd>
+          <dt>Attack scenario</dt><dd><ol><li>No direct attack. This is hardening that limits what an injected script can do.</li></ol></dd>
+          <dt>Impact</dt><dd><p>No direct impact today. Without a policy, any script injection has full reach.</p></dd>
+          <dt>Recommendation</dt><dd><p>Send <code>Content-Security-Policy: default-src &#x27;self&#x27;; img-src &#x27;self&#x27; https://images.acme.example; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;</code> from the static host, first in report-only mode.</p></dd>
+          <div class="poc">
+            <span class="t">Proof of concept</span>
+            <span class="path">acme-shop/web/index.html</span>
+<pre><span class="hl">&lt;head&gt;</span>
+  &lt;meta charset=&quot;UTF-8&quot; /&gt;
+  &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot; /&gt;
+  &lt;title&gt;Acme Shop&lt;/title&gt;
+&lt;/head&gt;</pre>
+          </div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="part" id="remediation">
+      <header><span class="num">5.0</span><h2>Remediation Plan</h2></header>
+      <h3 class="sec"><span class="num">5.1</span>Prioritised Actions</h3>
+      <ol class="recs">
+        <li>Verify the signature and algorithm of every token in <code>requireAdmin</code> (Backend).<span class="meta">Closes 4.1.1 · Effort S</span></li>
+        <li>Check the provider signature on the payment webhook and re-fetch the payment before changing an order (Backend).<span class="meta">Closes 4.1.2 · Effort M</span></li>
+        <li>Scope every order and address lookup to the signed-in customer (Backend).<span class="meta">Closes 4.1.3 · Effort S</span></li>
+        <li>Render review text as plain text and add a lint rule against <code>dangerouslySetInnerHTML</code> (Web frontend).<span class="meta">Closes 4.2.1 · Effort S</span></li>
+        <li>Move the refresh token to an <code>HttpOnly</code> cookie (Backend and Web frontend).<span class="meta">Closes 4.2.2 · Effort M</span></li>
+        <li>Return generic error bodies with a request id (Backend).<span class="meta">Closes 4.1.4 · Effort S</span></li>
+        <li>Make coupon redemption a single conditional update (Backend).<span class="meta">Closes 4.1.5 · Effort S</span></li>
+        <li>Add a Content Security Policy, first in report-only mode (Web frontend).<span class="meta">Closes 4.2.3 · Effort M</span></li>
+      </ol>
+      <h3 class="sec"><span class="num">5.2</span>Facts to Confirm</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Finding</th><th>Fact to confirm</th><th>How to check</th><th>Rating if unsafe</th></tr></thead>
+        <tr><td><a href="#f1-5">4.1.5</a></td><td>The transaction isolation level used for <code>coupons.redeem</code> in production.</td><td>Run <code>SHOW default_transaction_isolation;</code> on a production read replica.</td><td><span class="sev s-low">Low</span></td></tr>
+      </table></div>
+    </section>
+
+    <section class="part" id="appendix">
+      <header><span class="num">6.0</span><h2>Appendix</h2></header>
+      <h3 class="sec"><span class="num">6.1</span>Assessment Methodology</h3>
+      <div class="prose">
+        <p>This review was performed with the <b>appsec-review</b> skill, commit <code>sample</code>.</p>
+        <ul>
+          <li><b>Code enumeration.</b> <code>inventory.py</code> listed 41 routes, 1 webhook, 23 screens and 57 sinks across <code>api/</code> and <code>web/</code>; the coverage ledger tracked each one to a result.</li>
+          <li><b>Dependency and secret checks.</b> <code>npm audit</code> and gitleaks were run; neither reported an issue in scope. osv-scanner and semgrep were not installed.</li>
+          <li><b>Manual source analysis.</b> Followed each entry point (routes and handlers, screens and client flows) through its middleware, filters and guards to its sinks, with a STRIDE pass on every trust boundary, against the checklist in section 3.0 and the stack checks for Node.js 22 with Express 5 and PostgreSQL · React 19 single-page app.</li>
+          <li><b>Verification.</b> Every candidate was checked by a fresh verifier agent that did not see the finder&#x27;s reasoning; one rejection was reviewed and overruled (<a href="#f2-2">4.2.2</a>).</li>
+          <li><b>Run.</b> deep mode, 38m 12s, 1,284,500 tokens (main session and subagents).</li>
+        </ul>
+      </div>
+      <h3 class="sec"><span class="num">6.2</span>Security Standards</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Standard</th><th>Version</th><th>Used for</th></tr></thead>
+        <tr><td>OWASP Top 10</td><td>2025</td><td>Web application risk categories</td></tr>
+        <tr><td>OWASP API Security Top 10</td><td>2023</td><td>API risks (object level authorization, business flows)</td></tr>
+        <tr><td>OWASP ASVS</td><td>5.0</td><td>Verification requirements, including V3 Web Frontend Security</td></tr>
+        <tr><td>MITRE/CISA CWE Top 25</td><td>2025</td><td>Weakness ids for every finding</td></tr>
+        <tr><td>OWASP WSTG</td><td>current</td><td>Penetration-testing categories, including WSTG-CLNT for the browser</td></tr>
+        <tr><td>IETF RFC 10017</td><td>2026</td><td>OAuth 2.0 for browser-based applications</td></tr>
+        <tr><td>FIRST CVSS</td><td>4.0</td><td>Base score (CVSS-B) and rating</td></tr>
+      </table></div>
+      <h3 class="sec"><span class="num">6.3</span>Risk Rating Criteria</h3>
+      <div class="prose"><p>Each finding is rated by its CVSS 4.0 base score (CVSS-B: base metrics only, no threat or environmental metrics). Where log or repository access is a precondition, the score assumes low-privileged readers (PR:L).</p></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Risk</th><th>CVSS 4.0</th><th>Description</th></tr></thead>
+        <tr><td><span class="sev s-critical">Critical</span></td><td class="num">9.0 – 10.0</td><td>Exposed and exploitable with severe impact; no control is in place or planned.</td></tr>
+        <tr><td><span class="sev s-high">High</span></td><td class="num">7.0 – 8.9</td><td>High concern given exposure, ease of exploitation or severity of impact.</td></tr>
+        <tr><td><span class="sev s-medium">Medium</span></td><td class="num">4.0 – 6.9</td><td>Moderate concern; a control exists but is partial or only somewhat effective.</td></tr>
+        <tr><td><span class="sev s-low">Low</span></td><td class="num">0.1 – 3.9</td><td>Minor concern; the control is in place but could be improved.</td></tr>
+        <tr><td><span class="sev s-info">Informational</span></td><td class="num">0.0</td><td>Hardening advice with no direct exploit path today.</td></tr>
+      </table></div>
+      <h3 class="sec"><span class="num">6.4</span>Candidates Rejected by Verification</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Candidate</th><th>Location</th><th>Reason</th><th>Disproof</th></tr></thead>
+        <tr><td>SQL injection in product search</td><td><code>api/src/routes/products.js:15</code></td><td>The search term is passed as a query parameter, never concatenated.</td><td><code>api/src/db/products.js:22</code></td></tr>
+        <tr><td>Open redirect after login</td><td><code>web/src/screens/Login.jsx:48</code></td><td>The <code>next</code> value is checked against an allow-list of in-app paths.</td><td><code>web/src/lib/redirect.js:6</code></td></tr>
+      </table></div>
+      <h3 class="sec"><span class="num">6.5</span>Disclaimer</h3>
+      <div class="prose">
+        <p>This report is confidential and intended only for Acme Corp (fictional). Its findings reflect the code on the reviewed branch on the date of issue; later changes to code, configuration or architecture may change the results. Findings marked "needs confirmation" depend on behaviour outside the review scope.</p>
+      </div>
+      <footer class="end">
+        <p>Confidential. Secret values, card data, OTPs and tokens are referenced by location only and never reproduced in this report.</p>
+        <p>Generated with <a href="https://github.com/ibrahimabdallatif/appsec-review">appsec-review</a> · Skill author: Ibrahim Abdallatif · <a href="https://www.linkedin.com/in/ibrahimabdallatif/">LinkedIn</a></p>
+      </footer>
+    </section>
+
+  </main>
+</div>
+
+<script>
+/* Light/dark toggle: overrides the system theme and remembers the choice in this browser */
+(function () {
+  var KEY = "appsec-report-theme";
+  var root = document.documentElement;
+  var btn = document.getElementById("theme-toggle");
+  var query = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  function current() { return root.getAttribute("data-theme") || (query && query.matches ? "dark" : "light"); }
+  function render() {
+    var dark = current() === "dark";
+    btn.setAttribute("aria-pressed", String(dark));
+  }
+  try {
+    var saved = localStorage.getItem(KEY);
+    if (saved === "dark" || saved === "light") { root.setAttribute("data-theme", saved); }
+  } catch (e) {}
+  btn.addEventListener("click", function () {
+    var next = current() === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem(KEY, next); } catch (e) {}
+    render();
+  });
+  if (query && query.addEventListener) { query.addEventListener("change", render); }
+  render();
+})();
+</script>
+</html>

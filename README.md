@@ -17,6 +17,7 @@
   <a href="docs/getting-started.md">Getting started</a> ·
   <a href="docs/how-it-works.md">How it works</a> ·
   <a href="docs/ci-pipeline.md">CI pipeline</a> ·
+  <a href="https://ibrahimabdallatif.github.io/appsec-review/sample-report.html">Sample report</a> ·
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
@@ -242,8 +243,8 @@ The full picture, with a diagram: [docs/how-it-works.md](docs/how-it-works.md).
 | `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, .NET, Go, Supabase and Firebase |
 | `rules/deep/*.md` | `deep`-mode playbooks: object-level authorization, payment callbacks, payment state and idempotency, race conditions, business-logic flaws |
 | `method/` | Coverage ledger, hunter and verifier prompts, `inventory.py`, `ledger.py` validator and CI gate, `accepted_risks.py`, `sarif.py`, `run_stats.py` |
-| `report/` | Report structure and Markdown copy rules (`REPORT.md`), CVSS 4.0 calculator (`cvss40.py`) and HTML template |
-| `docs/` | Getting started, how it works, CI pipeline guide, and the README images |
+| `report/` | Report structure and Markdown copy rules (`REPORT.md`), CVSS 4.0 calculator (`cvss40.py`), HTML template, and `build_sample.py`, which builds the sample report from the fictional fixture in `sample/` |
+| `docs/` | Getting started, how it works, CI pipeline guide, the README images, and the sample report served by GitHub Pages |
 | `evals/` | `benchmark.py`, which scores one run, or several runs for stability, against known findings |
 | `.github/workflows/tests.yml` | Runs every test suite on Linux and Windows on each push and pull request |
 
@@ -264,6 +265,7 @@ python -I method/test_run_stats.py
 python -I evals/test_benchmark.py
 python -I report/test_cvss40.py
 python -I report/cvss40.py --selftest
+python -I report/test_build_sample.py
 ```
 
 After changing `rules/`, `method/` or the steps, score the skill against a benchmark repository with

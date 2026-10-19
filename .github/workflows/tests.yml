@@ -38,3 +38,5 @@ jobs:
         run: python -I report/cvss40.py --selftest
       - name: CVSS calculator tests
         run: python -I report/test_cvss40.py
+      - name: Sample report tests
+        run: python -I report/test_build_sample.py

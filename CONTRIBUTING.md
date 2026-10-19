@@ -54,7 +54,12 @@ python -I method/test_run_stats.py      # run_stats.py
 python -I evals/test_benchmark.py       # benchmark.py
 python -I report/test_cvss40.py         # cvss40.py
 python -I report/cvss40.py --selftest   # cvss40.py against FIRST reference scores
+python -I report/test_build_sample.py   # build_sample.py (fails when docs/sample-report.* is out of date)
 ```
+
+After changing `report-template.html` or `report/sample/acme-shop.json`, rebuild the public sample report with
+`python -I report/build_sample.py` and commit `docs/sample-report.html` and `docs/sample-report.md` with the change.
+Keep the fixture fictional: never copy names, paths or code from a real review into it.
 
 The same commands run in GitHub Actions on every push and pull request (`.github/workflows/tests.yml`), on Linux
 and Windows. Run scripts with `python -I` so they never import code from the reviewed repository.
