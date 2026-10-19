@@ -160,6 +160,8 @@ pre .hl { background: color-mix(in srgb, var(--critical) 16%, transparent); disp
 .recs li::before { content: counter(r, decimal-leading-zero); position: absolute; left: 14px; top: 12px; font-family: var(--mono); font-size: 0.78rem; color: var(--accent); }
 .recs .meta { display: block; margin-top: 6px; font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
 footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(--line); padding-top: 16px; }
+footer.end p { margin: 0; }
+footer.end p + p { margin-top: 6px; }
 
 /* Theme toggle */
 .cover-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -410,6 +412,7 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
       <header><span class="num">6.0</span><h2>Appendix</h2></header>
       <h3 class="sec"><span class="num">6.1</span>Assessment Methodology</h3>
       <div class="prose">
+        <p>This review was performed with the <b>appsec-review</b> skill, commit <code>{{SKILL_REF}}</code>.</p>
         <ul>
           <li><b>Code enumeration.</b> {{STACK_AND_ENTRY_POINTS}}</li>
           <li><b>Dependency and secret checks.</b> {{DEPENDENCY_AND_SECRET_CHECKS_AND_TOOLS_RUN}}</li>
@@ -444,7 +447,10 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
       <div class="prose">
         <p>This report is confidential and intended only for {{ORGANISATION}}. Its findings reflect the code on the reviewed branch on the date of issue; later changes to code, configuration or architecture may change the results. Findings marked "needs confirmation" depend on behaviour outside the review scope.</p>
       </div>
-      <footer class="end">Confidential. Secret values, card data, OTPs and tokens are referenced by location only and never reproduced in this report.</footer>
+      <footer class="end">
+        <p>Confidential. Secret values, card data, OTPs and tokens are referenced by location only and never reproduced in this report.</p>
+        <p>Generated with <a href="https://github.com/ibrahimabdallatif/appsec-review">appsec-review</a> · Skill author: Ibrahim Abdallatif · <a href="https://www.linkedin.com/in/ibrahimabdallatif/">LinkedIn</a></p>
+      </footer>
     </section>
 
   </main>
