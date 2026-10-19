@@ -1,6 +1,6 @@
 """Build the public sample report from report-template.html and a fictional fixture.
 
-The sample is served by GitHub Pages from docs/, so it must stay in step with the template: the CI tests fail when
+The sample in docs/ is linked from the README, so it must stay in step with the template: the CI tests fail when
 the committed files differ from a fresh build.
 
 Usage:
