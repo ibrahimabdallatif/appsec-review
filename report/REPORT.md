@@ -233,7 +233,8 @@ that wasn't possible, say so in 2.3.
 
 ### Local files
 
-Every run writes both files to `~/.appsec-review/<repo>/`, outside the reviewed repository, next to the ledger. A
+Every run that builds a report (every `standard` and `deep` run; a `diff` run only when asked or non-interactive)
+writes both files to `~/.appsec-review/<repo>/`, outside the reviewed repository, next to the ledger. A
 multi-repository report uses the name of the directory holding the repositories in place of `<repo>`. Each run
 overwrites the previous files; the version and date on the cover tell them apart.
 

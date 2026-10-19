@@ -70,11 +70,12 @@ After the findings come:
   attack. If you think a rejection is wrong, you can overrule it.
 - **Run summary**: mode, time, tokens and subagents used, and counts of findings and affected locations.
 
-Every run then writes the report to `~/.appsec-review/<repo>/` as `report.html` and `report.md` (the Markdown
-copy is the one to feed to another session), publishes the HTML privately when the session can (CI runs don't),
-prints the absolute paths of both files with the artifact link, and asks whether to fix a specific finding, all
-of them, or none for now.
-Non-interactive runs (CI) skip the question.
+`standard` and `deep` runs then write the report to `~/.appsec-review/<repo>/` as `report.html` and `report.md`
+(the Markdown copy is the one to feed to another session), publish the HTML privately when the session can (CI
+runs don't), print the absolute paths of both files with the artifact link, and ask whether to fix a specific
+finding, all of them, or none for now. A `diff` run skips the report by default and instead asks whether to fix
+the findings, generate the report, or both.
+Non-interactive runs (CI) skip the questions; a non-interactive `diff` run writes the report anyway.
 
 ## 4. Fix and re-check
 

@@ -194,7 +194,7 @@ Fix:    load through orderRepository.findByIdAndCustomerId(id, principal.custome
 Then the "needs confirmation" findings with the exact fact to check, what was checked and found clean, the
 coverage summary, the candidates rejected by verification, and a run summary with time and tokens.
 
-Every run also writes a report with CVSS 4.0 scores and standards references for each finding to
+`standard` and `deep` runs also write a report (a `diff` run asks first) with CVSS 4.0 scores and standards references for each finding to
 `~/.appsec-review/<repo>/`: `report.html` for people and `report.md`, the same content in Markdown, to feed to
 another session ("read report.md and fix finding 4.1.2"). The HTML is published privately when the session can,
 and the run ends by printing where everything is:

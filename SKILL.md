@@ -208,11 +208,11 @@ ledger; a platform-wide finding uses one finding key, linked from units in every
 - List the candidates **rejected by verification** after that: title, `file:line`, the verifier's reason and the
   disproof line. The user can overrule a wrong rejection.
 - Finish every run, including one stopped early or failed, with the run summary below, then the report (see
-  Report), then the next-steps questions.
+  Report; in `diff` mode only when the user asks for it), then the next-steps questions.
 
 ### Run summary
 
-The last block of every result, followed only by the report and the next-steps questions:
+The last block of every result, followed only by the report (when one is built) and the next-steps questions:
 
 ```
 Run summary
@@ -250,16 +250,19 @@ Run summary
 
 ### Next steps
 
-After the report, ask the user what to do next, with the question tool when the session has one, otherwise as a
-short closing question:
+After the report (in `diff` mode, right after the run summary), ask the user what to do next, with the question
+tool when the session has one, otherwise as a short closing question:
 
 - **Fixes.** When there is at least one finding, ask whether to fix a specific finding (offer the findings by
   title, most severe first; the user can name others), fix all of them, or neither for now. Leave out findings
   rejected by verification, and note that `needs confirmation` findings are fixed only after their fact is
   confirmed or the user chooses to fix them anyway.
+- **Report.** In `diff` mode only, also ask whether to generate the report for the findings (see Report). Ask it
+  even when there are no findings; the report then says so.
 
-Then fix as answered (rules above). Skip the questions in a non-interactive run
-(CI, scheduled or headless), where no one can answer.
+Then fix and build the report as answered (rules above); when the user asks for both, build the report first so it
+describes the findings as reviewed. Skip the questions in a non-interactive run (CI, scheduled or headless), where
+no one can answer; a non-interactive `diff` run builds the report without asking.
 
 ## CI gate
 
@@ -276,8 +279,10 @@ accepted-risk file unless the user asks, and never shorten a review because a cr
 
 ## Report
 
-Every run produces a report without being asked, including a `diff` run and a run with no findings (the report
-then says so). Build it after the run summary: read `report/REPORT.md` and follow it exactly:
+`standard` and `deep` runs produce a report without being asked, including a run with no findings (the report
+then says so). A `diff` run builds no report by default: it builds one only when the user asks for it through the
+next-steps questions or in their request, or when the run is non-interactive. Build it after the run summary: read
+`report/REPORT.md` and follow it exactly:
 
 - Use its section structure (1.0 Executive Summary to 6.0 Appendix) and finding card fields, and its
   multi-repository rules when more than one repository is in scope.
@@ -288,7 +293,7 @@ then says so). Build it after the run summary: read `report/REPORT.md` and follo
 - Score every finding with a CVSS 4.0 base vector and rate it by the CVSS band. Compute each score with
   `python -I <skill folder>/report/cvss40.py "<vector>"`; never estimate.
 - Build the page from `report/report-template.html`, keeping its CSS and layout and replacing only the content.
-- Write two local files in every run, from the same finding data (REPORT.md "Saving and publishing"):
+- Write two local files whenever a report is built, from the same finding data (REPORT.md "Saving and publishing"):
   `~/.appsec-review/<repo>/report.html` (the page) and `~/.appsec-review/<repo>/report.md` (the same report as
   Markdown, for feeding to another session). A multi-repository report uses the name of the directory holding the
   repositories in place of `<repo>`.
