@@ -278,9 +278,22 @@ then says so). Build it after the run summary: read `report/REPORT.md` and follo
 - Score every finding with a CVSS 4.0 base vector and rate it by the CVSS band. Compute each score with
   `python -I <skill folder>/report/cvss40.py "<vector>"`; never estimate.
 - Build the page from `report/report-template.html`, keeping its CSS and layout and replacing only the content.
-- Publish it privately and warn before wider sharing, because it contains attack details for open issues. When the
-  session cannot publish (CI, scheduled or headless), write it to `~/.appsec-review/<repo>/report.html` instead and
-  print that path.
+- Write two local files in every run, from the same finding data (REPORT.md "Saving and publishing"):
+  `~/.appsec-review/<repo>/report.html` (the page) and `~/.appsec-review/<repo>/report.md` (the same report as
+  Markdown, for feeding to another session). A multi-repository report uses the name of the directory holding the
+  repositories in place of `<repo>`.
+- Then publish the HTML file privately and warn before wider sharing, because it contains attack details for open
+  issues. Skip publishing when the session cannot publish (CI, scheduled or headless); the local files are still
+  written.
+- End the report step by printing both local files as absolute paths with the home directory expanded, plus the
+  artifact link when one was published:
+
+  ```
+  Report
+  - HTML: <absolute path>/report.html
+  - Markdown: <absolute path>/report.md
+  - Artifact: <claude.ai link> (private)
+  ```
 
 ## Maintaining the skill
 

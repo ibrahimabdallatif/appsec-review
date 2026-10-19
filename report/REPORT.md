@@ -4,7 +4,9 @@ Use this file for the **report** every appsec-review run produces after its term
 The terminal result keeps the format in `SKILL.md`. A report always uses the structure, fields and scoring below,
 so every report looks and rates the same way.
 
-Build the page from `report-template.html`: keep its CSS and layout and replace only the content. Never put
+Every report is written twice from the same finding data: an HTML page for people and a Markdown copy for
+feeding to another session (section 5). Build the page from `report-template.html`: keep its CSS and layout and
+replace only the content. Never put
 another company's name, logo or branding on the report (it is an internal review), and never quote secret values,
 card numbers, CVVs, OTPs or tokens. Refer to them by file, line or commit.
 
@@ -227,10 +229,42 @@ spend and agent loops go in 10 (Business logic and abuse). Cite the LLM or ASI i
 Check that every standard in 6.2 is the current edition (rules/00-overview.md, after the standards list); if
 that wasn't possible, say so in 2.3.
 
-## 5. Publishing
+## 5. Saving and publishing
 
-- Publish the report as a private artifact. Before telling the user to share it more widely, warn them that it
-  contains working attack details for open issues.
+### Local files
+
+Every run writes both files to `~/.appsec-review/<repo>/`, outside the reviewed repository, next to the ledger. A
+multi-repository report uses the name of the directory holding the repositories in place of `<repo>`. Each run
+overwrites the previous files; the version and date on the cover tell them apart.
+
+| File | Content |
+|---|---|
+| `report.html` | The page built from `report-template.html` |
+| `report.md` | The same report as Markdown, built from the same finding data at the same time |
+
+The Markdown copy must say everything the page says, in the same order, so another session can work from it alone:
+
+- **Front matter** with `service`, `repository`, `branch`, `commit`, `mode`, `version`, `date` and `status`, so a
+  script can read them.
+- **Same structure:** every section and sub-section from section 1 as a heading with its number and title
+  (`## 4.0 Vulnerability Findings`, `### 4.1.2 <title>`), and "None" where the page says None.
+- **Same finding fields** in the same order (section 1, "Finding card fields"), each as a bold label. Put the
+  ledger key on the line under the title, the full `CVSS:4.0/` vector and score next to the rating, and each
+  affected asset as a list item.
+- **Tables** as Markdown tables; the risk profile as a table of counts per rating instead of a bar.
+- **Code excerpts** in fenced code blocks with the language named, the file path above the block, and a
+  `Vulnerable lines:` line listing the highlighted line numbers instead of the highlight. Never change the code to
+  mark lines, and use a fence longer than any run of backticks inside the excerpt.
+- **No HTML**, no styling and no theme script. The secrets rule above applies unchanged.
+
+### Publishing
+
+- Publish the HTML file as a private artifact. Before telling the user to share it more widely, warn them that it
+  contains working attack details for open issues. When the session cannot publish (CI, scheduled or headless),
+  skip this step; the local files are still written.
+- Finish by printing the absolute path of both local files, with the home directory expanded, and the artifact
+  link when one was published (SKILL.md "Report").
+- When a published report is updated, rewrite both local files too, so they always match the artifact.
 - On a retest, keep the finding numbers, update Status per finding, bump the cover version and date of issue,
   and say in 1.1 what changed since the previous version. If the previous version was scored with CVSS 3.1,
   re-score every finding with CVSS 4.0 and say in 1.1 that ratings may have moved because of the new version.
@@ -242,8 +276,8 @@ in sections 1 to 5 still applies.
 
 ### Order of work
 
-- Build the report only from deep reviews. Review one repository in depth, merge it into the report, publish (or
-  update) the same artifact, then move to the next repository. Do not publish a combined report built from a quick
+- Build the report only from deep reviews. Review one repository in depth, merge it into the report, rewrite
+  both local files, publish (or update) the same artifact, then move to the next repository. Do not publish a combined report built from a quick
   sweep across repositories.
 - Review in risk order: authentication and identity, money movement, card data, shared providers and gateways,
   then the rest.

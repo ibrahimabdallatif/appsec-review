@@ -79,7 +79,8 @@
 
 ### 📊 Reporting and CI
 
-- **Audit-ready report**: private HTML report with executive summary, threat model, remediation plan and appendix
+- **Audit-ready report**: private HTML report with executive summary, threat model, remediation plan and appendix,
+  plus a Markdown copy to feed to another session, both saved locally with their paths printed
 - **CVSS 4.0 by script**: every score computed by `report/cvss40.py`, never estimated
 - **Coverage ledger**: entry point × category units, validated against the inventory by `method/ledger.py`
 - **CI gate and SARIF**: `--fail-on <severity>`, time-limited accepted risks, SARIF export for code scanning
@@ -170,8 +171,21 @@ Fix:    load through orderRepository.findByIdAndCustomerId(id, principal.custome
 ```
 
 Then the "needs confirmation" findings with the exact fact to check, what was checked and found clean, the
-coverage summary, the candidates rejected by verification, and a run summary with time and tokens. Every run
-also publishes a private HTML report with CVSS 4.0 scores and standards references for each finding.
+coverage summary, the candidates rejected by verification, and a run summary with time and tokens.
+
+Every run also writes a report with CVSS 4.0 scores and standards references for each finding to
+`~/.appsec-review/<repo>/`: `report.html` for people and `report.md`, the same content in Markdown, to feed to
+another session ("read report.md and fix finding 4.1.2"). The HTML is published privately when the session can,
+and the run ends by printing where everything is:
+
+```
+Report
+- HTML: C:\Users\<you>\.appsec-review\cards-service\report.html
+- Markdown: C:\Users\<you>\.appsec-review\cards-service\report.md
+- Artifact: https://claude.ai/artifact/<id> (private)
+```
+
+CI and other headless runs leave out the artifact line; the local files are always written.
 
 ## 🔁 In CI
 
@@ -228,7 +242,7 @@ The full picture, with a diagram: [docs/how-it-works.md](docs/how-it-works.md).
 | `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, .NET, Go, Supabase and Firebase |
 | `rules/deep/*.md` | `deep`-mode playbooks: object-level authorization, payment callbacks, payment state and idempotency, race conditions, business-logic flaws |
 | `method/` | Coverage ledger, hunter and verifier prompts, `inventory.py`, `ledger.py` validator and CI gate, `accepted_risks.py`, `sarif.py`, `run_stats.py` |
-| `report/` | Report structure (`REPORT.md`), CVSS 4.0 calculator (`cvss40.py`) and HTML template |
+| `report/` | Report structure and Markdown copy rules (`REPORT.md`), CVSS 4.0 calculator (`cvss40.py`) and HTML template |
 | `docs/` | Getting started, how it works, CI pipeline guide, and the README images |
 | `evals/` | `benchmark.py`, which scores one run, or several runs for stability, against known findings |
 | `.github/workflows/tests.yml` | Runs every test suite on Linux and Windows on each push and pull request |
