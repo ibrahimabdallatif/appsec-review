@@ -114,11 +114,10 @@ td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
 .tbl-findings tr.grp td { background: var(--accent-soft); font-weight: 600; }
 .stack { display: flex; height: 12px; border-radius: 999px; overflow: hidden; gap: 2px; }
 .stack span { background: var(--c); }
-.legend { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
-@media (max-width: 520px) { .legend { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.legend div { display: flex; flex-direction: column; gap: 2px; }
+.legend { display: flex; gap: 2px; }
+.legend div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .legend b { font-family: var(--display); font-size: 1.4rem; font-variant-numeric: tabular-nums; color: var(--c); }
-.legend span { font-size: 0.75rem; color: var(--muted); }
+.legend span { font-size: 0.75rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Checklist */
 .check { display: flex; flex-direction: column; gap: 10px; }
@@ -274,11 +273,11 @@ footer.end p + p { margin-top: 6px; }
           <span class="s-info" style="flex:1"></span>
         </div>
         <div class="legend">
-          <div class="s-critical"><b>1</b><span>Critical</span></div>
-          <div class="s-high"><b>2</b><span>High</span></div>
-          <div class="s-medium"><b>2</b><span>Medium</span></div>
-          <div class="s-low"><b>2</b><span>Low</span></div>
-          <div class="s-info"><b>1</b><span>Informational</span></div>
+          <div class="s-critical" style="flex:1"><b>1</b><span>Critical</span></div>
+          <div class="s-high" style="flex:2"><b>2</b><span>High</span></div>
+          <div class="s-medium" style="flex:2"><b>2</b><span>Medium</span></div>
+          <div class="s-low" style="flex:2"><b>2</b><span>Low</span></div>
+          <div class="s-info" style="flex:1"><b>1</b><span>Informational</span></div>
         </div>
       </div>
       <div class="card total layer">
@@ -290,10 +289,10 @@ footer.end p + p { margin-top: 6px; }
           <span class="s-low" style="flex:1"></span>
         </div>
         <div class="legend">
-          <div class="s-critical"><b>1</b><span>Critical</span></div>
-          <div class="s-high"><b>2</b><span>High</span></div>
-          <div class="s-medium"><b>1</b><span>Medium</span></div>
-          <div class="s-low"><b>1</b><span>Low</span></div>
+          <div class="s-critical" style="flex:1"><b>1</b><span>Critical</span></div>
+          <div class="s-high" style="flex:2"><b>2</b><span>High</span></div>
+          <div class="s-medium" style="flex:1"><b>1</b><span>Medium</span></div>
+          <div class="s-low" style="flex:1"><b>1</b><span>Low</span></div>
         </div>
       </div>
       <div class="card total layer">
@@ -304,9 +303,9 @@ footer.end p + p { margin-top: 6px; }
           <span class="s-info" style="flex:1"></span>
         </div>
         <div class="legend">
-          <div class="s-medium"><b>1</b><span>Medium</span></div>
-          <div class="s-low"><b>1</b><span>Low</span></div>
-          <div class="s-info"><b>1</b><span>Informational</span></div>
+          <div class="s-medium" style="flex:1"><b>1</b><span>Medium</span></div>
+          <div class="s-low" style="flex:1"><b>1</b><span>Low</span></div>
+          <div class="s-info" style="flex:1"><b>1</b><span>Informational</span></div>
         </div>
       </div>
 

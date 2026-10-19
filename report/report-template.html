@@ -110,11 +110,10 @@ td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
 .tbl-findings tr.grp td { background: var(--accent-soft); font-weight: 600; }
 .stack { display: flex; height: 12px; border-radius: 999px; overflow: hidden; gap: 2px; }
 .stack span { background: var(--c); }
-.legend { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
-@media (max-width: 520px) { .legend { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.legend div { display: flex; flex-direction: column; gap: 2px; }
+.legend { display: flex; gap: 2px; }
+.legend div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .legend b { font-family: var(--display); font-size: 1.4rem; font-variant-numeric: tabular-nums; color: var(--c); }
-.legend span { font-size: 0.75rem; color: var(--muted); }
+.legend span { font-size: 0.75rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Checklist */
 .check { display: flex; flex-direction: column; gap: 10px; }
@@ -277,7 +276,7 @@ footer.end p + p { margin-top: 6px; }
       <h3 class="sec" id="profile"><span class="num">1.2</span>Risk Profile</h3>
       <div class="card total">
         <div class="head"><span class="big">{{TOTAL}}</span><span class="sub">root causes in {{N_LOCATIONS}} affected locations</span></div>
-        <!-- flex values = counts; drop a span when its count is 0 -->
+        <!-- flex values = counts so each legend entry sits under its bar segment; drop a span or legend entry when its count is 0 -->
         <div class="stack" aria-hidden="true">
           <span class="s-critical" style="flex:{{N_CRITICAL}}"></span>
           <span class="s-high" style="flex:{{N_HIGH}}"></span>
@@ -286,11 +285,11 @@ footer.end p + p { margin-top: 6px; }
           <span class="s-info" style="flex:{{N_INFO}}"></span>
         </div>
         <div class="legend">
-          <div class="s-critical"><b>{{N_CRITICAL}}</b><span>Critical</span></div>
-          <div class="s-high"><b>{{N_HIGH}}</b><span>High</span></div>
-          <div class="s-medium"><b>{{N_MEDIUM}}</b><span>Medium</span></div>
-          <div class="s-low"><b>{{N_LOW}}</b><span>Low</span></div>
-          <div class="s-info"><b>{{N_INFO}}</b><span>Informational</span></div>
+          <div class="s-critical" style="flex:{{N_CRITICAL}}"><b>{{N_CRITICAL}}</b><span>Critical</span></div>
+          <div class="s-high" style="flex:{{N_HIGH}}"><b>{{N_HIGH}}</b><span>High</span></div>
+          <div class="s-medium" style="flex:{{N_MEDIUM}}"><b>{{N_MEDIUM}}</b><span>Medium</span></div>
+          <div class="s-low" style="flex:{{N_LOW}}"><b>{{N_LOW}}</b><span>Low</span></div>
+          <div class="s-info" style="flex:{{N_INFO}}"><b>{{N_INFO}}</b><span>Informational</span></div>
         </div>
       </div>
       <!-- LAYERS ONLY, REPEAT per layer in section order; counts are that layer's, drop a span or legend entry when 0 -->
@@ -304,11 +303,11 @@ footer.end p + p { margin-top: 6px; }
           <span class="s-info" style="flex:{{L_INFO}}"></span>
         </div>
         <div class="legend">
-          <div class="s-critical"><b>{{L_CRITICAL}}</b><span>Critical</span></div>
-          <div class="s-high"><b>{{L_HIGH}}</b><span>High</span></div>
-          <div class="s-medium"><b>{{L_MEDIUM}}</b><span>Medium</span></div>
-          <div class="s-low"><b>{{L_LOW}}</b><span>Low</span></div>
-          <div class="s-info"><b>{{L_INFO}}</b><span>Informational</span></div>
+          <div class="s-critical" style="flex:{{L_CRITICAL}}"><b>{{L_CRITICAL}}</b><span>Critical</span></div>
+          <div class="s-high" style="flex:{{L_HIGH}}"><b>{{L_HIGH}}</b><span>High</span></div>
+          <div class="s-medium" style="flex:{{L_MEDIUM}}"><b>{{L_MEDIUM}}</b><span>Medium</span></div>
+          <div class="s-low" style="flex:{{L_LOW}}"><b>{{L_LOW}}</b><span>Low</span></div>
+          <div class="s-info" style="flex:{{L_INFO}}"><b>{{L_INFO}}</b><span>Informational</span></div>
         </div>
       </div>
 

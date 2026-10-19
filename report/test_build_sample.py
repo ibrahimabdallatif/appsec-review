@@ -101,8 +101,9 @@ class TemplateEditingTest(unittest.TestCase):
     def test_drop_empty_bars_and_legend(self):
         bars = '  <span class="s-high" style="flex:0"></span>\n  <span class="s-low" style="flex:2"></span>\n'
         self.assertEqual(bs.drop_empty_bars(bars), '  <span class="s-low" style="flex:2"></span>\n')
-        legend = '  <div class="s-high"><b>0</b><span>High</span></div>\n'
-        self.assertEqual(bs.drop_empty_legend(legend), "")
+        kept = '  <div class="s-low" style="flex:2"><b>2</b><span>Low</span></div>\n'
+        legend = '  <div class="s-high" style="flex:0"><b>0</b><span>High</span></div>\n' + kept
+        self.assertEqual(bs.drop_empty_legend(legend), kept)
 
     def test_wrap_document_sets_charset(self):
         out = bs.wrap_document("<title>t</title>\n")

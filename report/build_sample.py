@@ -177,8 +177,8 @@ def drop_empty_bars(text):
 
 
 def drop_empty_legend(text):
-    """Layer cards drop a legend entry whose count is 0."""
-    return re.sub(r'^[ \t]*<div class="s-\w+"><b>0</b><span>\w+</span></div>\n', "", text, flags=re.M)
+    """REPORT template: drop a legend entry whose count is 0."""
+    return re.sub(r'^[ \t]*<div class="s-\w+" style="flex:0"><b>0</b><span>\w+</span></div>\n', "", text, flags=re.M)
 
 
 def wrap_document(body):
@@ -206,7 +206,7 @@ def layer_card(block, section):
     found = section["findings"]
     values = dict(rating_values("L_", count_ratings(found)), LAYER=section["layer_name"],
                   LAYER_TOTAL=len(found), LAYER_LOCATIONS=count_locations(found))
-    return drop_empty_legend(fill(block, values) + "\n").rstrip("\n")
+    return fill(block, values)
 
 
 def render_layer_cards(text, ctx):
@@ -389,7 +389,7 @@ def build_html(template, data):
     for step in HTML_STEPS:
         text = step(text, ctx)
     text = fill(text, global_values(ctx))
-    return wrap_document(drop_empty_bars(strip_comments(text)))
+    return wrap_document(drop_empty_legend(drop_empty_bars(strip_comments(text))))
 
 
 # Markdown
