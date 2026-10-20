@@ -25,7 +25,7 @@ card numbers, CVVs, OTPs or tokens. Refer to them by file, line or commit.
   opening a confidential report contacts no outside host. Keep it that way.
 - **Light and dark mode.** Keep the cover's `#theme-toggle` button and its inline script at the end of the
   template; it is the only script a report may contain. It switches `data-theme` on the root element, keeps
-  a fixed "Dark mode" label with `aria-pressed` carrying the state, follows the system theme until the reader
+  a label naming the mode it switches to ("Dark mode" or "Light mode"), follows the system theme until the reader
   picks one, and remembers the choice in that browser. Define every new color as a token in all three theme
   blocks so both modes stay readable.
 - **Print and PDF.** The template's `@media print` block makes Print → Save as PDF a light, single-column A4

@@ -149,6 +149,8 @@ class HtmlBuildTest(unittest.TestCase):
 
     def test_keeps_theme_script_and_credit(self):
         self.assertIn('id="theme-toggle"', self.page)
+        self.assertIn('label.textContent = current() === "dark" ? "Light mode" : "Dark mode";', self.page)
+        self.assertNotIn("aria-pressed", self.page)
         self.assertIn(bs.REPO_URL, self.page)
 
     def test_no_facts_gives_none_row(self):

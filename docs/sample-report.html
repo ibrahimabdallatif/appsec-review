@@ -217,7 +217,7 @@ footer.end p + p { margin-top: 6px; }
     <div>
       <div class="cover-top">
         <span class="badge-conf">Confidential</span>
-        <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false"><i class="dot" aria-hidden="true"></i><span>Dark mode</span></button>
+        <button type="button" class="theme-toggle" id="theme-toggle"><i class="dot" aria-hidden="true"></i><span>Dark mode</span></button>
       </div>
       <p class="eyebrow" style="margin-top:22px">Acme Corp (fictional) · E-commerce</p>
       <h1>acme-shop<br><span>Source Code Review Report</span></h1>
@@ -710,11 +710,11 @@ footer.end p + p { margin-top: 6px; }
   var KEY = "appsec-report-theme";
   var root = document.documentElement;
   var btn = document.getElementById("theme-toggle");
+  var label = btn.querySelector("span");
   var query = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
   function current() { return root.getAttribute("data-theme") || (query && query.matches ? "dark" : "light"); }
   function render() {
-    var dark = current() === "dark";
-    btn.setAttribute("aria-pressed", String(dark));
+    label.textContent = current() === "dark" ? "Light mode" : "Dark mode";
   }
   try {
     var saved = localStorage.getItem(KEY);
