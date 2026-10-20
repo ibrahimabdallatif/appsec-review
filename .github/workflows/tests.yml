@@ -21,22 +21,22 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Inventory tests
-        run: python -I method/test_inventory.py
+        run: python -I skills/appsec-review/method/test_inventory.py
       - name: Ledger tests
-        run: python -I method/test_ledger.py
+        run: python -I skills/appsec-review/method/test_ledger.py
       - name: Accepted risks tests
-        run: python -I method/test_accepted_risks.py
+        run: python -I skills/appsec-review/method/test_accepted_risks.py
       - name: SARIF tests
-        run: python -I method/test_sarif.py
+        run: python -I skills/appsec-review/method/test_sarif.py
       - name: Threat model tests
-        run: python -I method/test_threat_model.py
+        run: python -I skills/appsec-review/method/test_threat_model.py
       - name: Run stats tests
-        run: python -I method/test_run_stats.py
+        run: python -I skills/appsec-review/method/test_run_stats.py
       - name: Benchmark tests
-        run: python -I evals/test_benchmark.py
+        run: python -I skills/appsec-review/evals/test_benchmark.py
       - name: CVSS calculator selftest
-        run: python -I report/cvss40.py --selftest
+        run: python -I skills/appsec-review/report/cvss40.py --selftest
       - name: CVSS calculator tests
-        run: python -I report/test_cvss40.py
+        run: python -I skills/appsec-review/report/test_cvss40.py
       - name: Sample report tests
-        run: python -I report/test_build_sample.py
+        run: python -I skills/appsec-review/report/test_build_sample.py

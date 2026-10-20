@@ -21,7 +21,7 @@ import cvss40  # noqa: E402
 
 TEMPLATE = os.path.join(HERE, "report-template.html")
 FIXTURE = os.path.join(HERE, "sample", "acme-shop.json")
-DOCS = os.path.join(os.path.dirname(HERE), "docs")
+DOCS = os.path.join(HERE, "..", "..", "..", "docs")
 OUTPUTS = {"html": os.path.join(DOCS, "sample-report.html"), "md": os.path.join(DOCS, "sample-report.md")}
 
 RATINGS = ("Critical", "High", "Medium", "Low", "Informational")

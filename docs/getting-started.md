@@ -3,10 +3,17 @@
 ## 1. Install
 
 ```sh
-git clone https://github.com/ibrahimabdallatif/appsec-review.git ~/.claude/skills/appsec-review
+npx skills add ibrahimabdallatif/appsec-review --skill appsec-review -g
 ```
 
-The skill is then available in every Claude Code session. You also need Python 3 on your PATH as `python`; the
+Or clone the repository and copy the skill folder yourself:
+
+```sh
+git clone https://github.com/ibrahimabdallatif/appsec-review.git
+cp -r appsec-review/skills/appsec-review ~/.claude/skills/appsec-review
+```
+
+The skill is then available in every Claude Code session. Update it later with `npx skills update`. You also need Python 3 on your PATH as `python`; the
 helper scripts use only the standard library. gitleaks, trivy or osv-scanner, semgrep and your ecosystem's audit
 tool are optional: the skill runs them when they are installed and never installs them itself.
 

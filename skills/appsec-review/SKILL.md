@@ -1,6 +1,6 @@
 ---
 name: appsec-review
-description: Manual security review and pentest-style assessment of Spring, Node.js, Python, .NET and Go back ends, browser front ends (React, Next.js, Angular, Vue, Svelte), mobile apps (React Native, Flutter, native Android and iOS), Supabase and Firebase against OWASP Top 10:2025, OWASP API Top 10:2023, ASVS 5.0 including V3 Web Frontend Security, MASVS, MASTG, Mobile Top 10:2024, CWE Top 25, PCI DSS, NIST SP 800-63B-4, RFC 9700, RFC 8252 and RFC 10017. Run only when the user explicitly invokes /appsec-review, for a diff, branch, PR, file, endpoint, the whole repository, or every repository under a directory.
+description: "Use when the user explicitly invokes /appsec-review for a diff, branch, PR, file, endpoint, the whole repository, or every repository under a directory. Manual pentest-style security review of Spring, Node.js, Python, .NET and Go back ends, browser front ends (React, Next.js, Angular, Vue, Svelte), mobile apps (React Native, Flutter, native Android and iOS), Supabase and Firebase against OWASP Top 10:2025, OWASP API Top 10:2023, ASVS 5.0, MASVS, MASTG, Mobile Top 10:2024, CWE Top 25, PCI DSS, NIST SP 800-63B-4, RFC 9700, RFC 8252 and RFC 10017, with verified findings, CVSS 4.0 scores and SARIF export. Keywords: security review, appsec, pentest, vulnerability, OWASP, IDOR, threat model, STRIDE, CVSS, SARIF"
 disable-model-invocation: true
 ---
 
@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 This skill runs only when someone invokes it explicitly. It is not part of CodeCanary or any automatic PR check.
 
-This skill lives in `~/.claude/skills/appsec-review/` and is available in every Claude Code session. It
+This skill is installed in `~/.claude/skills/appsec-review/` and is available in every Claude Code session. It
 reviews any repository, or every repository under a directory; Claude Code states the skill folder as the
 skill's base directory when it loads. Paths to the skill's own files below (`rules/`, `method/`, `report/`) are relative to
 that skill folder, not to the reviewed repository. The checklist is in `rules/`. Read those files; don't rely on memory.
@@ -46,7 +46,7 @@ The method files in `method/` are not checklists; they define how the review run
 | `method/verifier.md` | Verification per mode: an inline disproof pass, plus fresh verifier subagents that try to disprove candidates |
 | `method/run_stats.py` | Run timer (waits for the user excluded) and token totals for the run summary (`test_run_stats.py` holds its tests) |
 | `method/inventory.py` | Lists entry points and sinks by script, so every run seeds the same ledger units (`inventory_patterns.py` holds the per-stack patterns, `test_inventory.py` the tests) |
-| `evals/benchmark.py` | Not used during a review. Scores one run's ledger, or several runs' for stability, against a benchmark of known findings, to check the skill after changes (`CONTRIBUTING.md`) |
+| `evals/benchmark.py` | Not used during a review. Scores one run's ledger, or several runs' for stability, against a benchmark of known findings, to check the skill after changes (`CONTRIBUTING.md` in the skill's GitHub repository) |
 
 ## Review modes
 
@@ -313,4 +313,4 @@ next-steps questions or in their request, or when the run is non-interactive. Bu
 ## Maintaining the skill
 
 Changing the skill (rules, stacks, inventory patterns, scripts, benchmarks) is covered in `CONTRIBUTING.md` in the
-skill folder. Don't read it during a review.
+skill's GitHub repository (https://github.com/ibrahimabdallatif/appsec-review). Don't read it during a review.

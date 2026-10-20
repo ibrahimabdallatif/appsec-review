@@ -46,7 +46,7 @@
 ## ⚖️ How it compares
 
 appsec-review adapts its hunters, verifier and coverage ledger from Cloudflare's
-[security-audit](https://github.com/cloudflare/security-audit-skill) ([NOTICE.md](NOTICE.md)). It is also compared
+[security-audit](https://github.com/cloudflare/security-audit-skill) ([NOTICE.md](skills/appsec-review/NOTICE.md)). It is also compared
 with Claude Code's built-in [`/security-review`](https://github.com/anthropics/claude-code-security-review). All
 three make an agent try to disprove a finding before it is reported. They are built for different jobs:
 
@@ -153,7 +153,14 @@ report says when no stack file matched.
 ## 🚀 Quick start
 
 ```sh
-git clone https://github.com/ibrahimabdallatif/appsec-review.git ~/.claude/skills/appsec-review
+npx skills add ibrahimabdallatif/appsec-review --skill appsec-review -g
+```
+
+Or clone the repository and copy the skill folder yourself:
+
+```sh
+git clone https://github.com/ibrahimabdallatif/appsec-review.git
+cp -r appsec-review/skills/appsec-review ~/.claude/skills/appsec-review
 ```
 
 Then, in Claude Code, inside the repository to review:
@@ -218,7 +225,7 @@ The review always runs to completion. A separate gate reads the finished ledger 
 or above a severity:
 
 ```sh
-python -I method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json \
+python -I <skill folder>/method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json \
   --inventory ~/.appsec-review/<repo>/inventory.json --fail-on critical
 ```
 
@@ -259,9 +266,12 @@ The full picture, with a diagram: [docs/how-it-works.md](docs/how-it-works.md).
 <details>
 <summary><b>🗂️ Repository layout</b></summary>
 
+The skill itself is `skills/appsec-review/`, the folder `npx skills add` installs; paths below inside it are
+relative to that folder.
+
 | Path | Contents |
 |---|---|
-| `SKILL.md` | The skill definition: modes, steps, output and report rules |
+| `skills/appsec-review/SKILL.md` | The skill definition: modes, steps, output and report rules |
 | `rules/00-overview.md` | Method, STRIDE pass, severity scale and reporting format |
 | `rules/*.md` | Framework-neutral category checklists: access control, authentication and sessions, injection, cryptography and data protection, business logic, configuration and supply chain, logging, client side, AI/LLM agents, web protocol and identity |
 | `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, .NET, Go, Supabase and Firebase |
@@ -270,6 +280,7 @@ The full picture, with a diagram: [docs/how-it-works.md](docs/how-it-works.md).
 | `report/` | Report structure and Markdown copy rules (`REPORT.md`), CVSS 4.0 calculator (`cvss40.py`), HTML template, and `build_sample.py`, which builds the sample report from the fictional fixture in `sample/` |
 | `docs/` | Getting started, how it works, CI pipeline guide, the README images, and the sample report (Markdown, and HTML to open locally) |
 | `evals/` | `benchmark.py`, which scores one run, or several runs for stability, against known findings |
+| `NOTICE.md`, `LICENSE` | Third-party notices and the license, shipped with the skill so every install carries them |
 | `.github/workflows/tests.yml` | Runs every test suite on Linux and Windows on each push and pull request |
 
 </details>
@@ -280,16 +291,16 @@ The full picture, with a diagram: [docs/how-it-works.md](docs/how-it-works.md).
 Run the tests after changing the helper scripts (GitHub Actions runs the same commands on every push):
 
 ```sh
-python -I method/test_inventory.py
-python -I method/test_ledger.py
-python -I method/test_accepted_risks.py
-python -I method/test_sarif.py
-python -I method/test_threat_model.py
-python -I method/test_run_stats.py
-python -I evals/test_benchmark.py
-python -I report/test_cvss40.py
-python -I report/cvss40.py --selftest
-python -I report/test_build_sample.py
+python -I skills/appsec-review/method/test_inventory.py
+python -I skills/appsec-review/method/test_ledger.py
+python -I skills/appsec-review/method/test_accepted_risks.py
+python -I skills/appsec-review/method/test_sarif.py
+python -I skills/appsec-review/method/test_threat_model.py
+python -I skills/appsec-review/method/test_run_stats.py
+python -I skills/appsec-review/evals/test_benchmark.py
+python -I skills/appsec-review/report/test_cvss40.py
+python -I skills/appsec-review/report/cvss40.py --selftest
+python -I skills/appsec-review/report/test_build_sample.py
 ```
 
 After changing `rules/`, `method/` or the steps, score the skill against a benchmark repository with
@@ -302,4 +313,4 @@ After changing `rules/`, `method/` or the steps, score the skill against a bench
 
 MIT, see [LICENSE](LICENSE). Parts of this skill are adapted from MIT-licensed projects by Cloudflare, Vasiliy
 Uvarov, Riyan Dhiman and Mohamed AboElKheir, with ideas from Trail of Bits and autoresearch; see
-[NOTICE.md](NOTICE.md).
+[NOTICE.md](skills/appsec-review/NOTICE.md).

@@ -1,6 +1,7 @@
 # Contributing
 
-This guide is for changing the skill itself: its rules, method, scripts and report. It is kept out of `SKILL.md`
+The skill lives in `skills/appsec-review/`; paths below are relative to that folder, and test commands run
+from the repository root. This guide is for changing the skill itself: its rules, method, scripts and report. It is kept out of `SKILL.md`
 so a review never loads it. For how a review runs, see [docs/how-it-works.md](docs/how-it-works.md).
 
 ## Layout and where changes go
@@ -45,16 +46,16 @@ Patterns favour recall: a false hit costs a short review, a missed sink can hide
 Every script has a test file next to it. Update the tests with each change, and run all of them before you commit:
 
 ```sh
-python -I method/test_inventory.py      # inventory.py, inventory_patterns.py
-python -I method/test_ledger.py         # ledger.py (validator, inventory coverage, --fail-on gate)
-python -I method/test_accepted_risks.py # accepted_risks.py (--accepted for the gate)
-python -I method/test_sarif.py          # sarif.py (--sarif export)
-python -I method/test_threat_model.py   # threat_model.py (threat model, abuse paths, chains)
-python -I method/test_run_stats.py      # run_stats.py
-python -I evals/test_benchmark.py       # benchmark.py
-python -I report/test_cvss40.py         # cvss40.py
-python -I report/cvss40.py --selftest   # cvss40.py against FIRST reference scores
-python -I report/test_build_sample.py   # build_sample.py (fails when docs/sample-report.* is out of date)
+python -I skills/appsec-review/method/test_inventory.py      # inventory.py, inventory_patterns.py
+python -I skills/appsec-review/method/test_ledger.py         # ledger.py (validator, inventory coverage, --fail-on gate)
+python -I skills/appsec-review/method/test_accepted_risks.py # accepted_risks.py (--accepted for the gate)
+python -I skills/appsec-review/method/test_sarif.py          # sarif.py (--sarif export)
+python -I skills/appsec-review/method/test_threat_model.py   # threat_model.py (threat model, abuse paths, chains)
+python -I skills/appsec-review/method/test_run_stats.py      # run_stats.py
+python -I skills/appsec-review/evals/test_benchmark.py       # benchmark.py
+python -I skills/appsec-review/report/test_cvss40.py         # cvss40.py
+python -I skills/appsec-review/report/cvss40.py --selftest   # cvss40.py against FIRST reference scores
+python -I skills/appsec-review/report/test_build_sample.py   # build_sample.py (fails when docs/sample-report.* is out of date)
 ```
 
 After changing `report-template.html` or `report/sample/acme-shop.json`, rebuild the public sample report with

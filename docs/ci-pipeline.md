@@ -26,7 +26,7 @@ Some findings are known and accepted for a while: a compensating control elsewhe
 that the gate does not stay red on them, pass an accepted-risk file:
 
 ```sh
-python -I method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json \
+python -I <skill folder>/method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json \
   --inventory ~/.appsec-review/<repo>/inventory.json --fail-on bug \
   --accepted ~/.appsec-review/accepted-risks/<repo>.json
 ```
@@ -119,6 +119,7 @@ pipeline {
   environment {
     ANTHROPIC_API_KEY = credentials('anthropic-api-key')   // Jenkins secret text credential
     SKILL_REF  = '<skill commit sha>'                       // pin the skill version; bump deliberately
+    SKILL_SRC  = "${env.HOME}/appsec-review-src"            // checkout of the skill repository
     SKILL_DIR  = "${env.HOME}/.claude/skills/appsec-review"
     REVIEW_DIR = "${env.HOME}/.appsec-review"              // outside the workspace: ledgers hold attack details
     ACCEPTED   = credentials('appsec-accepted-risks')       // secret file; drop it and --accepted if unused
@@ -129,9 +130,11 @@ pipeline {
       steps {
         sh '''
           npm install -g @anthropic-ai/claude-code
-          rm -rf "$SKILL_DIR"
-          git clone -q https://github.com/ibrahimabdallatif/appsec-review.git "$SKILL_DIR"
-          git -C "$SKILL_DIR" checkout -q "$SKILL_REF"
+          rm -rf "$SKILL_SRC" "$SKILL_DIR"
+          git clone -q https://github.com/ibrahimabdallatif/appsec-review.git "$SKILL_SRC"
+          git -C "$SKILL_SRC" checkout -q "$SKILL_REF"
+          mkdir -p "$(dirname "$SKILL_DIR")"
+          cp -r "$SKILL_SRC/skills/appsec-review" "$SKILL_DIR"
         '''
       }
     }
