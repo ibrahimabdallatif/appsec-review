@@ -62,6 +62,9 @@ NODE_BACKEND = {
         ("consumer", r"@(?:MessagePattern|EventPattern|Process|OnEvent|SubscribeMessage)\s*\((?P<label>[^)]*)\)",
          None),
         ("job", r"@(?:Cron|Interval|Timeout)\s*\((?P<label>[^)]*)\)", None),
+        # Method decorators sit alone on their line; the REST @Query() parameter decorator is followed by a name.
+        ("resolver", r"^\s*@(?:Resolver|Query|Mutation|Subscription|ResolveField)\s*\((?P<label>(?:[^()]|\(\))*)"
+                     r"(?:\)\s*$|$)", None),
         ("route", r"^\s*export\s+(?:async\s+)?(?:function|const)\s+(?P<label>GET|POST|PUT|PATCH|DELETE)\b", None),
         ("server-action", r"^\s+['\"]use server['\"]", None),
     ],

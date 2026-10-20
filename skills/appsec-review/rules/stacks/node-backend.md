@@ -47,6 +47,18 @@ browser parts are in `web-frontend.md`.
 - NoSQL: `req.body` fields passed into Mongoose or MongoDB filters without casting (`{ $ne: null }`), `$where`.
 - Commands and code: `child_process.exec`/`execSync` with input (use `execFile` with an argument list), `eval`,
   `new Function`, `vm.runInNewContext` (not a sandbox), dynamic `require`/`import`.
+- TypeScript types are erased at runtime: `req.body as CreateCardDto`, `<T>` casts, interfaces and generic
+  `request<T>()` helpers validate nothing, so a typed value from a request, queue, webhook or third-party API is
+  still untrusted until a validator (class-validator, zod, ajv, typia) has checked it. Flag `any`, `unknown` cast
+  to a type, `JSON.parse(x) as T` and `// @ts-ignore`/`@ts-expect-error` on request handling.
+- A NestJS DTO without `class-validator` decorators is stripped to `{}` by `whitelist: true` and passed as is when
+  the global `ValidationPipe` is missing; nested DTOs need `@ValidateNested()` and `@Type(() => Child)`, arrays
+  `{ each: true }`, and `transform: true` with `@Type` or the value stays a string.
+- Non-null assertions (`req.user!.id`, `user!.tenantId`) and optional chaining that defaults to `undefined` in
+  a filter (`where: { ownerId: user?.id }` matches every row in some ORMs) hide a missing authentication check.
+- GraphQL resolvers (`@Query`, `@Mutation`, `@ResolveField`) are entry points: each needs its guard, field
+  resolvers on sensitive types need authorization, and `@ResolveField` on a list is an N+1 and depth risk
+  without query complexity limits.
 - Prototype pollution: `lodash.merge`/`set`/`defaultsDeep`, `deep-extend`, custom deep merges on request JSON.
 - Paths: `res.sendFile`/`fs` with input without `path.resolve` plus a base-directory check; `express.static` on
   broad folders.

@@ -34,6 +34,11 @@ SAMPLES = {
         ("export async function POST(req) {", "entry", "route"),
         ("  'use server'", "entry", "server-action"),
         ("'use server'\nexport async function deleteCard(id) {", "entry", "server-action"),
+        ("@Resolver(() => Card)", "entry", "resolver"),
+        ("  @Query(() => [Card], { name: 'cards' })", "entry", "resolver"),
+        ("  @Mutation(() => Card)", "entry", "resolver"),
+        ("  @ResolveField()", "entry", "resolver"),
+        ("  @Query(() => Card, {", "entry", "resolver"),
         ("exec(`ls ${dir}`)", "sink", "command"),
         ("db.query(`select * from users where id = ${id}`)", "sink", "sql"),
         ("const r = await fetch(url)", "sink", "outbound-http"),
@@ -393,6 +398,12 @@ class HitsTest(unittest.TestCase):
                 "  using ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');\n")
         hits = inventory.sink_hits("supabase/migrations/1.sql", text, "baas", patterns.BAAS)
         self.assertEqual([(h["kind"], h["line"]) for h in hits], [("policy", 1), ("user-metadata", 2)])
+
+    def test_rest_query_parameters_are_not_resolvers(self):
+        for line in ("  findAll(@Query() query: ListCardsDto) {", "    @Query() query: ListCardsDto,",
+                     "    @Query('page') page: string,"):
+            kinds = {h["kind"] for h in inventory.entry_hits("a.ts", line, "node-backend", patterns.NODE_BACKEND)}
+            self.assertNotIn("resolver", kinds, line)
 
     def test_php_method_calls_are_not_builtin_sinks(self):
         for line in ("$pdo->exec('SET NAMES utf8');", "$this->system('x');", "Hash::make($password);",
