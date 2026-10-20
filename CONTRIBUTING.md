@@ -26,7 +26,6 @@ Step 4 of `SKILL.md` loads files from `rules/` as checklists, so anything that i
   playbook adds depth to its parent category and is not a ledger area of its own.
 - The ledger's allowed areas come from the file names in `rules/`, so a new category file needs no validator
   change.
-- Don't move the rules under `.codecanary/rules/`: CodeCanary applies anything there to every PR automatically.
 
 ## Adding a stack
 
