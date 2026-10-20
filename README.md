@@ -1,7 +1,7 @@
 <h1 align="center">appsec-review</h1>
 
 <p align="center">
-  <b>Threat-model-driven security reviews in Claude Code: every entry point mapped by script, every finding verified by an independent agent and scored with CVSS 4.0.</b><br>
+  <b>Threat-model-driven security reviews in Claude Code: full attack surface coverage, every finding verified by an independent agent and scored with CVSS 4.0.</b><br>
   Spring, Node.js, Python, .NET and Go back ends, browser front ends, mobile apps, Supabase and Firebase.
 </p>
 
