@@ -6,11 +6,16 @@ disable-model-invocation: true
 
 # Security assessment
 
-This skill runs only when someone invokes it explicitly. It is not part of CodeCanary or any automatic PR check.
+A manual, pentest-style security review of a diff, branch, PR, file, endpoint, whole repository, or every
+repository under a directory. It runs only when someone invokes it explicitly (`/appsec-review`), never as an
+automatic check. It reviews back ends, web front ends, mobile apps and Supabase/Firebase projects against the
+checklists in `rules/`, in one of three modes (`diff`, `standard`, `deep`). Every candidate is verified before it
+is reported, findings get CVSS 4.0 scores, `standard` and `deep` runs keep a coverage ledger and threat model,
+and results end in a run summary, an HTML and Markdown report, and on request a SARIF export or a CI gate.
 
-This skill is installed in `~/.claude/skills/appsec-review/` and is available in every Claude Code session. It
-reviews any repository, or every repository under a directory; Claude Code states the skill folder as the
-skill's base directory when it loads. Paths to the skill's own files below (`rules/`, `method/`, `report/`) are relative to
+The skill is installed globally (`npx skills add ibrahimabdallatif/appsec-review --skill appsec-review -g`, or
+copied into `~/.claude/skills/appsec-review/`) and is available in every Claude Code session. Claude Code states
+the skill folder as the skill's base directory when it loads. Paths to the skill's own files below (`rules/`, `method/`, `report/`) are relative to
 that skill folder, not to the reviewed repository. The checklist is in `rules/`. Read those files; don't rely on memory.
 
 | File | Area |
