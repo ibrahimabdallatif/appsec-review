@@ -6,7 +6,7 @@ paths:
 # Security assessment: method and reporting
 
 This assessment runs only when someone invokes it explicitly. It has stack files for Spring, Node.js, Python,
-.NET and Go back ends, browser front ends, mobile apps, Supabase and Firebase (`stacks/`). The other files in
+PHP, .NET and Go back ends, browser front ends, mobile apps, Supabase and Firebase (`stacks/`). The other files in
 this folder each cover one area and together map to
 these standards:
 
@@ -151,10 +151,10 @@ The behaviour of a dependency pinned in the lock file is checkable, not a fact o
 mark a finding "needs confirmation" or lower its severity only because library behaviour was not read.
 
 1. Take the exact version from the lock file (`package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `poetry.lock`,
-   `uv.lock`, `go.sum`, `pom.xml`/`gradle.lockfile`, `packages.lock.json`).
+   `uv.lock`, `composer.lock`, `go.sum`, `pom.xml`/`gradle.lockfile`, `packages.lock.json`).
 2. Read the source from what is already on disk: `node_modules/<pkg>`, the project's virtualenv
    `site-packages`, `~/.m2/repository` (prefer a `-sources.jar`), `~/.gradle/caches`, `$GOPATH/pkg/mod` or
-   `~/go/pkg/mod`, `~/.nuget/packages`.
+   `~/go/pkg/mod`, `~/.nuget/packages`, Composer's `vendor/<vendor>/<package>`.
 3. If it isn't on disk, download only that published package into a new, empty folder under the scratch
    directory, outside the reviewed repository, without installing or running anything:
    - npm: from that folder, `npm pack <pkg>@<version>`, then `tar -xzf <file>.tgz`
@@ -162,6 +162,8 @@ mark a finding "needs confirmation" or lower its severity only because library b
    - Maven: `mvn dependency:get -Dartifact=<group>:<artifact>:<version>:jar:sources`, then read the jar from
      `~/.m2`
    - Go: `go mod download -json <module>@<version>` and read the directory it prints
+   - Composer: download the zip at the package's `dist.url` in `composer.lock` (or from
+     `https://repo.packagist.org/p2/<vendor>/<package>.json`) and unzip it
    - NuGet: download `https://api.nuget.org/v3-flatcontainer/<id>/<version>/<id>.<version>.nupkg` and unzip it;
      it holds compiled assemblies, so prefer the project's source repository at the matching tag when the
      behaviour needs source.

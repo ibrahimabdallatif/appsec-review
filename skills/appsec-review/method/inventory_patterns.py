@@ -204,6 +204,75 @@ DOTNET = {
     ],
 }
 
+PHP = {
+    "detect": [("composer.json", ('"laravel/framework"', '"symfony/framework-bundle"', '"symfony/http-kernel"',
+                                  '"slim/slim"', '"codeigniter4/framework"', '"cakephp/cakephp"',
+                                  '"laminas/laminas-mvc"', '"livewire/livewire"')),
+               ("wp-config.php", ()), ("wp-config-sample.php", ()),
+               ("*.php", ("Plugin Name:",)), ("style.css", ("Theme Name:",))],
+    "extensions": (".php", ".phtml", ".inc", ".twig", ".env", ".ini"),
+    "entry": [
+        ("route", r"\bRoute::(?:get|post|put|patch|delete|options|any|match|resource|apiResource|view|redirect)"
+                  r"\s*\(\s*(?P<label>['\"][^'\"]*['\"])", None),
+        ("route", r"#\[Route\s*\((?P<label>[^)\]]*)", None),
+        ("route", r"@Route\s*\((?P<label>[^)]*)\)", None),
+        ("route", r"\$(?:app|group|routes|router|r)->(?:get|post|put|patch|delete|any|map|match|add)"
+                  r"\s*\(\s*(?P<label>['\"][^'\"]*['\"])", None),
+        ("ajax", r"\badd_action\s*\(\s*(?P<label>['\"](?:wp_ajax_|admin_post_)[^'\"]*['\"])", None),
+        ("rest-route", r"\bregister_rest_route\s*\((?P<label>[^)]*)", None),
+        ("shortcode", r"\badd_shortcode\s*\(\s*(?P<label>['\"][^'\"]*['\"])", None),
+        ("livewire", r"^\s*(?:final\s+)?class\s+(?P<label>\w+)\s+extends\s+(?:\\?Livewire\\)?Component\b",
+         r"(?i)livewire"),
+        ("job", r"\bimplements\s+(?:[\w\\]+,\s*)*ShouldQueue\b|#\[AsMessageHandler\b", None),
+        ("request-input", r"\$_(?:GET|POST|REQUEST|COOKIE|FILES)\b|php://input", None),
+    ],
+    "entry_files": [("route-file", r"(?:^|/)routes/(?:web|api|channels)\.php$")],
+    "sinks": [
+        ("sql", "injection-input",
+         r"\bDB::(?:raw|select|statement|unprepared)\s*\(|\b(?:where|orWhere|select|orderBy|having|groupBy)Raw\s*\(|"
+         r"->orderBy\s*\(\s*\$request|\$wpdb->(?:query|get_results|get_var|get_row|get_col)\s*\(|"
+         r"->(?:query|exec|prepare)\s*\(\s*(?:\"[^\"]*\$|['\"][^'\"]*['\"]\s*\.)|\bmysqli?_query\s*\(|"
+         r"->(?:createQuery|executeQuery|executeStatement)\s*\("),
+        ("command", "injection-input",
+         r"(?<![\w>:$])(?:exec|shell_exec|system|passthru|proc_open|popen|pcntl_exec)\s*\(|=\s*`[^`]*\$|"
+         r"\bProcess::fromShellCommandline\s*\("),
+        ("code", "injection-input",
+         r"(?<![\w>:$])(?:eval|assert|create_function)\s*\(|\bcall_user_func(?:_array)?\s*\(\s*\$|"
+         r"\bnew\s+\$\w+|\bpreg_replace\s*\(\s*['\"](.)[^'\"]*\1[a-z]*e[a-z]*['\"]"),
+        ("deserialization", "injection-input", r"(?<![\w>:])(?:maybe_)?unserialize\s*\(|phar://"),
+        ("include", "injection-input", r"\b(?:include|require)(?:_once)?\b\s*\(?\s*[^;'\"\s(]*\$"),
+        ("variable-overwrite", "injection-input", r"\bextract\s*\(\s*\$_|\bparse_str\s*\(\s*[^,)]*\)"),
+        ("template", "injection-input",
+         r"\{!!|\|\s*raw\b|autoescape\s*[=:(]?\s*false|->createTemplate\s*\(|\bBlade::render\s*\("),
+        ("xml-parser", "injection-input",
+         r"\bsimplexml_load_(?:string|file)\s*\(|->loadXML\s*\(|\bLIBXML_(?:NOENT|DTDLOAD)\b"),
+        ("file", "injection-input",
+         r"\b(?:file_get_contents|file_put_contents|fopen|readfile|unlink|move_uploaded_file)\s*\(|"
+         r"->(?:storeAs|move)\s*\(|\bStorage::(?:get|put|download|delete)\s*\(|\bBinaryFileResponse\b|"
+         r"response\(\)->(?:download|file)\s*\("),
+        ("mass-assignment", "access-control",
+         r"\$guarded\s*=\s*\[\s*\]|::unguard\s*\(|(?:->|::)(?:fill|create|update|forceFill|forceCreate)\s*\(\s*"
+         r"\$request->(?:all|input|post)\s*\(\s*\)"),
+        ("open-route", "access-control", r"['\"]permission_callback['\"]\s*=>\s*['\"]__return_true['\"]"),
+        ("outbound-http", "access-control",
+         r"\bcurl_init\s*\(|\bHttp::(?:get|post|put|patch|delete|send|withOptions)\s*\(|"
+         r"\bnew\s+(?:\\?GuzzleHttp\\)?Client\s*\(|\bHttpClient::create\s*\(|\bwp_remote_(?:get|post|request)\s*\("),
+        ("redirect", "access-control",
+         r"\bredirect\s*\(\s*\$|redirect\(\)->(?:to|away)\s*\(|\bwp_redirect\s*\(|\bnew\s+RedirectResponse\s*\(|"
+         r"\bheader\s*\(\s*['\"]Location:"),
+        ("weak-crypto", "cryptography-data-protection",
+         r"(?<![\w>:$])(?:md5|sha1|rand|mt_rand|uniqid|lcg_value|str_shuffle)\s*\(|['\"][\w-]*-ecb['\"]|\bmcrypt_"),
+        ("tls", "cryptography-data-protection",
+         r"CURLOPT_SSL_VERIFY(?:PEER|HOST)\s*(?:=>|,)\s*(?:false|0)\b|['\"]verify['\"]\s*=>\s*false|"
+         r"->withoutVerifying\s*\("),
+        ("token", "authentication-session", r"\bJWT::(?:decode|encode)\s*\(|\bJWTAuth::\w+|\bnew\s+Parser\s*\("),
+        ("config", "configuration-supply-chain",
+         r"^\s*APP_DEBUG\s*=\s*(?:true|1)|^\s*APP_ENV\s*=\s*(?:local|dev)\b|^\s*display_errors\s*=\s*(?:On|1)|"
+         r"\bphpinfo\s*\(|['\"]allowed_origins['\"]\s*=>\s*\[\s*['\"]\*"),
+        ("debug-output", "logging-error-handling", r"(?<![\w>:$])(?:dd|dump|var_dump|print_r)\s*\("),
+    ],
+}
+
 WEB_FRONTEND = {
     "detect": [("package.json", ('"react"', '"@angular/core"', '"vue"', '"svelte"', '"solid-js"', '"next"',
                                  '"nuxt"', '"astro"'))],
@@ -304,6 +373,7 @@ STACKS = {
     "python": PYTHON,
     "go": GO,
     "dotnet": DOTNET,
+    "php": PHP,
     "web-frontend": WEB_FRONTEND,
     "mobile": MOBILE,
     "baas": BAAS,
@@ -312,14 +382,16 @@ STACKS = {
 # Paths never scanned: dependencies, build output and generated code. Supabase migrations are kept: they hold the
 # RLS policies that are the API's access control.
 SKIP_PATH = (r"(?:^|/)(?:node_modules|vendor|dist|build|out|target|bin|obj|\.next|\.nuxt|\.svelte-kit|coverage|"
-             r"Pods|\.gradle|\.git|venv|\.venv|site-packages|__pycache__)/|(?:^|/)(?<!supabase/)migrations/|"
+             r"Pods|\.gradle|\.git|venv|\.venv|site-packages|__pycache__)/|"
+             r"(?:^|/)(?:storage/framework|bootstrap/cache|var/cache)/|(?:^|/)(?<!supabase/)migrations/|"
              r"\.min\.js$|\.d\.ts$")
 
 # Test code is reviewed only through the tests check in rules/00-overview.md, not as attack surface.
 TEST_PATH = (r"(?:^|/)(?:tests?|__tests__|__mocks__|specs?|testdata|fixtures|mocks?|e2e|cypress)/|"
-             r"(?:^|/)src/test/|[._-](?:test|spec)\.\w+$|_test\.go$|(?:^|/)test_[^/]*\.py$|Tests?\.(?:cs|java|kt)$")
+             r"(?:^|/)src/test/|[._-](?:test|spec)\.\w+$|_test\.go$|(?:^|/)test_[^/]*\.py$|Tests?\.(?:cs|java|kt|php)$")
 
 # Lines skipped before matching: imports name an API without using it. Narrow enough that SQL lines starting with
 # "using (" or "from" and C# using declarations ("using var x = ...") still count as code.
 IMPORT_LINE = (r"^\s*(?:import\s|package\s|#include\b|@import\b|from\s+\S+\s+import\b|"
-               r"(?:global\s+)?using\s+(?:static\s+)?[\w.]+\s*(?:=\s*[\w.<>]+\s*)?;)")
+               r"(?:global\s+)?using\s+(?:static\s+)?[\w.]+\s*(?:=\s*[\w.<>]+\s*)?;|"
+               r"use\s+(?:function\s+|const\s+)?\\?[\w\\]+(?:\s+as\s+\w+)?\s*;)")

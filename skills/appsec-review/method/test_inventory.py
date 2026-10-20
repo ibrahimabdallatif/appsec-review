@@ -63,6 +63,33 @@ SAMPLES = {
         ("var f = new BinaryFormatter();", "sink", "deserialization"),
         ("@Html.Raw(Model.Bio)", "sink", "raw-html"),
     ],
+    "php": [
+        ("Route::get('/cards/{card}', [CardController::class, 'show']);", "entry", "route"),
+        ("#[Route('/cards/{id}', methods: ['GET'])]", "entry", "route"),
+        ("$app->post('/login', LoginAction::class);", "entry", "route"),
+        ("add_action('wp_ajax_nopriv_export', 'export_cards');", "entry", "ajax"),
+        ("register_rest_route('shop/v1', '/orders', $args);", "entry", "rest-route"),
+        ("class CardEditor extends Component", "entry", "livewire", "app/Livewire/CardEditor.php"),
+        ("class SendInvoice implements ShouldQueue", "entry", "job"),
+        ("$id = $_GET['id'];", "entry", "request-input"),
+        ("DB::select(\"select * from cards where id = $id\");", "sink", "sql"),
+        ("$users->whereRaw('name = ' . $name)", "sink", "sql"),
+        ("$wpdb->get_results(\"SELECT * FROM t WHERE id = $id\");", "sink", "sql"),
+        ("shell_exec('convert ' . $file);", "sink", "command"),
+        ("$data = unserialize($_COOKIE['cart']);", "sink", "deserialization"),
+        ("include $_GET['page'] . '.php';", "sink", "include"),
+        ("{!! $card->bio !!}", "sink", "template", "card.blade.php"),
+        ("{{ card.bio|raw }}", "sink", "template", "card.html.twig"),
+        ("Card::create($request->all());", "sink", "mass-assignment"),
+        ("protected $guarded = [];", "sink", "mass-assignment"),
+        ("'permission_callback' => '__return_true',", "sink", "open-route"),
+        ("$ch = curl_init($url);", "sink", "outbound-http"),
+        ("CURLOPT_SSL_VERIFYPEER => false,", "sink", "tls"),
+        ("return redirect()->to($request->input('next'));", "sink", "redirect"),
+        ("$token = md5(uniqid());", "sink", "weak-crypto"),
+        ("$claims = JWT::decode($jwt, new Key($key, 'HS256'));", "sink", "token"),
+        ("APP_DEBUG=true", "sink", "config", ".env"),
+    ],
     "web-frontend": [
         ("<Route path=\"/admin\" element={<Admin/>} />", "entry", "route"),
         ("window.addEventListener('message', onMsg)", "entry", "message-listener"),
@@ -163,7 +190,9 @@ class RunGitTest(TempRepo):
 class ExclusionTest(unittest.TestCase):
     def test_excluded(self):
         for path in ("node_modules/x/index.js", "src/test/java/A.java", "a/b.test.ts", "pkg/a_test.go",
-                     "tests/test_api.py", "app.min.js", "types.d.ts", "src/CardTests.cs"):
+                     "tests/test_api.py", "app.min.js", "types.d.ts", "src/CardTests.cs",
+                     "vendor/laravel/framework/src/x.php", "storage/framework/views/a1.php", "var/cache/prod/a.php",
+                     "bootstrap/cache/routes-v7.php", "src/CardControllerTest.php"):
             self.assertTrue(inventory.is_excluded(path), path)
 
     def test_kept(self):
@@ -236,6 +265,18 @@ class DetectTest(TempRepo):
         write(other, "firestore.rules", "rules_version = '2';")
         self.assertEqual(inventory.detect_stacks(other, inventory.list_files(other)), ["baas"])
 
+    def test_detect_php_from_composer(self):
+        write(self.root, "composer.json", '{"require": {"laravel/framework": "^13.0"}}')
+        self.assertEqual(inventory.detect_stacks(self.root, inventory.list_files(self.root)), ["php"])
+
+    def test_detect_php_wordpress_plugin(self):
+        write(self.root, "shop-export/shop-export.php", "<?php\n/*\n * Plugin Name: Shop Export\n */")
+        self.assertEqual(inventory.detect_stacks(self.root, inventory.list_files(self.root)), ["php"])
+
+    def test_plain_php_file_is_not_detected(self):
+        write(self.root, "index.php", "<?php echo 'hi';")
+        self.assertEqual(inventory.detect_stacks(self.root, inventory.list_files(self.root)), [])
+
     def test_stack_detected_glob(self):
         write(self.root, "Api.csproj", '<Project Sdk="Microsoft.NET.Sdk.Web"/>')
         self.assertTrue(inventory.stack_detected(self.root, ["Api.csproj"], patterns.STACKS["dotnet"]))
@@ -250,13 +291,16 @@ class LineHelpersTest(unittest.TestCase):
     def test_is_code_line_imports(self):
         for line in ("from os.path import join", "from . import views", "package main", "#include <stdio.h>",
                      "using static System.Math;", "global using System;", "using Json = System.Text.Json;",
-                     "import { createClient } from '@supabase/supabase-js'"):
+                     "import { createClient } from '@supabase/supabase-js'",
+                     r"use Illuminate\Support\Facades\DB;", r"use function Laravel\Prompts\text;",
+                     r"use App\Models\Card as CardModel;"):
             self.assertFalse(inventory.is_code_line(line), line)
 
     def test_is_code_line_sql_and_using_declarations(self):
         for line in ("  using ((select auth.uid()) = user_id)", "  from public.members m",
                      "using var conn = new SqlConnection(cs);", "using (var r = cmd.ExecuteReader())",
-                     "const m = await import('./x.js')"):
+                     "const m = await import('./x.js')", "$fn = function () use ($id) {",
+                     r"use Illuminate\Support\Facades\{DB, Log};"):
             self.assertTrue(inventory.is_code_line(line), line)
 
     def test_clean(self):
@@ -294,6 +338,17 @@ class HitsTest(unittest.TestCase):
         for path in ("middleware.ts", "src/middleware.ts", "apps/web/proxy.ts"):
             hits = inventory.file_entries(path, "node-backend", patterns.NODE_BACKEND)
             self.assertEqual([h["kind"] for h in hits], ["middleware"], path)
+
+    def test_laravel_route_files(self):
+        for path in ("routes/web.php", "routes/api.php", "app/routes/channels.php"):
+            hits = inventory.file_entries(path, "php", patterns.PHP)
+            self.assertEqual([h["kind"] for h in hits], ["route-file"], path)
+        self.assertEqual(inventory.file_entries("routes/console.php", "php", patterns.PHP), [])
+
+    def test_livewire_entry_needs_livewire_path(self):
+        line = "class Alert extends Component"
+        self.assertEqual(inventory.entry_hits("app/View/Components/Alert.php", line, "php", patterns.PHP), [])
+        self.assertEqual(len(inventory.entry_hits("app/Livewire/Alert.php", line, "php", patterns.PHP)), 1)
 
     def test_edge_function_files(self):
         hits = inventory.file_entries("supabase/functions/pay/index.ts", "baas", patterns.BAAS)
@@ -338,6 +393,17 @@ class HitsTest(unittest.TestCase):
                 "  using ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');\n")
         hits = inventory.sink_hits("supabase/migrations/1.sql", text, "baas", patterns.BAAS)
         self.assertEqual([(h["kind"], h["line"]) for h in hits], [("policy", 1), ("user-metadata", 2)])
+
+    def test_php_method_calls_are_not_builtin_sinks(self):
+        for line in ("$pdo->exec('SET NAMES utf8');", "$this->system('x');", "Hash::make($password);",
+                     "$process->run();"):
+            kinds = {h["kind"] for h in inventory.sink_hits("a.php", line, "php", patterns.PHP)}
+            self.assertNotIn("command", kinds, line)
+            self.assertNotIn("weak-crypto", kinds, line)
+
+    def test_php_static_include_is_not_a_sink(self):
+        for line in ("require __DIR__ . '/vendor/autoload.php';", "require_once 'config.php';"):
+            self.assertEqual(inventory.sink_hits("a.php", line, "php", patterns.PHP), [], line)
 
     def test_sink_hits_area(self):
         hits = inventory.sink_hits("a.py", "os.system(cmd)", "python", patterns.PYTHON)

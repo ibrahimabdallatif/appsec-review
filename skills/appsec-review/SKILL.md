@@ -1,6 +1,6 @@
 ---
 name: appsec-review
-description: "Use when the user explicitly invokes /appsec-review for a diff, branch, PR, file, endpoint, the whole repository, or every repository under a directory. Manual pentest-style security review of Spring, Node.js, Python, .NET and Go back ends, browser front ends (React, Next.js, Angular, Vue, Svelte), mobile apps (React Native, Flutter, native Android and iOS), Supabase and Firebase against OWASP Top 10:2025, OWASP API Top 10:2023, ASVS 5.0, MASVS, MASTG, Mobile Top 10:2024, CWE Top 25, PCI DSS, NIST SP 800-63B-4, RFC 9700, RFC 8252 and RFC 10017, with verified findings, CVSS 4.0 scores and SARIF export. Keywords: security review, appsec, pentest, vulnerability, OWASP, IDOR, threat model, STRIDE, CVSS, SARIF"
+description: "Use when the user explicitly invokes /appsec-review for a diff, branch, PR, file, endpoint, the whole repository, or every repository under a directory. Manual pentest-style security review of Spring, Node.js, Python, PHP (Laravel, Symfony, WordPress), .NET and Go back ends, browser front ends (React, Next.js, Angular, Vue, Svelte), mobile apps (React Native, Flutter, native Android and iOS), Supabase and Firebase against OWASP Top 10:2025, OWASP API Top 10:2023, ASVS 5.0, MASVS, MASTG, Mobile Top 10:2024, CWE Top 25, PCI DSS, NIST SP 800-63B-4, RFC 9700, RFC 8252 and RFC 10017, with verified findings, CVSS 4.0 scores and SARIF export. Keywords: security review, appsec, pentest, vulnerability, OWASP, IDOR, threat model, STRIDE, CVSS, SARIF"
 disable-model-invocation: true
 ---
 
@@ -32,7 +32,7 @@ that skill folder, not to the reviewed repository. The checklist is in `rules/`.
 | `ai-llm-agents.md` | LLM, agent and MCP features: dangerous capability combinations, tool authorization and argument validation, MCP identity, RAG and memory tenant isolation, model output handling, prompts and traces, model supply chain, spend limits. Loaded only when its `detect` front matter matches |
 | `web-protocol-identity.md` | Request smuggling, cache poisoning and deception, host and forwarded-header trust, header injection, session and cookie edges, SAML, WebAuthn/passkeys, MFA enrollment and downgrade, recovery and account linking, API keys, mTLS |
 | `deep/*.md` | `deep` mode only: in-depth playbooks for object-level authorization, payment callback integrity, payment state and idempotency, race conditions and business-logic flaws. Each extends one category file (`parent` front matter) and loads when its `when` front matter matches code in scope |
-| `stacks/*.md` | Framework add-ons, chosen by their `detect` front matter: `java-spring`, `node-backend`, `web-frontend`, `mobile`, `python`, `dotnet`, `go`, `baas` (Supabase, Firebase) |
+| `stacks/*.md` | Framework add-ons, chosen by their `detect` front matter: `java-spring`, `node-backend`, `web-frontend`, `mobile`, `python`, `php`, `dotnet`, `go`, `baas` (Supabase, Firebase) |
 
 The category files are framework-neutral; the stack files name each framework's entry points, constructs and
 unsafe APIs.
@@ -136,10 +136,11 @@ never selects `deep` mode.
    - `gitleaks detect --no-banner` for secrets, including history
    - `trivy fs --scanners vuln,secret,misconfig .` or `osv-scanner -r .` for dependencies and IaC, in any language
    - the ecosystem's own audit: `npm audit --omit=dev` / `pnpm audit` / `yarn npm audit`, `pip-audit`,
-     `govulncheck ./...`, `dotnet list package --vulnerable`, `mvn org.owasp:dependency-check-maven:check`
+     `composer audit`, `govulncheck ./...`, `dotnet list package --vulnerable`,
+     `mvn org.owasp:dependency-check-maven:check`
    - `semgrep --config p/secrets` plus the packs for the stack: `p/java`, `p/typescript`, `p/javascript`,
-     `p/react`, `p/nextjs`, `p/nodejsscan`, `p/python`, `p/django`, `p/flask`, `p/golang`, `p/csharp`, `p/kotlin`,
-     `p/swift`
+     `p/react`, `p/nextjs`, `p/nodejsscan`, `p/python`, `p/django`, `p/flask`, `p/php`, `p/php-laravel`,
+     `p/golang`, `p/csharp`, `p/kotlin`, `p/swift`
 8. **Verify.** Merge your candidates, the hunters' and the tools' by root cause, then verify them as
    `method/verifier.md` says for the mode: a disproof pass for all, plus fresh verifier subagents where the mode
    calls for them, and the rejection review for every rejected `critical` or `bug` candidate. The verifier's

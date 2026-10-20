@@ -2,7 +2,7 @@
 
 <p align="center">
   <b>Threat-model-driven security reviews in Claude Code: full attack surface coverage, every finding verified by an independent agent and scored with CVSS 4.0.</b><br>
-  Spring, Node.js, Python, .NET and Go back ends, browser front ends, mobile apps, Supabase and Firebase.
+  Spring, Node.js, Python, PHP, .NET and Go back ends, browser front ends, mobile apps, Supabase and Firebase.
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@
   </tr>
   <tr>
     <td><b>Findings are disproved, not just found.</b><br>A fresh verifier agent that never sees the finder's reasoning tries to refute each candidate. A rejection must cite the line of code that stops the attack, and rejected candidates are listed so you can overrule them.</td>
-    <td><b>It knows your framework.</b><br>Rules for Spring, Node, Python, .NET, Go, web front ends, mobile apps and Supabase/Firebase, plus deep playbooks for BOLA/IDOR, payment callbacks, idempotency and race conditions.</td>
+    <td><b>It knows your framework.</b><br>Rules for Spring, Node, Python, PHP (Laravel, Symfony, WordPress), .NET, Go, web front ends, mobile apps and Supabase/Firebase, plus deep playbooks for BOLA/IDOR, payment callbacks, idempotency and race conditions.</td>
   </tr>
   <tr>
     <td><b>Audit-ready output.</b><br>Each finding gives <code>file:line</code>, the exploit path, the impact and a fix using your own helpers, mapped to OWASP, ASVS, MASVS, CWE and PCI DSS. CVSS 4.0 vectors are computed by script, never estimated.</td>
@@ -274,7 +274,7 @@ relative to that folder.
 | `skills/appsec-review/SKILL.md` | The skill definition: modes, steps, output and report rules |
 | `rules/00-overview.md` | Method, STRIDE pass, severity scale and reporting format |
 | `rules/*.md` | Framework-neutral category checklists: access control, authentication and sessions, injection, cryptography and data protection, business logic, configuration and supply chain, logging, client side, AI/LLM agents, web protocol and identity |
-| `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, .NET, Go, Supabase and Firebase |
+| `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, PHP, .NET, Go, Supabase and Firebase |
 | `rules/deep/*.md` | `deep`-mode playbooks: object-level authorization, payment callbacks, payment state and idempotency, race conditions, business-logic flaws |
 | `method/` | Coverage ledger, hunter and verifier prompts, `inventory.py`, `ledger.py` validator and CI gate, `accepted_risks.py`, `sarif.py`, `run_stats.py` |
 | `report/` | Report structure and Markdown copy rules (`REPORT.md`), CVSS 4.0 calculator (`cvss40.py`), HTML template, and `build_sample.py`, which builds the sample report from the fictional fixture in `sample/` |
