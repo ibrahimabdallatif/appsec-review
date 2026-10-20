@@ -10,6 +10,13 @@ replace only the content. Never put
 another company's name, logo or branding on the report (it is an internal review), and never quote secret values,
 card numbers, CVVs, OTPs or tokens. Refer to them by file, line or commit.
 
+- **Organisation name.** Take `{{ORGANISATION}}` (the cover line and the 6.5 Disclaimer, in both the HTML and
+  the Markdown copy) from the repository under review, freshly for every report: the owner in its
+  `git remote get-url origin` (the GitHub or Bitbucket owner, the GitLab group, the Azure DevOps organisation);
+  with no remote, the name in its project manifest or README; failing both, the repository folder name. For
+  several repositories, use their shared owner, or the workspace folder name when they differ. Never reuse a
+  name from an earlier report, another repository, memory or this skill's examples.
+
 - **Escape everything you insert.** HTML-escape every replaced value (`&`, `<`, `>` always; `"` and `'` inside
   attributes). Code excerpts go into `<pre>` as escaped text only; the only markup allowed inside `<pre>` is the
   template's `<span class="hl">` wrapper around already-escaped lines. A proof of concept must never run or break
