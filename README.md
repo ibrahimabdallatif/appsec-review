@@ -23,19 +23,23 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/pipeline-dark.svg">
-  <img alt="Pipeline: scope, scripted inventory, assessment in three directions, verification by a second agent, proven findings" src="docs/assets/pipeline-light.svg">
+  <img alt="Pipeline: attack surface inventory, threat model with abuse paths, STRIDE assessment in three directions, adversarial verification by a second agent, proven findings with CWE, CVSS 4.0 and SARIF" src="docs/assets/pipeline-light.svg">
 </picture>
 
 ## 🧭 Why it's different
 
 <table>
   <tr>
-    <td width="50%"><b>Findings are disproved, not just found.</b><br>A fresh verifier agent, which never sees the finder's reasoning, tries to refute each candidate. A rejection must cite the line of code that stops the attack, and rejected candidates are listed so you can overrule them.</td>
-    <td width="50%"><b>Coverage is checked by script.</b><br>A scripted inventory lists every entry point and dangerous sink. The ledger validator fails the run if any of them was skipped, so every run covers the same ground.</td>
+    <td width="50%"><b>Attack surface mapped by script.</b><br>A scripted inventory lists every entry point and dangerous sink. The ledger validator fails the run if any of them was skipped, so every run covers the same attack surface.</td>
+    <td width="50%"><b>Threat-model driven.</b><br>Trust boundaries, data classes and a STRIDE pass, then abuse paths worked as an attacker would, either to the goal or to the line that stops them. Verified findings are chained into worse end-to-end exploits.</td>
   </tr>
   <tr>
-    <td><b>It knows your framework.</b><br>Rules for Spring, Node, Python, .NET, Go, web front ends, mobile apps and Supabase/Firebase, plus deep playbooks for object-level authorization, payment callbacks, idempotency and race conditions.</td>
-    <td><b>Audit-ready output.</b><br>Each finding gives <code>file:line</code>, the attack, the impact and a fix using your own helpers, mapped to OWASP, ASVS, MASVS, CWE and PCI DSS, with CVSS 4.0 computed by script, never estimated.</td>
+    <td><b>Findings are disproved, not just found.</b><br>A fresh verifier agent that never sees the finder's reasoning tries to refute each candidate. A rejection must cite the line of code that stops the attack, and rejected candidates are listed so you can overrule them.</td>
+    <td><b>It knows your framework.</b><br>Rules for Spring, Node, Python, .NET, Go, web front ends, mobile apps and Supabase/Firebase, plus deep playbooks for BOLA/IDOR, payment callbacks, idempotency and race conditions.</td>
+  </tr>
+  <tr>
+    <td><b>Audit-ready output.</b><br>Each finding gives <code>file:line</code>, the exploit path, the impact and a fix using your own helpers, mapped to OWASP, ASVS, MASVS, CWE and PCI DSS. CVSS 4.0 vectors are computed by script, never estimated.</td>
+    <td><b>Built for the pipeline.</b><br><code>--fail-on &lt;severity&gt;</code> gates merges, accepted risks expire on a date, and SARIF 2.1.0 export feeds GitHub code scanning or Jenkins.</td>
   </tr>
 </table>
 
