@@ -1,7 +1,7 @@
 <h1 align="center">appsec-review</h1>
 
 <p align="center">
-  <b>Pentest-style security reviews in Claude Code, where every finding has to survive a second agent.</b><br>
+  <b>Threat-model-driven security reviews in Claude Code: every entry point mapped by script, every finding verified by an independent agent and scored with CVSS 4.0.</b><br>
   Spring, Node.js, Python, .NET and Go back ends, browser front ends, mobile apps, Supabase and Firebase.
 </p>
 
