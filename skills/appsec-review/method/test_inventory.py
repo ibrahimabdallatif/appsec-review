@@ -95,6 +95,36 @@ SAMPLES = {
         ("$claims = JWT::decode($jwt, new Key($key, 'HS256'));", "sink", "token"),
         ("APP_DEBUG=true", "sink", "config", ".env"),
     ],
+    "iac-ci": [
+        ("  pull_request_target:", "entry", "trigger", ".github/workflows/ci.yml"),
+        ("on: [push, issue_comment]", "entry", "trigger", ".github/workflows/ci.yml"),
+        ("kind: Ingress", "entry", "public-endpoint", "k8s/ingress.yaml"),
+        ("  type: LoadBalancer", "entry", "public-endpoint", "k8s/svc.yaml"),
+        ('resource "aws_lambda_function_url" "api" {', "entry", "public-endpoint", "main.tf"),
+        ('        run: echo "${{ github.event.issue.title }}"', "sink", "script-injection", ".github/workflows/ci.yml"),
+        ('    sh "deploy ${params.TARGET}"', "sink", "script-injection", "Jenkinsfile"),
+        ("          ref: ${{ github.event.pull_request.head.sha }}", "sink", "untrusted-checkout", ".github/workflows/ci.yml"),
+        ("permissions: write-all", "sink", "token-permissions", ".github/workflows/ci.yml"),
+        ("      contents: write", "sink", "token-permissions", ".github/workflows/ci.yml"),
+        ("      - uses: actions/checkout@v4", "sink", "unpinned-action", ".github/workflows/ci.yml"),
+        ("    secrets: inherit", "sink", "ci-secrets", ".github/workflows/ci.yml"),
+        ("FROM node:20", "sink", "unpinned-image", "Dockerfile"),
+        ("from python:latest as build", "sink", "unpinned-image", "api.Dockerfile"),
+        ("USER root", "sink", "container-root", "Dockerfile"),
+        ("          privileged: true", "sink", "container-root", "k8s/deploy.yaml"),
+        ("      - /var/run/docker.sock:/var/run/docker.sock", "sink", "container-root", "compose.yaml"),
+        ("RUN curl -fsSL https://x.sh | bash", "sink", "remote-code", "Dockerfile"),
+        ("ARG NPM_TOKEN", "sink", "plain-secret", "Dockerfile"),
+        ("kind: Secret", "sink", "plain-secret", "k8s/secret.yaml"),
+        ('  db_password = "SuperSecret123"', "sink", "plain-secret", "prod.tfvars"),
+        ('  verbs: ["*"]', "sink", "rbac", "k8s/role.yaml"),
+        ('  acl    = "public-read"', "sink", "public-storage", "s3.tf"),
+        ('    cidr_blocks = ["0.0.0.0/0"]', "sink", "open-ingress", "sg.tf"),
+        ('      "Action": "s3:*",', "sink", "wildcard-iam", "policy.json.tf"),
+        ("  storage_encrypted = false", "sink", "unencrypted", "rds.tf"),
+        ("  enable_log_file_validation = false", "sink", "audit-logging", "trail.tf"),
+        ('  authorization_type = "NONE"', "sink", "no-auth", "lambda.tf"),
+    ],
     "web-frontend": [
         ("<Route path=\"/admin\" element={<Admin/>} />", "entry", "route"),
         ("window.addEventListener('message', onMsg)", "entry", "message-listener"),
@@ -197,7 +227,8 @@ class ExclusionTest(unittest.TestCase):
         for path in ("node_modules/x/index.js", "src/test/java/A.java", "a/b.test.ts", "pkg/a_test.go",
                      "tests/test_api.py", "app.min.js", "types.d.ts", "src/CardTests.cs",
                      "vendor/laravel/framework/src/x.php", "storage/framework/views/a1.php", "var/cache/prod/a.php",
-                     "bootstrap/cache/routes-v7.php", "src/CardControllerTest.php"):
+                     "bootstrap/cache/routes-v7.php", "src/CardControllerTest.php",
+                     "infra/.terraform/modules/vpc/main.tf"):
             self.assertTrue(inventory.is_excluded(path), path)
 
     def test_kept(self):
@@ -282,6 +313,22 @@ class DetectTest(TempRepo):
         write(self.root, "index.php", "<?php echo 'hi';")
         self.assertEqual(inventory.detect_stacks(self.root, inventory.list_files(self.root)), [])
 
+    def test_detect_iac_ci_from_workflow(self):
+        write(self.root, ".github/workflows/ci.yml", "on: push\njobs:\n  t:\n    runs-on: ubuntu-latest\n")
+        self.assertEqual(inventory.detect_stacks(self.root, inventory.list_files(self.root)), ["iac-ci"])
+
+    def test_detect_iac_ci_from_files(self):
+        for path, text in (("Dockerfile", "FROM scratch"), ("infra/main.tf", ""),
+                           ("deploy/app.yaml", "kind: Deployment"), ("charts/api/Chart.yaml", "name: api")):
+            root = tempfile.mkdtemp()
+            self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+            write(root, path, text)
+            self.assertEqual(inventory.detect_stacks(root, inventory.list_files(root)), ["iac-ci"], path)
+
+    def test_plain_yaml_is_not_iac(self):
+        write(self.root, "config/app.yml", "server:\n  port: 8080\n")
+        self.assertEqual(inventory.detect_stacks(self.root, inventory.list_files(self.root)), [])
+
     def test_stack_detected_glob(self):
         write(self.root, "Api.csproj", '<Project Sdk="Microsoft.NET.Sdk.Web"/>')
         self.assertTrue(inventory.stack_detected(self.root, ["Api.csproj"], patterns.STACKS["dotnet"]))
@@ -355,6 +402,23 @@ class HitsTest(unittest.TestCase):
         self.assertEqual(inventory.entry_hits("app/View/Components/Alert.php", line, "php", patterns.PHP), [])
         self.assertEqual(len(inventory.entry_hits("app/Livewire/Alert.php", line, "php", patterns.PHP)), 1)
 
+    def test_pipeline_files(self):
+        for path in (".github/workflows/release.yaml", ".gitlab-ci.yml", "Jenkinsfile", "azure-pipelines.yml",
+                     ".circleci/config.yml"):
+            hits = inventory.file_entries(path, "iac-ci", patterns.IAC_CI)
+            self.assertEqual([h["kind"] for h in hits], ["pipeline"], path)
+        self.assertEqual(inventory.file_entries(".github/dependabot.yml", "iac-ci", patterns.IAC_CI), [])
+
+    def test_triggers_only_in_workflows(self):
+        line = "  workflow_dispatch:"
+        self.assertEqual(inventory.entry_hits("docs/notes.yml", line, "iac-ci", patterns.IAC_CI), [])
+        hits = inventory.entry_hits(".github/workflows/a.yml", line, "iac-ci", patterns.IAC_CI)
+        self.assertEqual([h["label"] for h in hits], ["workflow_dispatch"])
+
+    def test_safe_workflow_lines_are_not_triggers(self):
+        for line in ("on: push", "on:\n  push:\n  pull_request:"):
+            self.assertEqual(inventory.entry_hits(".github/workflows/a.yml", line, "iac-ci", patterns.IAC_CI), [])
+
     def test_edge_function_files(self):
         hits = inventory.file_entries("supabase/functions/pay/index.ts", "baas", patterns.BAAS)
         self.assertEqual([h["kind"] for h in hits], ["edge-function"])
@@ -415,6 +479,18 @@ class HitsTest(unittest.TestCase):
     def test_php_static_include_is_not_a_sink(self):
         for line in ("require __DIR__ . '/vendor/autoload.php';", "require_once 'config.php';"):
             self.assertEqual(inventory.sink_hits("a.php", line, "php", patterns.PHP), [], line)
+
+    def test_pinned_ci_and_images_are_not_sinks(self):
+        for path, line in ((".github/workflows/a.yml", "      - uses: actions/checkout@" + "a" * 40 + " # v4"),
+                           (".github/workflows/a.yml", "      - uses: ./.github/actions/setup"),
+                           (".github/workflows/a.yml", "        run: echo \"${{ github.sha }}\""),
+                           (".github/workflows/a.yml", "      contents: read"),
+                           ("Dockerfile", "FROM node:20@sha256:" + "b" * 64),
+                           ("Dockerfile", "FROM scratch"),
+                           ("Dockerfile", "USER node"),
+                           ("main.tf", '  password = var.db_password'),
+                           ("sg.tf", '    cidr_blocks = ["10.0.0.0/8"]')):
+            self.assertEqual(inventory.sink_hits(path, line, "iac-ci", patterns.IAC_CI), [], line)
 
     def test_sink_hits_area(self):
         hits = inventory.sink_hits("a.py", "os.system(cmd)", "python", patterns.PYTHON)

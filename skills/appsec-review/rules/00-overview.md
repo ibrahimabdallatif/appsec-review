@@ -6,9 +6,9 @@ paths:
 # Security assessment: method and reporting
 
 This assessment runs only when someone invokes it explicitly. It has stack files for Spring, Node.js, Python,
-PHP, .NET and Go back ends, browser front ends, mobile apps, Supabase and Firebase (`stacks/`). The other files in
-this folder each cover one area and together map to
-these standards:
+PHP, .NET and Go back ends, browser front ends, mobile apps, Supabase and Firebase, and CI pipelines,
+containers and infrastructure as code (`stacks/`). The other files in this folder each cover one area and
+together map to these standards:
 
 - OWASP Top 10:2025 (web application risks)
 - OWASP API Security Top 10:2023 (API risks)

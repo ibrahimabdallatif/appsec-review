@@ -2,7 +2,8 @@
 
 <p align="center">
   <b>Threat-model-driven security reviews in Claude Code: full attack surface coverage, every finding verified by an independent agent and scored with CVSS 4.0.</b><br>
-  Spring, Node.js, Python, PHP, .NET and Go back ends, browser front ends, mobile apps, Supabase and Firebase.
+  Spring, Node.js, Python, PHP, .NET and Go back ends, browser front ends, mobile apps, Supabase and Firebase,
+  CI pipelines, containers and infrastructure as code.
 </p>
 
 <p align="center">
@@ -35,7 +36,7 @@
   </tr>
   <tr>
     <td><b>Findings are disproved, not just found.</b><br>A fresh verifier agent that never sees the finder's reasoning tries to refute each candidate. A rejection must cite the line of code that stops the attack, and rejected candidates are listed so you can overrule them.</td>
-    <td><b>It knows your framework.</b><br>Rules for Spring, Node, Python, PHP (Laravel, Symfony, WordPress), .NET, Go, web front ends, mobile apps and Supabase/Firebase, plus deep playbooks for BOLA/IDOR, payment callbacks, idempotency and race conditions.</td>
+    <td><b>It knows your framework.</b><br>Rules for Spring, Node, Python, PHP (Laravel, Symfony, WordPress), .NET, Go, web front ends, mobile apps, Supabase/Firebase, and CI, Docker, Kubernetes and Terraform, plus deep playbooks for BOLA/IDOR, payment callbacks, idempotency and race conditions.</td>
   </tr>
   <tr>
     <td><b>Audit-ready output.</b><br>Each finding gives <code>file:line</code>, the exploit path, the impact and a fix using your own helpers, mapped to OWASP, ASVS, MASVS, CWE and PCI DSS. CVSS 4.0 vectors are computed by script, never estimated.</td>
@@ -67,8 +68,9 @@ a large codebase when cost matters less.
 
 ### 🔍 Code review engine
 
-- **Scripted inventory**: lists every route, handler, consumer, screen, deep link and dangerous sink per stack, so
-  each run starts from the same ground (`method/inventory.py`)
+- **Scripted inventory**: lists every route, handler, resolver, consumer, screen, deep link, CI pipeline,
+  internet-facing resource and dangerous sink per stack, so each run starts from the same ground
+  (`method/inventory.py`)
 - **Forward and backward assessment**: follows each input from entry point to sink, while a sink tracer works back
   from every dangerous call (`deep`)
 - **STRIDE and threat model**: trust boundaries, data classes, attacker goals and abuse paths, each worked to its
@@ -117,13 +119,15 @@ a large codebase when cost matters less.
 | Stack | Frameworks |
 |---|---|
 | Java and Kotlin | Spring Boot, MVC, WebFlux, Security, Data |
-| Node.js | NestJS, Express, Fastify, Koa, Hapi, Hono, and server code in Next.js and other full-stack frameworks |
+| Node.js and TypeScript | NestJS (REST and GraphQL), Express, Fastify, Koa, Hapi, Hono, and server code in Next.js and other full-stack frameworks |
 | Python | Django, Django REST Framework, FastAPI, Flask, Starlette |
+| PHP | Laravel (with Livewire), Symfony, WordPress, Slim, CodeIgniter, CakePHP, Laminas |
 | .NET | ASP.NET Core MVC, Web API, minimal APIs, Blazor |
 | Go | net/http, Gin, Echo, Fiber, chi, gRPC |
 | Browser front ends | React, Next.js, Angular, Vue, Nuxt, Svelte, Solid, Astro |
 | Mobile | React Native, Expo, Flutter, native Android and iOS |
 | Backend as a service | Supabase, Firebase |
+| CI, containers and IaC | GitHub Actions, GitLab CI, Jenkins, Docker, Kubernetes, Helm, Terraform |
 
 Each stack has a rule file in `rules/stacks/` and inventory patterns that list its entry points and sinks. Code
 in other stacks gets only the general category checks, without a scripted inventory, so coverage is weaker; the
@@ -176,7 +180,8 @@ Then, in Claude Code, inside the repository to review:
 > you spend time on a whole repository. More commands: [Getting started](docs/getting-started.md).
 
 The skill runs only when you invoke it (`disable-model-invocation: true`). Python 3 is needed for its helper
-scripts; gitleaks, trivy, semgrep and your ecosystem's audit tool are used when installed.
+scripts; gitleaks, trivy, semgrep, your ecosystem's audit tool and, for pipelines and infrastructure, zizmor,
+actionlint, checkov and hadolint are used when installed.
 
 ## 🎚️ Modes
 
@@ -254,7 +259,8 @@ Agent setup, accepted risks, SARIF, a Jenkins example and scheduling advice:
 6. Assess the code forward from each entry point (trust boundaries, STRIDE, rule checks) while hunters run in
    parallel: wildcard and obvious-things, and in `deep` a sink tracer working backward from every sink. Then
    work each abuse path to its goal, or to the line of code that stops it.
-7. Optionally run installed tools: gitleaks, trivy/osv-scanner, ecosystem audits, semgrep.
+7. Optionally run installed tools: gitleaks, trivy/osv-scanner, ecosystem audits, semgrep, and zizmor,
+   actionlint, checkov or hadolint for pipelines and infrastructure.
 8. Verify every candidate with a disproof pass and, depending on the mode, independent verifier subagents,
    then look for chains: findings that combine into a worse outcome, verified as a chain.
 9. Close the ledger, validate it against the inventory, then report.
@@ -274,7 +280,7 @@ relative to that folder.
 | `skills/appsec-review/SKILL.md` | The skill definition: modes, steps, output and report rules |
 | `rules/00-overview.md` | Method, STRIDE pass, severity scale and reporting format |
 | `rules/*.md` | Framework-neutral category checklists: access control, authentication and sessions, injection, cryptography and data protection, business logic, configuration and supply chain, logging, client side, AI/LLM agents, web protocol and identity |
-| `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, PHP, .NET, Go, Supabase and Firebase |
+| `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, PHP, .NET, Go, Supabase and Firebase, CI pipelines, containers and IaC |
 | `rules/deep/*.md` | `deep`-mode playbooks: object-level authorization, payment callbacks, payment state and idempotency, race conditions, business-logic flaws |
 | `method/` | Coverage ledger, hunter and verifier prompts, `inventory.py`, `ledger.py` validator and CI gate, `accepted_risks.py`, `sarif.py`, `run_stats.py` |
 | `report/` | Report structure and Markdown copy rules (`REPORT.md`), CVSS 4.0 calculator (`cvss40.py`), HTML template, and `build_sample.py`, which builds the sample report from the fictional fixture in `sample/` |

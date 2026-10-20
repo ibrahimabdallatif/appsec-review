@@ -276,6 +276,80 @@ PHP = {
     ],
 }
 
+IAC_CI = {
+    "detect": [("*.yml", ("runs-on:",)), ("*.yaml", ("runs-on:",)), (".gitlab-ci.yml", ()), ("Jenkinsfile", ()),
+               ("azure-pipelines.yml", ()), ("bitbucket-pipelines.yml", ()),
+               ("Dockerfile*", ()), ("*.Dockerfile", ()), ("Containerfile", ()),
+               ("docker-compose*.y*ml", ()), ("compose.y*ml", ()), ("*.tf", ()), ("Chart.yaml", ()),
+               ("*.y*ml", ("kind: Deployment", "kind: StatefulSet", "kind: DaemonSet", "kind: Pod", "kind: CronJob",
+                           "kind: Ingress", "kind: Service"))],
+    "extensions": (".yml", ".yaml", ".tf", ".tfvars", ".hcl", "Dockerfile", ".dockerfile", "Containerfile",
+                   "Jenkinsfile"),
+    "entry": [
+        ("trigger", r"^\s*-?\s*(?P<label>pull_request_target|workflow_run|issue_comment|workflow_dispatch|"
+                    r"repository_dispatch|workflow_call)\s*:?\s*$", r"(?:^|/)\.github/workflows/"),
+        ("trigger", r"^['\"]?on['\"]?:\s*\[?[^#\n]*\b(?P<label>pull_request_target|workflow_run|issue_comment|"
+                    r"workflow_dispatch|repository_dispatch|workflow_call)\b", r"(?:^|/)\.github/workflows/"),
+        ("public-endpoint", r"^\s*kind:\s*(?P<label>Ingress|Gateway|HTTPRoute)\s*$", None),
+        ("public-endpoint", r"^\s*type:\s*(?P<label>LoadBalancer|NodePort)\s*$", None),
+        ("public-endpoint", r"^\s*resource\s+\"(?P<label>aws_lb|aws_alb|aws_api_gateway_rest_api|aws_apigatewayv2_api|"
+                            r"aws_lambda_function_url|aws_cloudfront_distribution|google_cloud_run_\w+|"
+                            r"azurerm_(?:application_gateway|api_management|linux_web_app|windows_web_app|"
+                            r"\w*function_app))\"", r"\.tf$"),
+    ],
+    "entry_files": [("pipeline", r"(?:^|/)\.github/workflows/[^/]+\.ya?ml$|(?:^|/)\.gitlab-ci\.yml$|"
+                                 r"(?:^|/)Jenkinsfile$|(?:^|/)azure-pipelines\.ya?ml$|"
+                                 r"(?:^|/)bitbucket-pipelines\.yml$|(?:^|/)\.circleci/config\.yml$")],
+    "sinks": [
+        ("script-injection", "configuration-supply-chain",
+         r"\$\{\{\s*github\.(?:head_ref|event\.(?:issue|pull_request|comment|review|review_comment|discussion|"
+         r"pages|commits|head_commit|workflow_run)\b)[^}]*\}\}|\bsh\s+[\"']{1,3}[^\"']*\$\{(?:params\.|"
+         r"env\.(?:CHANGE_|BRANCH_NAME|GIT_BRANCH))"),
+        ("untrusted-checkout", "configuration-supply-chain",
+         r"\bref:\s*\$\{\{\s*github\.event\.(?:pull_request\.head\.(?:sha|ref)|workflow_run\.head_\w+)|"
+         r"refs/pull/"),
+        ("token-permissions", "configuration-supply-chain",
+         r"\bpermissions:\s*write-all\b|^\s*(?:contents|packages|id-token|actions|pull-requests|deployments)"
+         r"\s*:\s*write\s*$"),
+        ("unpinned-action", "configuration-supply-chain",
+         r"^\s*-?\s*uses:\s*['\"]?(?!\./)(?:docker://[^@\s'\"]+(?:\s|['\"]|$)|[\w.-]+/[\w./-]+@(?![0-9a-f]{40}\b))"),
+        ("ci-secrets", "configuration-supply-chain",
+         r"\bsecrets:\s*inherit\b|toJSON\(\s*secrets\s*\)|ACTIONS_ALLOW_UNSECURE_COMMANDS|"
+         r"^\s*runs-on:.*\bself-hosted\b"),
+        ("unpinned-image", "configuration-supply-chain",
+         r"(?i:^\s*FROM\s+(?!scratch\b)(?:--platform=\S+\s+)?[^\s@]+?(?::latest)?(?:\s+AS\s+\S+)?\s*$)|"
+         r"^\s*image:\s*['\"]?[^\s@'\"]+:latest['\"]?\s*$"),
+        ("container-root", "configuration-supply-chain",
+         r"(?i:^\s*USER\s+(?:root|0)\b)|\bprivileged:\s*true\b|\ballowPrivilegeEscalation:\s*true\b|"
+         r"\bhost(?:Network|PID|IPC):\s*true\b|^\s*-?\s*hostPath:|\brunAsUser:\s*0\b|\b(?:SYS|NET)_ADMIN\b|"
+         r"/var/run/docker\.sock|\bnetwork_mode:\s*['\"]?host\b"),
+        ("remote-code", "configuration-supply-chain",
+         r"(?i:^\s*ADD\s+https?://)|\b(?:curl|wget)\b[^|\n]*\|\s*(?:sudo\s+)?(?:ba|z)?sh\b"),
+        ("plain-secret", "cryptography-data-protection",
+         r"^\s*kind:\s*Secret\s*$|(?i:^\s*(?:ENV|ARG)\s+\w*(?:SECRET|TOKEN|PASSWORD|PASSWD|API_KEY|PRIVATE_KEY)\w*)|"
+         r"^\s*\w*(?:password|secret|token|access_key|private_key)\w*\s*=\s*\"[^\"$]{6,}\""),
+        ("rbac", "access-control",
+         r"\bcluster-admin\b|^\s*(?:-\s*)?(?:verbs|resources|apiGroups):\s*\[\s*['\"]\*['\"]|"
+         r"^\s*-\s*['\"]\*['\"]\s*$"),
+        ("public-storage", "access-control",
+         r"\bacl\s*=\s*\"public-read(?:-write)?\"|\b(?:block_public_acls|block_public_policy|ignore_public_acls|"
+         r"restrict_public_buckets)\s*=\s*false|\bpublicly_accessible\s*=\s*true|"
+         r"\b(?:public_network_access_enabled|allow_nested_items_to_be_public|allow_blob_public_access)\s*=\s*true|"
+         r"\"allUsers\"|\"allAuthenticatedUsers\""),
+        ("open-ingress", "configuration-supply-chain",
+         r"\"0\.0\.0\.0/0\"|\"::/0\"|\bsource_address_prefix\s*=\s*\"(?:\*|Internet)\""),
+        ("wildcard-iam", "access-control",
+         r"[\"']?Action[\"']?\s*[:=]\s*\[?\s*[\"'](?:[\w-]+:)?\*[\"']|\bactions\s*=\s*\[\s*\"(?:[\w-]+:)?\*\"|"
+         r"[\"']?Principal[\"']?\s*[:=]\s*[\"']\*[\"']|\biam:PassRole\b"),
+        ("unencrypted", "cryptography-data-protection",
+         r"\b(?:storage_)?encrypted\s*=\s*false|\b(?:enable_https_traffic_only|https_only)\s*=\s*false|"
+         r"\bmin(?:imum)?_tls_version\s*=\s*\"(?:TLS1_[01]|1\.[01])\""),
+        ("audit-logging", "logging-error-handling",
+         r"\b(?:enable_logging|enable_log_file_validation|is_multi_region_trail)\s*=\s*false"),
+        ("no-auth", "access-control", r"\bauthori[sz]ation(?:_type)?\s*=\s*\"NONE\""),
+    ],
+}
+
 WEB_FRONTEND = {
     "detect": [("package.json", ('"react"', '"@angular/core"', '"vue"', '"svelte"', '"solid-js"', '"next"',
                                  '"nuxt"', '"astro"'))],
@@ -377,6 +451,7 @@ STACKS = {
     "go": GO,
     "dotnet": DOTNET,
     "php": PHP,
+    "iac-ci": IAC_CI,
     "web-frontend": WEB_FRONTEND,
     "mobile": MOBILE,
     "baas": BAAS,
@@ -385,7 +460,7 @@ STACKS = {
 # Paths never scanned: dependencies, build output and generated code. Supabase migrations are kept: they hold the
 # RLS policies that are the API's access control.
 SKIP_PATH = (r"(?:^|/)(?:node_modules|vendor|dist|build|out|target|bin|obj|\.next|\.nuxt|\.svelte-kit|coverage|"
-             r"Pods|\.gradle|\.git|venv|\.venv|site-packages|__pycache__)/|"
+             r"Pods|\.gradle|\.git|\.terraform|venv|\.venv|site-packages|__pycache__)/|"
              r"(?:^|/)(?:storage/framework|bootstrap/cache|var/cache)/|(?:^|/)(?<!supabase/)migrations/|"
              r"\.min\.js$|\.d\.ts$")
 

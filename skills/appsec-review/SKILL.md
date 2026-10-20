@@ -32,7 +32,7 @@ that skill folder, not to the reviewed repository. The checklist is in `rules/`.
 | `ai-llm-agents.md` | LLM, agent and MCP features: dangerous capability combinations, tool authorization and argument validation, MCP identity, RAG and memory tenant isolation, model output handling, prompts and traces, model supply chain, spend limits. Loaded only when its `detect` front matter matches |
 | `web-protocol-identity.md` | Request smuggling, cache poisoning and deception, host and forwarded-header trust, header injection, session and cookie edges, SAML, WebAuthn/passkeys, MFA enrollment and downgrade, recovery and account linking, API keys, mTLS |
 | `deep/*.md` | `deep` mode only: in-depth playbooks for object-level authorization, payment callback integrity, payment state and idempotency, race conditions and business-logic flaws. Each extends one category file (`parent` front matter) and loads when its `when` front matter matches code in scope |
-| `stacks/*.md` | Framework add-ons, chosen by their `detect` front matter: `java-spring`, `node-backend`, `web-frontend`, `mobile`, `python`, `php`, `dotnet`, `go`, `baas` (Supabase, Firebase) |
+| `stacks/*.md` | Framework add-ons, chosen by their `detect` front matter: `java-spring`, `node-backend`, `web-frontend`, `mobile`, `python`, `php`, `dotnet`, `go`, `baas` (Supabase, Firebase), `iac-ci` (CI pipelines, containers, Kubernetes, Terraform) |
 
 The category files are framework-neutral; the stack files name each framework's entry points, constructs and
 unsafe APIs.
@@ -138,9 +138,12 @@ never selects `deep` mode.
    - the ecosystem's own audit: `npm audit --omit=dev` / `pnpm audit` / `yarn npm audit`, `pip-audit`,
      `composer audit`, `govulncheck ./...`, `dotnet list package --vulnerable`,
      `mvn org.owasp:dependency-check-maven:check`
+   - for pipelines and infrastructure: `zizmor .` and `actionlint` (GitHub Actions), `trivy config .` or
+     `checkov -d .` (Terraform, Kubernetes, Helm, Dockerfiles), `hadolint` (Dockerfiles)
    - `semgrep --config p/secrets` plus the packs for the stack: `p/java`, `p/typescript`, `p/javascript`,
      `p/react`, `p/nextjs`, `p/nodejsscan`, `p/python`, `p/django`, `p/flask`, `p/php`, `p/php-laravel`,
-     `p/golang`, `p/csharp`, `p/kotlin`, `p/swift`
+     `p/golang`, `p/csharp`, `p/kotlin`, `p/swift`,
+     `p/github-actions`, `p/terraform`, `p/dockerfile`, `p/kubernetes`
 8. **Verify.** Merge your candidates, the hunters' and the tools' by root cause, then verify them as
    `method/verifier.md` says for the mode: a disproof pass for all, plus fresh verifier subagents where the mode
    calls for them, and the rejection review for every rejected `critical` or `bug` candidate. The verifier's

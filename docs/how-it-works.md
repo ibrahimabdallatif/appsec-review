@@ -29,9 +29,9 @@ flowchart TD
 ## 1. Scope and stack
 
 The skill works out what to review (`SKILL.md` steps 1 and 3) and which stacks the code uses, from its manifests
-(`pom.xml`, `package.json`, `go.mod`, `*.csproj`, …). Each detected stack adds a framework file from
-`rules/stacks/` naming that framework's entry points and unsafe APIs. Category files in `rules/` load when their
-`paths` front matter matches files in scope.
+(`pom.xml`, `package.json`, `composer.json`, `go.mod`, `*.csproj`, workflow files, `Dockerfile`, `*.tf`, …).
+Each detected stack adds a framework file from `rules/stacks/` naming that framework's entry points and unsafe
+APIs. Category files in `rules/` load when their `paths` front matter matches files in scope.
 
 ## 2. Inventory and ledger (`standard` and `deep`)
 
