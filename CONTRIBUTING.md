@@ -54,6 +54,7 @@ python -I skills/appsec-review/method/test_run_stats.py      # run_stats.py
 python -I skills/appsec-review/evals/test_benchmark.py       # benchmark.py
 python -I skills/appsec-review/report/test_cvss40.py         # cvss40.py
 python -I skills/appsec-review/report/cvss40.py --selftest   # cvss40.py against FIRST reference scores
+python -I skills/appsec-review/report/test_embed_logos.py    # embed_logos.py
 python -I skills/appsec-review/report/test_build_sample.py   # build_sample.py (fails when docs/sample-report.* is out of date)
 ```
 

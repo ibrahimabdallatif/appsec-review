@@ -38,5 +38,7 @@ jobs:
         run: python -I skills/appsec-review/report/cvss40.py --selftest
       - name: CVSS calculator tests
         run: python -I skills/appsec-review/report/test_cvss40.py
+      - name: Logo embedding tests
+        run: python -I skills/appsec-review/report/test_embed_logos.py
       - name: Sample report tests
         run: python -I skills/appsec-review/report/test_build_sample.py

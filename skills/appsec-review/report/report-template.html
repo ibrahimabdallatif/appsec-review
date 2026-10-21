@@ -13,6 +13,9 @@
   --cover: #0e1626;
   --cover-ink: #eef2fa;
   --cover-muted: #9aa6bf;
+  --logo-light: url("{{LOGO_LIGHT}}");
+  --logo-dark: url("{{LOGO_DARK}}");
+  --logo: var(--logo-light);
   --critical: #b4232f;
   --high: #d0541b;
   --medium: #b98a00;
@@ -27,7 +30,7 @@
   :root:not([data-theme="light"]) {
     --bg: #0d121c; --paper: #151c29; --ink: #e5eaf3; --muted: #9aa5b9; --line: #263042;
     --accent: #3cc2b4; --accent-soft: #15302f; --code-bg: #1d2636;
-    --cover: #080c14; --cover-ink: #eef2fa; --cover-muted: #8f9bb3;
+    --cover: #080c14; --cover-ink: #eef2fa; --cover-muted: #8f9bb3; --logo: var(--logo-dark);
     --critical: #ff6670; --high: #ff9a5c; --medium: #e8c14a; --low: #6fcf97; --info: #8fb0e6;
     color-scheme: dark;
   }
@@ -35,7 +38,7 @@
 :root[data-theme="dark"] {
   --bg: #0d121c; --paper: #151c29; --ink: #e5eaf3; --muted: #9aa5b9; --line: #263042;
   --accent: #3cc2b4; --accent-soft: #15302f; --code-bg: #1d2636;
-  --cover: #080c14; --cover-ink: #eef2fa; --cover-muted: #8f9bb3;
+  --cover: #080c14; --cover-ink: #eef2fa; --cover-muted: #8f9bb3; --logo: var(--logo-dark);
   --critical: #ff6670; --high: #ff9a5c; --medium: #e8c14a; --low: #6fcf97; --info: #8fb0e6;
   color-scheme: dark;
 }
@@ -162,6 +165,12 @@ footer.end { color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(-
 footer.end p { margin: 0; }
 footer.end p + p { margin-top: 6px; }
 
+/* Logo: report/embed_logos.py fills both images; the cover band stays dark on screen, so it always takes the dark logo there */
+.logo { display: inline-block; flex: none; border-radius: 22%; background: var(--logo) center / contain no-repeat; }
+.cover-brand { display: inline-flex; align-items: center; gap: 14px; }
+.cover .logo { width: 56px; height: 56px; background-image: var(--logo-dark); }
+.end .logo { width: 20px; height: 20px; margin-right: 8px; vertical-align: -5px; }
+
 /* Theme toggle */
 .cover-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .theme-toggle { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cover-ink); background: transparent; border: 1px solid rgba(255,255,255,0.25); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
@@ -175,7 +184,7 @@ footer.end p + p { margin-top: 6px; }
   :root, :root[data-theme="dark"], :root:not([data-theme="light"]) {
     --bg: #ffffff; --paper: #ffffff; --ink: #121a2b; --muted: #5b6579; --line: #d5dae4;
     --accent: #0f7a72; --accent-soft: #e2f3f1; --code-bg: #f3f5f8;
-    --cover: #ffffff; --cover-ink: #121a2b; --cover-muted: #5b6579;
+    --cover: #ffffff; --cover-ink: #121a2b; --cover-muted: #5b6579; --logo: var(--logo-light);
     --critical: #b4232f; --high: #d0541b; --medium: #b98a00; --low: #2f7d4f; --info: #4a6fa5;
     color-scheme: light;
   }
@@ -185,6 +194,7 @@ footer.end p + p { margin-top: 6px; }
   .theme-toggle, .rail { display: none; }
   .cover { padding: 0 0 20px; border-bottom: 2px solid var(--ink); }
   .cover h1 { font-size: 24pt; }
+  .cover .logo { background-image: var(--logo-light); }
   .cover h1 span, .badge-conf { color: var(--accent); border-color: var(--accent); }
   .cover-meta { background: var(--line); border-color: var(--line); }
   .shell { display: block; max-width: none; padding: 24px 0 0; }
@@ -209,7 +219,8 @@ footer.end p + p { margin-top: 6px; }
 
 <!--
   appsec-review report template. Follow REPORT.md in this folder.
-  Replace every {{PLACEHOLDER}}. Repeat the blocks marked REPEAT. Keep the CSS and class names.
+  Replace every {{PLACEHOLDER}} except {{LOGO_LIGHT}} and {{LOGO_DARK}}: leave those two as they are, and run
+  report/embed_logos.py on the written page to fill them. Repeat the blocks marked REPEAT. Keep the CSS and class names.
   HTML-escape every value you insert (& < > always, " and ' inside attributes), including code in <pre>.
   Numbering, only 4.1: {{SEQ}} = 1, 2, 3 (1.3 # column); {{FINDING_ID}} = 4.1.1, 4.1.2 (card label);
   {{ANCHOR}} = f1, f2 (element id and 1.3 link). All three follow the same order.
@@ -227,7 +238,7 @@ footer.end p + p { margin-top: 6px; }
   <div class="cover-in">
     <div>
       <div class="cover-top">
-        <span class="badge-conf">Confidential</span>
+        <span class="cover-brand"><i class="logo" role="img" aria-label="appsec-review"></i><span class="badge-conf">Confidential</span></span>
         <button type="button" class="theme-toggle" id="theme-toggle"><i class="dot" aria-hidden="true"></i><span>Dark mode</span></button>
       </div>
       <p class="eyebrow" style="margin-top:22px">{{ORGANISATION}} · {{PLATFORM}}</p>
@@ -448,7 +459,7 @@ footer.end p + p { margin-top: 6px; }
       </div>
       <footer class="end">
         <p>Confidential. Secret values, card data, OTPs and tokens are referenced by location only and never reproduced in this report.</p>
-        <p>Generated with <a href="https://github.com/ibrahimabdallatif/appsec-review">appsec-review</a> · Skill author: Ibrahim Abdallatif · <a href="https://www.linkedin.com/in/ibrahimabdallatif/">LinkedIn</a></p>
+        <p><i class="logo" aria-hidden="true"></i>Generated with <a href="https://github.com/ibrahimabdallatif/appsec-review">appsec-review</a> · Skill author: Ibrahim Abdallatif · <a href="https://www.linkedin.com/in/ibrahimabdallatif/">LinkedIn</a></p>
       </footer>
     </section>
 

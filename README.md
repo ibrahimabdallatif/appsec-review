@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.png">
+    <img alt="appsec-review logo" src="docs/assets/logo-light.png" width="128" height="128">
+  </picture>
+</p>
+
 <h1 align="center">appsec-review</h1>
 
 <p align="center">
@@ -179,9 +186,19 @@ Then, in Claude Code, inside the repository to review:
 > Start with a plain `/appsec-review` on a branch. It is the fastest mode and shows you the output format before
 > you spend time on a whole repository. More commands: [Getting started](docs/getting-started.md).
 
-The skill runs only when you invoke it (`disable-model-invocation: true`). Python 3 is needed for its helper
-scripts; gitleaks, trivy, semgrep, your ecosystem's audit tool and, for pipelines and infrastructure, zizmor,
-actionlint, checkov and hadolint are used when installed.
+The skill runs only when you invoke it (`disable-model-invocation: true`).
+
+## 🧩 Compatibility
+
+| Requirement | Details |
+|---|---|
+| **Claude Code** | A current release with skills and subagents; the skill runs inside Claude Code, interactively or headless with `claude -p` |
+| **Python** | 3.10+ on your `PATH` as `python`, for the helper scripts (standard library only, tested on 3.10 and 3.13) |
+| **Git** | Needed for diff, branch and PR reviews and for multi-repository discovery |
+| **Node.js** | 18+, only to install with `npx skills add` or to install the Claude Code CLI in CI |
+| **OS** | Linux, macOS and Windows (tests run on Linux and Windows) |
+| **Optional tools** | gitleaks, trivy or osv-scanner, semgrep, your ecosystem's audit tool and, for pipelines and infrastructure, zizmor, actionlint, checkov and hadolint; used when installed, never installed by the skill |
+| **Private report artifact** | Published only from sessions that can publish to claude.ai; CI and headless runs still write the local files |
 
 ## 🎚️ Modes
 
@@ -283,7 +300,7 @@ relative to that folder.
 | `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, PHP, .NET, Go, Supabase and Firebase, CI pipelines, containers and IaC |
 | `rules/deep/*.md` | `deep`-mode playbooks: object-level authorization, payment callbacks, payment state and idempotency, race conditions, business-logic flaws |
 | `method/` | Coverage ledger, hunter and verifier prompts, `inventory.py`, `ledger.py` validator and CI gate, `accepted_risks.py`, `sarif.py`, `run_stats.py` |
-| `report/` | Report structure and Markdown copy rules (`REPORT.md`), CVSS 4.0 calculator (`cvss40.py`), HTML template, and `build_sample.py`, which builds the sample report from the fictional fixture in `sample/` |
+| `report/` | Report structure and Markdown copy rules (`REPORT.md`), CVSS 4.0 calculator (`cvss40.py`), HTML template, the logos in `assets/` and `embed_logos.py`, which embeds them in each report, and `build_sample.py`, which builds the sample report from the fictional fixture in `sample/` |
 | `docs/` | Getting started, how it works, CI pipeline guide, the README images, and the sample report (Markdown, and HTML served on GitHub Pages) |
 | `evals/` | `benchmark.py`, which scores one run, or several runs for stability, against known findings |
 | `NOTICE.md`, `LICENSE` | Third-party notices and the license, shipped with the skill so every install carries them |
@@ -306,6 +323,7 @@ python -I skills/appsec-review/method/test_run_stats.py
 python -I skills/appsec-review/evals/test_benchmark.py
 python -I skills/appsec-review/report/test_cvss40.py
 python -I skills/appsec-review/report/cvss40.py --selftest
+python -I skills/appsec-review/report/test_embed_logos.py
 python -I skills/appsec-review/report/test_build_sample.py
 ```
 

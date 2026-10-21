@@ -23,6 +23,11 @@ card numbers, CVVs, OTPs or tokens. Refer to them by file, line or commit.
   the page when it is opened.
 - **No third-party requests.** The template uses system font stacks and no external fonts, scripts or images, so
   opening a confidential report contacts no outside host. Keep it that way.
+- **Logo.** The cover and the footer credit line show the skill's logo: the dark logo on the cover band, and in the
+  footer the logo matching the theme (the light one in print). Leave the template's `{{LOGO_LIGHT}}` and
+  `{{LOGO_DARK}}` placeholders in place when writing the page, then run
+  `python -I <skill folder>/report/embed_logos.py <report.html>`, which embeds both images from `report/assets/`
+  as data URIs. Never type or copy the image data yourself. The Markdown copy has no logo.
 - **Light and dark mode.** Keep the cover's `#theme-toggle` button and its inline script at the end of the
   template; it is the only script a report may contain. It switches `data-theme` on the root element, keeps
   a label naming the mode it switches to ("Dark mode" or "Light mode"), follows the system theme until the reader

@@ -302,6 +302,7 @@ next-steps questions or in their request, or when the run is non-interactive. Bu
 - Score every finding with a CVSS 4.0 base vector and rate it by the CVSS band. Compute each score with
   `python -I <skill folder>/report/cvss40.py "<vector>"`; never estimate.
 - Build the page from `report/report-template.html`, keeping its CSS and layout and replacing only the content.
+  After writing it, embed the logos with `python -I <skill folder>/report/embed_logos.py <report.html>`.
 - Write two local files whenever a report is built, from the same finding data (REPORT.md "Saving and publishing"):
   `~/.appsec-review/<repo>/report.html` (the page) and `~/.appsec-review/<repo>/report.md` (the same report as
   Markdown, for feeding to another session). A multi-repository report uses the name of the directory holding the

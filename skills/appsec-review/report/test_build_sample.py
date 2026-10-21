@@ -129,6 +129,11 @@ class HtmlBuildTest(unittest.TestCase):
         self.assertEqual(PLACEHOLDER.findall(self.page), [])
         self.assertNotIn("<!--", self.page)
 
+    def test_logos_embedded_once_each(self):
+        for uri in bs.embed_logos.logo_values().values():
+            self.assertEqual(self.page.count(uri), 1)
+        self.assertEqual(self.page.count('class="logo"'), 2)
+
     def test_every_finding_has_card_and_glance_row(self):
         for f in bs.all_findings(bs.build_sections(DATA)):
             self.assertEqual(self.page.count('id="%s"' % f["anchor"]), 1)

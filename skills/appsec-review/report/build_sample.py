@@ -18,6 +18,7 @@ sys.dont_write_bytecode = True  # keep the skill folder free of __pycache__
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import cvss40  # noqa: E402
+import embed_logos  # noqa: E402
 
 TEMPLATE = os.path.join(HERE, "report-template.html")
 FIXTURE = os.path.join(HERE, "sample", "acme-shop.json")
@@ -388,7 +389,7 @@ def build_html(template, data):
     text = template
     for step in HTML_STEPS:
         text = step(text, ctx)
-    text = fill(text, global_values(ctx))
+    text = embed_logos.embed(fill(text, global_values(ctx)), embed_logos.logo_values())
     return wrap_document(drop_empty_legend(drop_empty_bars(strip_comments(text))))
 
 
