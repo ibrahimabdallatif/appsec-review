@@ -35,6 +35,10 @@
   <img alt="Pipeline: attack surface inventory, threat model with abuse paths, STRIDE assessment in three directions, adversarial verification by a second agent, proven findings with CWE, CVSS 4.0 and SARIF" src="docs/assets/pipeline-light.svg">
 </picture>
 
+New to terms such as sink, coverage ledger, STRIDE or disproof? The
+[plain-language glossary](docs/how-it-works.md#terms-used-on-this-page) explains the 15 main concepts used by
+the workflow.
+
 ## 🧭 Why it's different
 
 <table>
@@ -106,15 +110,19 @@ a large codebase when cost matters less.
 
 ### 🤖 Independent verification
 
-- **Hunters**: wildcard, obvious-things and sink-trace subagents look for what the main pass missed
-- **Fresh verifiers**: a subagent that never saw the finder's reasoning tries to disprove each candidate
-- **Rejection review**: every rejected `critical` or `bug` candidate gets a second, independent look
+- **Hunters**: wildcard, obvious-things and sink-trace passes look for what the main assessment missed
+- **Fresh verifiers when available**: a separate agent that never saw the finder's reasoning tries to disprove
+  each candidate; Claude Code, Cursor and Codex use their native delegation
+- **Sequential fallback**: the same prompts run later in the coordinator session when subagents are disabled or
+  unavailable, and the result labels them self-verified
+- **Safe rejection rule**: a `critical` or `bug` candidate cannot be recorded as rejected without a second
+  independent agent; in a sequential run it stays `needs_confirmation`
 - **Transparent rejections**: rejected candidates are listed with the line that disproves them, so you can
   overrule them
 
 ### 📊 Reporting and CI
 
-- **Audit-ready report**: private HTML report with executive summary, threat model, remediation plan and appendix,
+- **Audit-ready report**: local HTML report with executive summary, threat model, remediation plan and appendix,
   plus a Markdown copy to feed to another session, both saved locally with their paths printed
 - **CVSS 4.0 by script**: every score computed by `report/cvss40.py`, never estimated
 - **Coverage ledger**: entry point × category units, validated against the inventory by `method/ledger.py`
@@ -168,11 +176,17 @@ Install the skill once, then invoke it inside the repository you want reviewed. 
 mode and the test boundary are in [docs/platforms.md](docs/platforms.md).
 
 ```sh
+git clone https://github.com/ibrahimabdallatif/appsec-review.git
+cd appsec-review
 python -I skills/appsec-review/method/install_links.py
 ```
 
 That links `skills/appsec-review/` into the Claude Code, Cursor and Codex user skill directories. It does not
-copy the methodology. Or copy via the skills CLI (this writes a snapshot, not a link):
+copy the methodology. Existing links are left alone unless `--replace` is passed; a real directory is never
+deleted. The link installer is tested on Linux and Windows, using Windows junctions when symlink permission is
+unavailable.
+
+Or copy via the skills CLI (this writes a snapshot, not a link):
 
 ```sh
 npx skills add ibrahimabdallatif/appsec-review --skill appsec-review -g -a claude-code -a cursor -a codex -y
@@ -201,9 +215,11 @@ does not document that flag; the description tells it not to run for a general s
 
 ## 🧩 Compatibility
 
-What is implemented is the shared skill, the discovery adapters, and the scripts. What was executed in this
-change is the Python test suite. Live skill invocation was not re-run on each host; details and versions are
-in [docs/platforms.md](docs/platforms.md).
+The shared skill, discovery adapters, sequential fallback and installation scripts are implemented. The
+automated suite currently passes on Ubuntu and Windows with Python 3.10 and 3.13: 471 unit tests plus 13 FIRST
+CVSS 4.0 reference vectors. Live skill invocation was not re-run on every host, so discovery files are described
+as implemented rather than end-to-end tested. Details and exact boundaries are in
+[docs/platforms.md](docs/platforms.md).
 
 | Requirement | Details |
 |---|---|
@@ -291,8 +307,8 @@ Agent setup, accepted risks, SARIF, a Jenkins example and scheduling advice:
 5. Seed the coverage ledger, and write the threat model and abuse paths: what an attacker wants and how they
    would try to get it (`standard` and `deep`).
 6. Assess the code forward from each entry point (trust boundaries, STRIDE, rule checks) while hunters run in
-   parallel: wildcard and obvious-things, and in `deep` a sink tracer working backward from every sink. Then
-   work each abuse path to its goal, or to the line of code that stops it.
+   parallel when supported, or sequentially otherwise: wildcard and obvious-things, and in `deep` a sink tracer
+   working backward from every sink. Then work each abuse path to its goal, or to the line of code that stops it.
 7. Optionally run installed tools: gitleaks, trivy/osv-scanner, ecosystem audits, semgrep, and zizmor,
    actionlint, checkov or hadolint for pipelines and infrastructure.
 8. Verify every candidate with a disproof pass and, depending on the mode, independent verifier subagents,
