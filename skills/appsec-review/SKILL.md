@@ -1,6 +1,8 @@
 ---
 name: appsec-review
-description: "Use when the user explicitly invokes /appsec-review for a diff, branch, PR, file, endpoint, the whole repository, or every repository under a directory. Manual pentest-style security review of Spring, Node.js, Python, PHP (Laravel, Symfony, WordPress), .NET and Go back ends, browser front ends (React, Next.js, Angular, Vue, Svelte), mobile apps (React Native, Flutter, native Android and iOS), Supabase and Firebase against OWASP Top 10:2025, OWASP API Top 10:2023, ASVS 5.0, MASVS, MASTG, Mobile Top 10:2024, CWE Top 25, PCI DSS, NIST SP 800-63B-4, RFC 9700, RFC 8252 and RFC 10017, with verified findings, CVSS 4.0 scores and SARIF export. Keywords: security review, appsec, pentest, vulnerability, OWASP, IDOR, threat model, STRIDE, CVSS, SARIF"
+description: "Use only when the user explicitly invokes appsec-review (/appsec-review on Claude Code and Cursor, $appsec-review or /skills on Codex) for a diff, branch, PR, file, endpoint, the whole repository, or every repository under a directory. Manual pentest-style security review of Spring, Node.js, Python, PHP (Laravel, Symfony, WordPress), .NET and Go back ends, browser front ends (React, Next.js, Angular, Vue, Svelte), mobile apps (React Native, Flutter, native Android and iOS), Supabase and Firebase against OWASP Top 10:2025, OWASP API Top 10:2023, ASVS 5.0, MASVS, MASTG, Mobile Top 10:2024, CWE Top 25, PCI DSS, NIST SP 800-63B-4, RFC 9700, RFC 8252 and RFC 10017, with verified findings, CVSS 4.0 scores and SARIF export. Do not run for a general security question. Keywords: security review, appsec, pentest, vulnerability, OWASP, IDOR, threat model, STRIDE, CVSS, SARIF"
+license: MIT
+compatibility: "Python 3.10+ on PATH as python (standard library only). Git for diff and branch reviews. Read-only unless the user asks for fixes. Parallel subagents only when the host can spawn them; otherwise the same steps run sequentially."
 disable-model-invocation: true
 ---
 
@@ -13,10 +15,11 @@ checklists in `rules/`, in one of three modes (`diff`, `standard`, `deep`). Ever
 is reported, findings get CVSS 4.0 scores, `standard` and `deep` runs keep a coverage ledger and threat model,
 and results end in a run summary, an HTML and Markdown report, and on request a SARIF export or a CI gate.
 
-The skill is installed globally (`npx skills add ibrahimabdallatif/appsec-review --skill appsec-review -g`, or
-copied into `~/.claude/skills/appsec-review/`) and is available in every Claude Code session. Claude Code states
-the skill folder as the skill's base directory when it loads. Paths to the skill's own files below (`rules/`, `method/`, `report/`) are relative to
-that skill folder, not to the reviewed repository. The checklist is in `rules/`. Read those files; don't rely on memory.
+The skill folder is the directory that contains this file together with `rules/00-overview.md`. Paths below
+(`rules/`, `method/`, `report/`) are relative to that folder, not to the reviewed repository and not to a
+discovery adapter that only points here. Install paths for Claude Code, Cursor and Codex are in the skill
+repository's `docs/platforms.md`; do not read that file during a review. The checklist is in `rules/`. Read
+those files; don't rely on memory.
 
 | File | Area |
 |---|---|
@@ -51,6 +54,9 @@ The method files in `method/` are not checklists; they define how the review run
 | `method/verifier.md` | Verification per mode: an inline disproof pass, plus fresh verifier subagents that try to disprove candidates |
 | `method/run_stats.py` | Run timer (waits for the user excluded) and token totals for the run summary (`test_run_stats.py` holds its tests) |
 | `method/inventory.py` | Lists entry points and sinks by script, so every run seeds the same ledger units (`inventory_patterns.py` holds the per-stack patterns, `test_inventory.py` the tests) |
+| `method/orchestration.md` | Coordinator, hunter, verifier and coverage reviewer on Claude Code, Cursor and Codex, including the sequential fallback. Read at step 0 |
+| `method/parallel_mode.py` | Prints `parallel` or `sequential` for this run (`test_parallel_mode.py`) |
+| `method/finding-contract.md` | Where an existing finding's fields live. Not a second schema. Read at the report step |
 | `evals/benchmark.py` | Not used during a review. Scores one run's ledger, or several runs' for stability, against a benchmark of known findings, to check the skill after changes (`CONTRIBUTING.md` in the skill's GitHub repository) |
 
 ## Review modes
@@ -65,7 +71,9 @@ Pick the mode once, before step 4, and state it at the top of the result. **Neve
 
 Modes change how many subagents run and how detailed the ledger is, **never how much code is read**. Every mode
 reads every in-scope module and follows its inputs to their sinks. Never skip or defer in-scope code to save time
-or tokens; a unit may be `deferred` only when the user stops the run.
+or tokens; a unit may be `deferred` only when the user stops the run. A `sequential` decision from
+`method/parallel_mode.py`, or a host that cannot spawn an agent (`method/orchestration.md`), uses the inline
+path for every mode and says so. It does not change which code is read or how the ledger is validated.
 
 `deep` takes several times longer and consumes much more tokens than `standard`. If the user asks for "thorough" or "full" without
 saying "deep", use `standard`, and mention in one line at the end that `deep` exists. In the multi-repository
@@ -80,6 +88,10 @@ never selects `deep` mode.
    (a question, such as which repository to review or whether to install a tool), run `run_stats.py --pause` just
    before asking, then `run_stats.py --resume <start value> <paused value>` once they answer, and keep the
    printed value as the new start value.
+   Then run `python -I <skill folder>/method/parallel_mode.py`. Pass `--sequential` when the user asked for a
+   sequential run, "no subagents", or "parallel off". Keep the printed mode and the reason for the run summary.
+   If it exits non-zero, stop and report the error; do not guess. Read `method/orchestration.md` once and follow
+   it at steps 6, 8 and 9.
 1. **Pick the repositories.** Use the repositories or directory the user named; otherwise the current directory.
    - If it is a git repository (or inside one), review that repository.
    - If it is not a git repository but contains several (direct subdirectories with their own `.git`, such as a
@@ -114,14 +126,15 @@ never selects `deep` mode.
    that category. If no stack file fits, use the framework's own documentation and say so.
    Read a method file only when its step runs: `method/coverage-ledger.md` and `method/threat-model.md` at
    step 5 (not in `diff` mode), `method/hunters.md` at step 6, `method/verifier.md` at step 8 (and
-   `method/threat-model.md` section 3 for the chain pass in `diff`). Read `report/` only at the report step (Report).
+   `method/threat-model.md` section 3 for the chain pass in `diff`). Read `report/` and `method/finding-contract.md` only at the report step (Report).
 5. **Seed the coverage ledger** (`standard` and `deep` only). Seed the units from the inventory, map the trust
    boundaries and any entry points the inventory missed, then write the ledger units at the mode's granularity,
    plus the hunter units, as `method/coverage-ledger.md` describes. Then write the threat model and the abuse
    path units (`method/threat-model.md`, sections 1–2). If a ledger from an earlier run exists, start from it
    and follow its "Later runs" rules. Read only `coverage-ledger.json` and `inventory.json` from
    `~/.appsec-review/<repo>/`; never open other files there (moved-aside ledgers, saved runs).
-6. **Assess, with the hunters in parallel.** Start the hunters as `method/hunters.md` says for the mode (wildcard
+6. **Assess, with the hunters in parallel when the step 0 decision is `parallel`.** Start the hunters as
+   `method/hunters.md` and `method/orchestration.md` say for the mode (wildcard
    and obvious-things inline in `diff` and as one subagent in `standard`; in `deep`, one subagent for those two
    and one sink-trace subagent working back from the inventory's sinks). Meanwhile follow `00-overview.md`: identify
    trust boundaries and data classes, run the STRIDE pass, then check each matching rule against the code. Read
@@ -145,8 +158,10 @@ never selects `deep` mode.
      `p/golang`, `p/csharp`, `p/kotlin`, `p/swift`,
      `p/github-actions`, `p/terraform`, `p/dockerfile`, `p/kubernetes`
 8. **Verify.** Merge your candidates, the hunters' and the tools' by root cause, then verify them as
-   `method/verifier.md` says for the mode: a disproof pass for all, plus fresh verifier subagents where the mode
-   calls for them, and the rejection review for every rejected `critical` or `bug` candidate. The verifier's
+   `method/verifier.md` and `method/orchestration.md` say for the mode: a disproof pass for all, plus fresh
+   verifier subagents where the mode calls for them, and the rejection review for every rejected `critical` or
+   `bug` candidate. When no second agent can run, follow the sequential rejection rule in `method/orchestration.md`
+   instead of setting `rejection_reviewed`. The verifier's
    decision stands: `confirmed` and `hardening`
    become findings, `needs_confirmation` is reported with the exact missing fact, `rejected` is dropped. Never
    verify your own candidates in the same pass that found them. Then run the chain pass over the findings that
@@ -180,8 +195,9 @@ Review each repository in depth first; build the combined result only from those
 4. **Merge after each repository.** Update the combined result as soon as a repository's deep review is done:
    terminal output grouped as platform-wide first, then one group per repository (split by layer when the
    repository has several); for a report, follow the
-   multi-repository rules in `report/REPORT.md`, publish after the first repository, and update the same artifact
-   after each later one (unless the user asked for one report at the end). Re-check scores so the same issue has
+   multi-repository rules in `report/REPORT.md`, rewrite the local files after the first repository, and update
+   those same files after each later one (unless the user asked for one report at the end). Publish only when
+   the user explicitly asked to publish. Re-check scores so the same issue has
    the same vector in every repository.
 5. **Reusing earlier reports.** When a standalone report for one of the repositories already exists, verify each of
    its findings against the current code before merging it, and rescore it under the shared rules.
@@ -226,17 +242,20 @@ The last block of every result, followed only by the report (when one is built) 
 ```
 Run summary
 - Mode: <diff|standard|deep>
+- Delegation: <parallel|sequential> (<reason from parallel_mode.py, plus a host fallback reason when a spawn failed>)
 - Time: <python -I <skill folder>/method/run_stats.py <start value>>
 - Tokens: <python -I <skill folder>/method/run_stats.py --tokens <budget at start> <budget at end> <tokens per subagent ...>>
-- Subagents: <number started, by role and model>
+- Subagents: <number started, by role and model; 0 on a sequential run>
 - Findings: <root causes> root causes: <n> critical ; <n> bug ; <n> warning ; <n> suggestion ; <n> rejected by verification
 - Findings by layer: backend <n> ; web-frontend <n>   (only when the repository has several layers)
 - <mode note>
 ```
 
 - **Tokens.** The main-session figure is the drop in the session's remaining token budget; pass `-` for both
-  budgets when the session shows none. Subagent figures are the token counts the Agent tool reports for each
-  subagent. Never estimate a figure; leave out what isn't reported, and add "exact usage: `/cost` or `/usage`".
+  budgets when the session shows none. Subagent figures are the token counts the host reports for each
+  subagent (on Claude Code, the Agent tool). Never estimate a figure; leave out what isn't reported. On Claude
+  Code, add "exact usage: `/cost` or `/usage`" when the session has those commands. On Cursor and Codex, name
+  the host usage view only when one was actually shown.
 - **Mode note** for the mode that ran:
   - `diff`: "For a whole repository use `standard` (`/appsec-review whole repo`). `deep` (`/appsec-review deep`)
     covers more but takes several times longer and consumes much more tokens."
@@ -303,21 +322,25 @@ next-steps questions or in their request, or when the run is non-interactive. Bu
   `python -I <skill folder>/report/cvss40.py "<vector>"`; never estimate.
 - Build the page from `report/report-template.html`, keeping its CSS and layout and replacing only the content.
   After writing it, embed the logos with `python -I <skill folder>/report/embed_logos.py <report.html>`.
-- Write two local files whenever a report is built, from the same finding data (REPORT.md "Saving and publishing"):
+- Write two local files whenever a report is built, from the same finding data (`report/REPORT.md` "Saving and publishing",
+  and the field map in `method/finding-contract.md`):
   `~/.appsec-review/<repo>/report.html` (the page) and `~/.appsec-review/<repo>/report.md` (the same report as
   Markdown, for feeding to another session). A multi-repository report uses the name of the directory holding the
   repositories in place of `<repo>`.
-- Then publish the HTML file privately and warn before wider sharing, because it contains attack details for open
-  issues. Skip publishing when the session cannot publish (CI, scheduled or headless); the local files are still
-  written.
+- If `report/cvss40.py` or `report/embed_logos.py` fails, stop and include the script's error in the result.
+  Do not invent a CVSS score, skip a failed embed, or publish a partial page as if it were complete.
+- Do not publish the report unless the user explicitly asks to publish. On Claude Code, publishing means a
+  private claude.ai artifact and nothing wider. On Cursor and Codex there is no publish step; say so if the
+  user asked. Never upload the report, ledger, inventory or source as a side effect of the review. Warn before
+  any wider sharing, because the report contains attack details for open issues.
 - End the report step by printing both local files as absolute paths with the home directory expanded, plus the
-  artifact link when one was published:
+  artifact link only when one was actually published:
 
   ```
   Report
   - HTML: <absolute path>/report.html
   - Markdown: <absolute path>/report.md
-  - Artifact: <claude.ai link> (private)
+  - Artifact: <claude.ai link> (private)    # only after an explicit publish on Claude Code
   ```
 
 ## Maintaining the skill

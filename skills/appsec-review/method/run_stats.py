@@ -8,7 +8,7 @@ Usage:
     python -I run_stats.py <start epoch>               print the running time since then, e.g. "12m 05s"
     python -I run_stats.py --tokens <budget at start> <budget at end> [subagent tokens ...]
         main-session tokens are the drop in the remaining token budget; pass "-" for both budgets when
-        the session shows none. Subagent values are the counts the Agent tool reported.
+        the session shows none. Subagent values are the counts the host reported for each delegated agent.
     python -I test_run_stats.py                        run the unit tests
 """
 import sys

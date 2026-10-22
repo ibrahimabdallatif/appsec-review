@@ -89,6 +89,10 @@ as in the review step:
     category: appsec-review
 ```
 
+The gate, accepted-risk and SARIF commands above do not depend on which host wrote the ledger. The Jenkins
+example that follows runs the review with Claude Code. A headless Cursor or Codex job is not specified here,
+because those hosts were not run that way in this change. See [platforms.md](platforms.md).
+
 ## Requirements on the build agent
 
 - Node.js 18+ for the Claude Code CLI (`npm install -g @anthropic-ai/claude-code`).

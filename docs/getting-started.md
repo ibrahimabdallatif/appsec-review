@@ -2,31 +2,38 @@
 
 ## 1. Install
 
+Python 3.10 or newer must be on your PATH as `python`. The helper scripts use only the standard library.
+gitleaks, trivy or osv-scanner, semgrep and your ecosystem's audit tool are optional: the skill runs them when
+they are installed and never installs them itself.
+
+From a clone of this repository, link the one skill folder into the user directories for Claude Code, Cursor
+and Codex:
+
 ```sh
-npx skills add ibrahimabdallatif/appsec-review --skill appsec-review -g
+python -I skills/appsec-review/method/install_links.py
 ```
 
-Or clone the repository and copy the skill folder yourself:
+Or install a copy with the skills CLI:
 
 ```sh
-git clone https://github.com/ibrahimabdallatif/appsec-review.git
-cp -r appsec-review/skills/appsec-review ~/.claude/skills/appsec-review
+npx skills add ibrahimabdallatif/appsec-review --skill appsec-review -g -a claude-code -a cursor -a codex -y
 ```
 
-The skill is then available in every Claude Code session. Update it later with `npx skills update`. You also need Python 3 on your PATH as `python`; the
-helper scripts use only the standard library. gitleaks, trivy or osv-scanner, semgrep and your ecosystem's audit
-tool are optional: the skill runs them when they are installed and never installs them itself.
+Paths, sequential mode and troubleshooting: [Platforms](platforms.md).
 
 ## 2. Run your first review
 
-Open Claude Code in the repository you want to review and start small:
+Open the repository you want to review.
 
-```
-/appsec-review
-```
+| Host | Command |
+|---|---|
+| Claude Code | `/appsec-review` |
+| Cursor | `/appsec-review` |
+| Codex | `/skills`, then appsec-review, or `$appsec-review` |
 
 With no arguments the skill reviews the current branch's changes against its base branch (`develop` if it
 exists, else `main`) plus uncommitted changes, in `diff` mode. This is the fastest way to see what it does.
+Say "sequential" in the same request when you do not want subagents. The checks do not change.
 
 When that looks useful, review the whole repository:
 
@@ -78,9 +85,9 @@ After the findings come:
 - **Run summary**: mode, time, tokens and subagents used, and counts of findings and affected locations.
 
 `standard` and `deep` runs then write the report to `~/.appsec-review/<repo>/` as `report.html` and `report.md`
-(the Markdown copy is the one to feed to another session), publish the HTML privately when the session can (CI
-runs don't), print the absolute paths of both files with the artifact link, and ask whether to fix a specific
-finding, all of them, or none for now. A `diff` run skips the report by default and instead asks whether to fix
+(the Markdown copy is the one to feed to another session) and print the absolute paths of both files. A private
+claude.ai artifact is created only when you ask to publish, and only on Claude Code. Cursor and Codex leave the
+report on disk. A `diff` run skips the report by default and instead asks whether to fix
 the findings, generate the report, or both.
 Non-interactive runs (CI) skip the questions; a non-interactive `diff` run writes the report anyway.
 
@@ -94,11 +101,12 @@ new code and marks fixed ones instead of starting over.
 ## 5. Keep results private
 
 Ledgers, inventories and reports describe how to attack open issues. They live in `~/.appsec-review/`, outside
-your repository, so they are not committed by accident. A published report is private by default; check who can
-see it before sharing.
+your repository, so they are not committed by accident. Publishing is a separate request. Check who can see a
+report before sharing.
 
 ## Next steps
 
+- [Platforms](platforms.md): install, invoke, sequential fallback, and what was tested.
 - [How it works](how-it-works.md): the inventory, the hunters, the verifiers and the coverage ledger.
 - [CI pipeline](ci-pipeline.md): run the skill on a schedule and fail builds on serious findings.
 - [Contributing](../CONTRIBUTING.md): add rules, stacks and patterns, and check the skill with benchmarks.
