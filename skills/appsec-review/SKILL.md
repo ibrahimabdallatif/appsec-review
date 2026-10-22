@@ -56,6 +56,7 @@ The method files in `method/` are not checklists; they define how the review run
 | `method/inventory.py` | Lists entry points and sinks by script, so every run seeds the same ledger units (`inventory_patterns.py` holds the per-stack patterns, `test_inventory.py` the tests) |
 | `method/orchestration.md` | Coordinator, hunter, verifier and coverage reviewer on Claude Code, Cursor and Codex, including the sequential fallback. Read at step 0 |
 | `method/parallel_mode.py` | Prints `parallel` or `sequential` for this run (`test_parallel_mode.py`) |
+| `method/review_paths.py` | Absolute inventory, ledger and report paths. Run before writing any of them (`test_review_paths.py`) |
 | `method/finding-contract.md` | Where an existing finding's fields live. Not a second schema. Read at the report step |
 | `evals/benchmark.py` | Not used during a review. Scores one run's ledger, or several runs' for stability, against a benchmark of known findings, to check the skill after changes (`CONTRIBUTING.md` in the skill's GitHub repository) |
 
@@ -106,8 +107,9 @@ never selects `deep` mode.
 2. **Identify the stack.** For each repository, read its manifests and record languages, frameworks, versions and
    layer (back end, web front end, mobile app, or several, with the folders of each), as `00-overview.md`
    describes. Pick the stack files
-   whose `detect` front matter matches; a repository can match several. In `standard` and `deep`, then build the
-   inventory: `python -I <skill folder>/method/inventory.py <repo> --out ~/.appsec-review/<repo>/inventory.json`
+   whose `detect` front matter matches; a repository can match several. In `standard` and `deep`, first run
+   `python -I <skill folder>/method/review_paths.py <repo-name> --mkdir` and keep its output. Then build the
+   inventory: `python -I <skill folder>/method/inventory.py <repo> --out <printed inventory path>`
    (add `--only <path>` for an endpoint or files review). Compare the stacks it detected with yours and re-run it
    with `--stack <name>` for any it missed. Its entry points and sinks are the fixed starting list for steps 5
    and 6; the stack files' entry point lists still apply to what the patterns can't see.
@@ -132,7 +134,7 @@ never selects `deep` mode.
    plus the hunter units, as `method/coverage-ledger.md` describes. Then write the threat model and the abuse
    path units (`method/threat-model.md`, sections 1–2). If a ledger from an earlier run exists, start from it
    and follow its "Later runs" rules. Read only `coverage-ledger.json` and `inventory.json` from
-   `~/.appsec-review/<repo>/`; never open other files there (moved-aside ledgers, saved runs).
+   the directory `review_paths.py` printed; never open other files there (moved-aside ledgers, saved runs).
 6. **Assess, with the hunters in parallel when the step 0 decision is `parallel`.** Start the hunters as
    `method/hunters.md` and `method/orchestration.md` say for the mode (wildcard
    and obvious-things inline in `diff` and as one subagent in `standard`; in `deep`, one subagent for those two
@@ -168,7 +170,8 @@ never selects `deep` mode.
    were not rejected (`method/threat-model.md`, section 3) and verify each chain as `method/verifier.md`
    ("Chains") says.
 9. **Close the ledger** (`standard` and `deep` only). Link the verified findings, run the gap pass, and validate with
-   `python -I <skill folder>/method/ledger.py <ledger> --inventory <inventory>`. Fix every error before writing
+   `python -I <skill folder>/method/ledger.py <ledger path> --inventory <inventory path>`, using the paths
+   `review_paths.py` printed. Fix every error before writing
    the result. A candidate
    the gap pass turns up goes through step 8 before it is reported.
 
@@ -323,18 +326,20 @@ next-steps questions or in their request, or when the run is non-interactive. Bu
 - Build the page from `report/report-template.html`, keeping its CSS and layout and replacing only the content.
   After writing it, embed the logos with `python -I <skill folder>/report/embed_logos.py <report.html>`.
 - Write two local files whenever a report is built, from the same finding data (`report/REPORT.md` "Saving and publishing",
-  and the field map in `method/finding-contract.md`):
-  `~/.appsec-review/<repo>/report.html` (the page) and `~/.appsec-review/<repo>/report.md` (the same report as
-  Markdown, for feeding to another session). A multi-repository report uses the name of the directory holding the
-  repositories in place of `<repo>`.
+  and the field map in `method/finding-contract.md`). Before writing, run
+  `python -I <skill folder>/method/review_paths.py <repo-name> --mkdir` and use the printed `html` and `markdown`
+  paths. A multi-repository report uses the name of the directory holding the repositories as `<repo-name>`.
+  Do not build the path by expanding `~/.appsec-review`. Replacing `~/` with the home directory drops the
+  separator, so `C:\Users\ibrahim.beshir\.appsec-review` becomes `C:\Users\ibrahim.beshir.appsec-review`. Copy
+  the script's path, including the separator before `.appsec-review`.
 - If `report/cvss40.py` or `report/embed_logos.py` fails, stop and include the script's error in the result.
   Do not invent a CVSS score, skip a failed embed, or publish a partial page as if it were complete.
 - Do not publish the report unless the user explicitly asks to publish. On Claude Code, publishing means a
   private claude.ai artifact and nothing wider. On Cursor and Codex there is no publish step; say so if the
   user asked. Never upload the report, ledger, inventory or source as a side effect of the review. Warn before
   any wider sharing, because the report contains attack details for open issues.
-- End the report step by printing both local files as absolute paths with the home directory expanded, plus the
-  artifact link only when one was actually published:
+- End the report step by printing the script's `Report` block unchanged, plus the artifact link only when one
+  was actually published. Do not retype the paths:
 
   ```
   Report

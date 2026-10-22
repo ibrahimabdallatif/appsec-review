@@ -36,6 +36,8 @@ jobs:
         run: python -I skills/appsec-review/method/test_parallel_mode.py
       - name: Install link tests
         run: python -I skills/appsec-review/method/test_install_links.py
+      - name: Review path tests
+        run: python -I skills/appsec-review/method/test_review_paths.py
       - name: Layout tests
         run: python -I skills/appsec-review/method/test_layout.py
       - name: Benchmark tests

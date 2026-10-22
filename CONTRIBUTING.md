@@ -67,6 +67,7 @@ python -I skills/appsec-review/method/test_threat_model.py   # threat_model.py (
 python -I skills/appsec-review/method/test_run_stats.py      # run_stats.py
 python -I skills/appsec-review/method/test_parallel_mode.py  # parallel_mode.py
 python -I skills/appsec-review/method/test_install_links.py  # install_links.py
+python -I skills/appsec-review/method/test_review_paths.py   # review_paths.py
 python -I skills/appsec-review/method/test_layout.py         # one methodology, adapters, docs
 python -I skills/appsec-review/evals/test_benchmark.py       # benchmark.py
 python -I skills/appsec-review/report/test_cvss40.py         # cvss40.py

@@ -14,8 +14,8 @@ A later run may switch profile; the new run re-seeds units at its own granularit
 
 ## Where it lives
 
-`~/.appsec-review/<repo-name>/coverage-ledger.json`, outside the reviewed repository, next to the run's
-`inventory.json`. It holds attack details,
+The `ledger` path from `python -I <skill folder>/method/review_paths.py <repo-name> --mkdir`, outside the
+reviewed repository, next to the run's `inventory.json`. It holds attack details,
 so never commit it or copy it into the repository. A run reads only `coverage-ledger.json` and `inventory.json`
 from this folder. Ignore anything else there (moved-aside ledgers, saved benchmark runs): reading an earlier
 run's results would make this run copy them instead of reviewing the code. One ledger per repository; a multi-repository review keeps one
@@ -147,8 +147,8 @@ review"); the validator enforces all of these. Keep rejected findings so later r
    coverage-reviewer role in `method/orchestration.md`: entry points in the stack file's
    list with no unit, parallel paths to the same effect (batch, legacy, mobile, admin, retry) with no unit, units
    closed without real checks. Add what is missing and review it now.
-5. **Validate**: `python -I <skill folder>/method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json
-   --inventory ~/.appsec-review/<repo>/inventory.json`. Fix every error before reporting: an inventory error
+5. **Validate**: `python -I <skill folder>/method/ledger.py <ledger path> --inventory <inventory path>`, using
+   the paths `review_paths.py` printed. Fix every error before reporting: an inventory error
    means an entry point without a unit or a sink file nobody read under its category. The summary it prints gives the counts for the result and report sections 2.3
    and 3.1.
 
