@@ -23,7 +23,6 @@ jobs:
             const owner = context.repo.owner.toLowerCase();
             const author = pr.user.login.toLowerCase();
 
-            // Your own PRs do not need an independent approval.
             if (author === owner) {
               core.info("Maintainer PR: approval not required.");
               return;
