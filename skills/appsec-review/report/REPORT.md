@@ -247,9 +247,12 @@ that wasn't possible, say so in 2.3.
 ### Local files
 
 Every run that builds a report (every `standard` and `deep` run; a `diff` run only when asked or non-interactive)
-writes both files to `~/.appsec-review/<repo>/`, outside the reviewed repository, next to the ledger. A
-multi-repository report uses the name of the directory holding the repositories in place of `<repo>`. Each run
-overwrites the previous files; the version and date on the cover tell them apart.
+writes both files outside the reviewed repository, next to the ledger. Before writing, run
+`python -I <skill folder>/method/review_paths.py <repo-name> --mkdir` and write to the printed `html` and
+`markdown` paths. Copy those paths unchanged. Do not expand `~/.appsec-review` by replacing `~/`: on Windows
+that drops the separator and glues the user name to `.appsec-review`. A multi-repository report uses the name
+of the directory holding the repositories as `<repo-name>`. Each run overwrites the previous files; the
+version and date on the cover tell them apart.
 
 | File | Content |
 |---|---|
@@ -281,8 +284,8 @@ Publishing is off unless the user explicitly asks to publish. Writing the local 
   and say so; the local files are still written.
 - Cursor and Codex have no publish step. If the user asked, tell them the report is only the local files.
 - Never upload the report, the ledger, the inventory or source code on your own.
-- Finish by printing the absolute path of both local files, with the home directory expanded, and the artifact
-  link only when one was published (SKILL.md "Report").
+- Finish by printing the `Report` block from `review_paths.py` unchanged, and the artifact link only when one
+  was published (SKILL.md "Report").
 - When a published report is updated, rewrite both local files too, so they always match the artifact.
 - On a retest, keep the finding numbers, update Status per finding, bump the cover version and date of issue,
   and say in 1.1 what changed since the previous version. If the previous version was scored with CVSS 3.1,

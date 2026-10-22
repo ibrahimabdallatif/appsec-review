@@ -49,7 +49,7 @@ against the same files.
 
 Partition a parallel `deep` run by the mode table (one hunter for wildcard and obvious-things, one sink
 tracer, verifiers split by candidate or category). Do not split one file across two writers. Review
-output goes to `~/.appsec-review/<repo>/` and to the session, not into the repository.
+output goes to the directory `method/review_paths.py` prints and to the session, not into the repository.
 
 ## What a delegated agent returns
 
