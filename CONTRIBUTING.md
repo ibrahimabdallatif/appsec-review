@@ -4,6 +4,18 @@ The skill lives in `skills/appsec-review/`; paths below are relative to that fol
 from the repository root. This guide is for changing the skill itself: its rules, method, scripts and report. It is kept out of `SKILL.md`
 so a review never loads it. For how a review runs, see [docs/how-it-works.md](docs/how-it-works.md).
 
+## Contribution workflow
+
+All contributions must follow this process:
+
+1. **Open an issue first.** Describe the bug, feature request, or proposed improvement before starting work.
+2. **Wait for maintainer feedback.** Get agreement on the proposed change before investing significant effort.
+3. **Submit a pull request.** Reference the existing issue in the PR description and explain the changes and tests performed.
+4. **Wait for review.** All PRs require review and approval from the repository owner. Address requested changes before merging.
+5. **Maintainer merges.** Only the repository owner merges changes into the default branch. Direct pushes and self-merges by contributors are not accepted.
+
+Opening an issue does not guarantee that a contribution will be accepted. Small documentation fixes are welcome, but they must follow the same issue-first and PR review process.
+
 ## Layout and where changes go
 
 | Change | Where | Never in |
