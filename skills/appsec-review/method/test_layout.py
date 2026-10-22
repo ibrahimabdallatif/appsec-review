@@ -83,7 +83,8 @@ class CanonicalSkillTest(unittest.TestCase):
     def test_points_at_shared_workflow_files(self):
         for rel in ("method/orchestration.md", "method/parallel_mode.py", "method/finding-contract.md",
                     "method/hunters.md", "method/verifier.md", "method/coverage-ledger.md",
-                    "method/ledger.py", "method/inventory.py", "report/cvss40.py", "report/REPORT.md",
+                    "method/ledger.py", "method/inventory.py", "method/review_paths.py",
+                    "report/cvss40.py", "report/REPORT.md",
                     "rules/00-overview.md"):
             self.assertIn(rel.replace("\\", "/"), self.text.replace("\\", "/"), rel)
             self.assertTrue(os.path.isfile(os.path.join(SKILL, *rel.split("/"))), rel)

@@ -263,7 +263,8 @@ coverage summary, the candidates rejected by verification, and a run summary wit
 
 `standard` and `deep` runs also write a report (a `diff` run asks first) with CVSS 4.0 scores and standards references for each finding to
 `~/.appsec-review/<repo>/`: `report.html` for people and `report.md`, the same content in Markdown, to feed to
-another session ("read report.md and fix finding 4.1.2"). The run ends by printing where the local files are.
+another session ("read report.md and fix finding 4.1.2"). The run prints the paths from `method/review_paths.py`,
+which joins the home directory and `.appsec-review` with a real separator.
 A private claude.ai artifact is added only when you ask to publish, and only from Claude Code:
 
 ```
@@ -332,7 +333,7 @@ relative to that folder.
 | `rules/*.md` | Framework-neutral category checklists: access control, authentication and sessions, injection, cryptography and data protection, business logic, configuration and supply chain, logging, client side, AI/LLM agents, web protocol and identity |
 | `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, PHP, .NET, Go, Supabase and Firebase, CI pipelines, containers and IaC |
 | `rules/deep/*.md` | `deep`-mode playbooks: object-level authorization, payment callbacks, payment state and idempotency, race conditions, business-logic flaws |
-| `method/` | Coverage ledger, hunter and verifier prompts, orchestration, `inventory.py`, `ledger.py` validator and CI gate, `accepted_risks.py`, `sarif.py`, `run_stats.py`, `parallel_mode.py`, `install_links.py` |
+| `method/` | Coverage ledger, hunter and verifier prompts, orchestration, `inventory.py`, `ledger.py` validator and CI gate, `accepted_risks.py`, `sarif.py`, `run_stats.py`, `parallel_mode.py`, `review_paths.py`, `install_links.py` |
 | `report/` | Report structure and Markdown copy rules (`REPORT.md`), CVSS 4.0 calculator (`cvss40.py`), HTML template, the logos in `assets/` and `embed_logos.py`, which embeds them in each report, and `build_sample.py`, which builds the sample report from the fictional fixture in `sample/` |
 | `docs/` | Getting started, platforms, how it works, CI pipeline guide, the README images, and the sample report (Markdown, and HTML served on GitHub Pages) |
 | `.claude/skills/appsec-review/`, `.cursor/skills/appsec-review/`, `.agents/skills/appsec-review/` | Thin discovery adapters. They point at `skills/appsec-review/` and are not a second methodology |
@@ -356,6 +357,7 @@ python -I skills/appsec-review/method/test_threat_model.py
 python -I skills/appsec-review/method/test_run_stats.py
 python -I skills/appsec-review/method/test_parallel_mode.py
 python -I skills/appsec-review/method/test_install_links.py
+python -I skills/appsec-review/method/test_review_paths.py
 python -I skills/appsec-review/method/test_layout.py
 python -I skills/appsec-review/evals/test_benchmark.py
 python -I skills/appsec-review/report/test_cvss40.py
