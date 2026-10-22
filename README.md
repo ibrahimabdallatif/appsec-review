@@ -8,21 +8,22 @@
 <h1 align="center">appsec-review</h1>
 
 <p align="center">
-  <b>Threat-model-driven security reviews in Claude Code: full attack surface coverage, every finding verified by an independent agent and scored with CVSS 4.0.</b><br>
-  Spring, Node.js, Python, PHP, .NET and Go back ends, browser front ends, mobile apps, Supabase and Firebase,
+  <b>Threat-model-driven security reviews: full attack surface coverage, every finding verified by an independent pass and scored with CVSS 4.0.</b><br>
+  Claude Code, Cursor and Codex load this one skill folder. Spring, Node.js, Python, PHP, .NET and Go back ends, browser front ends, mobile apps, Supabase and Firebase,
   CI pipelines, containers and infrastructure as code.
 </p>
 
 <p align="center">
   <a href="https://github.com/ibrahimabdallatif/appsec-review/actions/workflows/tests.yml"><img src="https://github.com/ibrahimabdallatif/appsec-review/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
-  <img src="https://img.shields.io/badge/Claude%20Code-skill-d97757" alt="Claude Code skill">
+  <img src="https://img.shields.io/badge/skills-Claude%20Code%20%C2%B7%20Cursor%20%C2%B7%20Codex-d97757" alt="Claude Code, Cursor and Codex skill">
   <img src="https://img.shields.io/badge/OWASP-Top%2010%3A2025-000000" alt="OWASP Top 10:2025">
   <img src="https://img.shields.io/badge/python-3.10%2B-3776ab" alt="Python 3.10+">
 </p>
 
 <p align="center">
   <a href="docs/getting-started.md">Getting started</a> ·
+  <a href="docs/platforms.md">Platforms</a> ·
   <a href="docs/how-it-works.md">How it works</a> ·
   <a href="docs/ci-pipeline.md">CI pipeline</a> ·
   <a href="https://ibrahimabdallatif.github.io/appsec-review/sample-report.html">Sample report</a> ·
@@ -163,18 +164,25 @@ report says when no stack file matched.
 
 ## 🚀 Quick start
 
-```sh
-npx skills add ibrahimabdallatif/appsec-review --skill appsec-review -g
-```
-
-Or clone the repository and copy the skill folder yourself:
+Install the skill once, then invoke it inside the repository you want reviewed. Exact commands, sequential
+mode and the test boundary are in [docs/platforms.md](docs/platforms.md).
 
 ```sh
-git clone https://github.com/ibrahimabdallatif/appsec-review.git
-cp -r appsec-review/skills/appsec-review ~/.claude/skills/appsec-review
+python -I skills/appsec-review/method/install_links.py
 ```
 
-Then, in Claude Code, inside the repository to review:
+That links `skills/appsec-review/` into the Claude Code, Cursor and Codex user skill directories. It does not
+copy the methodology. Or copy via the skills CLI (this writes a snapshot, not a link):
+
+```sh
+npx skills add ibrahimabdallatif/appsec-review --skill appsec-review -g -a claude-code -a cursor -a codex -y
+```
+
+| Host | Invoke |
+|---|---|
+| Claude Code | `/appsec-review` |
+| Cursor | `/appsec-review` |
+| Codex | `/skills`, then appsec-review, or `$appsec-review` |
 
 ```
 /appsec-review                               # current branch vs. its base, plus uncommitted changes
@@ -182,23 +190,32 @@ Then, in Claude Code, inside the repository to review:
 /appsec-review deep                          # in-depth review for high-stakes code
 ```
 
+Add "sequential" to skip subagents. The same steps still run.
+
 > [!TIP]
 > Start with a plain `/appsec-review` on a branch. It is the fastest mode and shows you the output format before
 > you spend time on a whole repository. More commands: [Getting started](docs/getting-started.md).
 
-The skill runs only when you invoke it (`disable-model-invocation: true`).
+The skill runs only when you invoke it (`disable-model-invocation: true` on Claude Code and Cursor). Codex
+does not document that flag; the description tells it not to run for a general security question.
 
 ## 🧩 Compatibility
 
+What is implemented is the shared skill, the discovery adapters, and the scripts. What was executed in this
+change is the Python test suite. Live skill invocation was not re-run on each host; details and versions are
+in [docs/platforms.md](docs/platforms.md).
+
 | Requirement | Details |
 |---|---|
-| **Claude Code** | A current release with skills and subagents; the skill runs inside Claude Code, interactively or headless with `claude -p` |
+| **Claude Code** | Skills and subagents. Project adapter `.claude/skills/appsec-review/`. User install `~/.claude/skills/appsec-review`. Headless CI example: `claude -p` in [docs/ci-pipeline.md](docs/ci-pipeline.md) |
+| **Cursor** | Project adapters `.cursor/skills/appsec-review/` and `.agents/skills/appsec-review/`. User install `~/.cursor/skills/appsec-review`. Subagents when the session can spawn them; otherwise the sequential fallback |
+| **Codex** | Project adapter `.agents/skills/appsec-review/`. User install `~/.agents/skills/appsec-review` and `~/.codex/skills/appsec-review`. Subagents when the session can spawn them; otherwise the sequential fallback |
 | **Python** | 3.10+ on your `PATH` as `python`, for the helper scripts (standard library only, tested on 3.10 and 3.13) |
 | **Git** | Needed for diff, branch and PR reviews and for multi-repository discovery |
-| **Node.js** | 18+, only to install with `npx skills add` or to install the Claude Code CLI in CI |
+| **Node.js** | Only to install with `npx skills add`. Not required for `install_links.py` or for a review |
 | **OS** | Linux, macOS and Windows (tests run on Linux and Windows) |
 | **Optional tools** | gitleaks, trivy or osv-scanner, semgrep, your ecosystem's audit tool and, for pipelines and infrastructure, zizmor, actionlint, checkov and hadolint; used when installed, never installed by the skill |
-| **Private report artifact** | Published only from sessions that can publish to claude.ai; CI and headless runs still write the local files |
+| **Report publishing** | Local HTML and Markdown always, under `~/.appsec-review/<repo>/`. A private claude.ai artifact only when you explicitly ask, and only on Claude Code. Cursor and Codex do not publish |
 
 ## 🎚️ Modes
 
@@ -209,7 +226,8 @@ The skill runs only when you invoke it (`disable-model-invocation: true`).
 | `deep` | High-stakes code, only when you say "deep" | Two hunters (incl. a backward sink tracer), one verifier per serious candidate | Entry point × category |
 
 Every mode reads all in-scope code and follows each input to its sinks; modes change how many agents run and how
-detailed the ledger is. `deep` takes several times longer and uses much more tokens than `standard`.
+detailed the ledger is. Say "sequential", or set `APPSEC_REVIEW_PARALLEL=0`, to run those agent steps in the
+same session. `deep` takes several times longer and uses much more tokens than `standard`.
 
 ## 📋 What you get
 
@@ -229,17 +247,16 @@ coverage summary, the candidates rejected by verification, and a run summary wit
 
 `standard` and `deep` runs also write a report (a `diff` run asks first) with CVSS 4.0 scores and standards references for each finding to
 `~/.appsec-review/<repo>/`: `report.html` for people and `report.md`, the same content in Markdown, to feed to
-another session ("read report.md and fix finding 4.1.2"). The HTML is published privately when the session can,
-and the run ends by printing where everything is:
+another session ("read report.md and fix finding 4.1.2"). The run ends by printing where the local files are.
+A private claude.ai artifact is added only when you ask to publish, and only from Claude Code:
 
 ```
 Report
 - HTML: C:\Users\<you>\.appsec-review\cards-service\report.html
 - Markdown: C:\Users\<you>\.appsec-review\cards-service\report.md
-- Artifact: https://claude.ai/artifact/<id> (private)
 ```
 
-CI and other headless runs leave out the artifact line; the local files are always written.
+CI and other headless runs write the same local files and do not publish.
 
 ## 🔁 In CI
 
@@ -259,7 +276,7 @@ Agent setup, accepted risks, SARIF, a Jenkins example and scheduling advice:
 
 > [!WARNING]
 > Ledgers, inventories and reports describe how to attack open issues. They are kept in `~/.appsec-review/`,
-> outside your repository, and reports are published privately. Check who can see them before sharing.
+> outside your repository. Nothing is published unless you ask. Check who can see a report before sharing.
 
 ## 📚 Reference
 
@@ -294,14 +311,15 @@ relative to that folder.
 
 | Path | Contents |
 |---|---|
-| `skills/appsec-review/SKILL.md` | The skill definition: modes, steps, output and report rules |
+| `skills/appsec-review/SKILL.md` | The skill definition: modes, steps, output and report rules. This is the only copy of the methodology |
 | `rules/00-overview.md` | Method, STRIDE pass, severity scale and reporting format |
 | `rules/*.md` | Framework-neutral category checklists: access control, authentication and sessions, injection, cryptography and data protection, business logic, configuration and supply chain, logging, client side, AI/LLM agents, web protocol and identity |
 | `rules/stacks/*.md` | Framework add-ons: Java/Spring, Node, web front end, mobile, Python, PHP, .NET, Go, Supabase and Firebase, CI pipelines, containers and IaC |
 | `rules/deep/*.md` | `deep`-mode playbooks: object-level authorization, payment callbacks, payment state and idempotency, race conditions, business-logic flaws |
-| `method/` | Coverage ledger, hunter and verifier prompts, `inventory.py`, `ledger.py` validator and CI gate, `accepted_risks.py`, `sarif.py`, `run_stats.py` |
+| `method/` | Coverage ledger, hunter and verifier prompts, orchestration, `inventory.py`, `ledger.py` validator and CI gate, `accepted_risks.py`, `sarif.py`, `run_stats.py`, `parallel_mode.py`, `install_links.py` |
 | `report/` | Report structure and Markdown copy rules (`REPORT.md`), CVSS 4.0 calculator (`cvss40.py`), HTML template, the logos in `assets/` and `embed_logos.py`, which embeds them in each report, and `build_sample.py`, which builds the sample report from the fictional fixture in `sample/` |
-| `docs/` | Getting started, how it works, CI pipeline guide, the README images, and the sample report (Markdown, and HTML served on GitHub Pages) |
+| `docs/` | Getting started, platforms, how it works, CI pipeline guide, the README images, and the sample report (Markdown, and HTML served on GitHub Pages) |
+| `.claude/skills/appsec-review/`, `.cursor/skills/appsec-review/`, `.agents/skills/appsec-review/` | Thin discovery adapters. They point at `skills/appsec-review/` and are not a second methodology |
 | `evals/` | `benchmark.py`, which scores one run, or several runs for stability, against known findings |
 | `NOTICE.md`, `LICENSE` | Third-party notices and the license, shipped with the skill so every install carries them |
 | `.github/workflows/tests.yml` | Runs every test suite on Linux and Windows on each push and pull request |
@@ -320,6 +338,9 @@ python -I skills/appsec-review/method/test_accepted_risks.py
 python -I skills/appsec-review/method/test_sarif.py
 python -I skills/appsec-review/method/test_threat_model.py
 python -I skills/appsec-review/method/test_run_stats.py
+python -I skills/appsec-review/method/test_parallel_mode.py
+python -I skills/appsec-review/method/test_install_links.py
+python -I skills/appsec-review/method/test_layout.py
 python -I skills/appsec-review/evals/test_benchmark.py
 python -I skills/appsec-review/report/test_cvss40.py
 python -I skills/appsec-review/report/cvss40.py --selftest

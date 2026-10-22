@@ -3,6 +3,26 @@
 A review turns code into verified findings in five stages. Each stage has one job, and the files that define it
 are listed below so you can read or change the exact behaviour.
 
+### Terms used on this page
+
+| Term | Plain meaning |
+|---|---|
+| **Inventory** | A scripted map of the doors into the application and the sensitive actions inside it. Every whole-repository review starts from the same map. |
+| **Sink** | A sensitive action that untrusted input might reach, such as a database query, shell command, file write or request to another service. |
+| **Trust boundary** | A point where data moves from a less-trusted user or system into a more-sensitive part of the application. |
+| **Coverage ledger** | The review's checklist of record: what was examined, which files were read, what happened, and which findings resulted. A validator compares it with the inventory so skipped areas remain visible. |
+| **Ledger unit** | One item in that checklist: a code surface, such as an entry point or module, crossed with one security category. |
+| **Threat model** | The short picture of what is worth attacking, who might attack it, and where trust changes. |
+| **STRIDE** | Six questions for finding threats: spoofing identity, tampering with data, repudiation, information disclosure, denial of service and elevation of privilege. |
+| **Abuse path** | A concrete attacker goal traced until it succeeds or a specific control stops it. |
+| **Hunter** | An extra pass that looks for weaknesses outside the category checklist, including odd features and mistakes that look obvious. |
+| **Sink trace** | The deep-mode pass that starts at a sensitive action and walks backward through its callers to see who can reach it. |
+| **Candidate** | A possible weakness that has not been verified yet. |
+| **Finding** | A candidate that survived verification and is included in the result. |
+| **Verifier** | A fresh pass whose job is to try to show that a candidate is not real. |
+| **Disproof** | The exact `path:line` of the control that stops an attack. A rejection has to cite one. |
+| **Chain** | Multiple verified findings that combine into a more serious end-to-end attack. |
+
 ```mermaid
 flowchart TD
     A["Scope<br/>diff · branch · files · endpoint · repo · many repos"] --> B["Stack detection<br/>manifests → rules/stacks/*.md"]
@@ -74,6 +94,10 @@ Installed scanners add their hits too. Everything found at this stage is a **can
 | `standard` | One subagent with both hunter lists | One verifier subagent for all candidates |
 | `deep` | Two subagents: wildcard + obvious-things, and the sink tracer | One verifier per `critical`/`bug` candidate, plus one per category for the rest |
 
+That table is the parallel path. A sequential run, or a host that cannot spawn an agent, does the same prompts
+inline and labels the result self-verified. A serious rejection is upheld only by a second agent; otherwise it
+stays "needs confirmation" (`method/orchestration.md`).
+
 ## 4. Verification
 
 The agent that found a candidate never decides whether it is real (`method/verifier.md`).
@@ -110,6 +134,14 @@ In CI, `ledger.py --fail-on <severity>` reads the finished ledger and exits non-
 threshold ([ci-pipeline.md](ci-pipeline.md)), except findings waived by an accepted-risk file until its expiry
 date. It never stops a review early. `ledger.py --sarif` exports the same findings as SARIF for GitHub code
 scanning or Jenkins.
+
+## 6. Where the skill runs
+
+Claude Code, Cursor and Codex load the same `skills/appsec-review/` instructions. Hunters and verifiers are
+subagents when `method/parallel_mode.py` prints `parallel` and the host can spawn one. Otherwise the
+coordinator runs those prompts itself and says so. The coverage check stays a pass over the ledger, not a
+fourth agent. Install paths and the limits of what was executed on each host are in
+[platforms.md](platforms.md).
 
 ## Repeatability
 

@@ -32,6 +32,12 @@ jobs:
         run: python -I skills/appsec-review/method/test_threat_model.py
       - name: Run stats tests
         run: python -I skills/appsec-review/method/test_run_stats.py
+      - name: Parallel mode tests
+        run: python -I skills/appsec-review/method/test_parallel_mode.py
+      - name: Install link tests
+        run: python -I skills/appsec-review/method/test_install_links.py
+      - name: Layout tests
+        run: python -I skills/appsec-review/method/test_layout.py
       - name: Benchmark tests
         run: python -I skills/appsec-review/evals/test_benchmark.py
       - name: CVSS calculator selftest
