@@ -37,7 +37,6 @@ jobs:
                 per_page: 100
               });
 
-            // Determine the latest review submitted by the owner.
             const ownerReviews = reviews
               .filter(r =>
                 r.user?.login.toLowerCase() === owner &&
