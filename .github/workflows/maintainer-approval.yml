@@ -1,0 +1,60 @@
+
+name: Maintainer approval policy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  approval-policy:
+    name: maintainer-approval
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce maintainer approval for external PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner.toLowerCase();
+            const author = pr.user.login.toLowerCase();
+
+            // Your own PRs do not need an independent approval.
+            if (author === owner) {
+              core.info("Maintainer PR: approval not required.");
+              return;
+            }
+
+            const { data: reviews } =
+              await github.rest.pulls.listReviews({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                per_page: 100
+              });
+
+            // Determine the latest review submitted by the owner.
+            const ownerReviews = reviews
+              .filter(r =>
+                r.user?.login.toLowerCase() === owner &&
+                r.commit_id
+              )
+              .sort((a, b) =>
+                new Date(b.submitted_at || 0) -
+                new Date(a.submitted_at || 0)
+              );
+
+            const latest = ownerReviews[0];
+
+            if (latest?.state === "APPROVED") {
+              core.info("Maintainer approved this external PR.");
+              return;
+            }
+
+            core.setFailed(
+              "This PR requires approval from the repository owner."
+            );
