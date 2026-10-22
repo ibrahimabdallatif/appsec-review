@@ -94,6 +94,15 @@ class RunTest(unittest.TestCase):
         missing = os.path.join(self.tmp.name, "no-such-home")
         self.assertEqual(install_links.main(["--home", missing, "--skill-dir", self.skill]), 2)
 
+    def test_remove_link_removes_a_directory_link_and_keeps_its_target(self):
+        link = install_links.destination(self.home, (".claude", "skills"))
+        os.makedirs(os.path.dirname(link))
+        install_links.create_link(self.skill, link)
+        install_links.remove_link(link)
+        self.assertFalse(os.path.lexists(link))
+        with open(os.path.join(self.skill, "marker.txt"), encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), "keep\n")
+
     def test_remove_link_refuses_a_real_directory(self):
         dest = install_links.destination(self.home, (".codex", "skills"))
         os.makedirs(dest)

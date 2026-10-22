@@ -74,10 +74,15 @@ def same_directory(link, target):
 
 
 def remove_link(path):
-    """Remove a symlink or junction. Never removes a real directory tree."""
+    """Remove a symlink or junction. Never removes a real directory tree.
+
+    A symlink is unlinked even when its target is a directory. On Linux, rmdir
+    follows that symlink and fails with ENOTDIR. rmdir is only for a Windows
+    junction, which is not reported as a symlink.
+    """
     if not is_reparse(path):
         raise RuntimeError("refusing to remove a real directory: %s" % path)
-    if os.path.islink(path) and not os.path.isdir(path):
+    if os.path.islink(path):
         os.unlink(path)
         return
     os.rmdir(path)
