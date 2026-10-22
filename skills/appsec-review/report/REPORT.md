@@ -132,7 +132,8 @@ python -I <skill folder>/report/cvss40.py --selftest   # verifies against FIRST 
 ```
 
 CVSS 4.0 has no closed formula (scores come from FIRST's MacroVector lookup table), so never score by hand. If
-Python is unavailable, use the FIRST calculator at https://www.first.org/cvss/calculator/4.0 and say so in 6.1.
+the calculator exits non-zero, stop and report that error; do not invent a score. If Python is unavailable, use
+the FIRST calculator at https://www.first.org/cvss/calculator/4.0 and say so in 6.1.
 
 ### Rating bands
 
@@ -272,11 +273,16 @@ The Markdown copy must say everything the page says, in the same order, so anoth
 
 ### Publishing
 
-- Publish the HTML file as a private artifact. Before telling the user to share it more widely, warn them that it
-  contains working attack details for open issues. When the session cannot publish (CI, scheduled or headless),
-  skip this step; the local files are still written.
+Publishing is off unless the user explicitly asks to publish. Writing the local files is not publishing.
+
+- On Claude Code, an explicit request publishes the HTML file as a private artifact and nothing wider. Before
+  telling the user to share it further, warn them that it contains working attack details for open issues.
+  When the session cannot publish (CI, scheduled, headless, or a host with no artifact tool), skip this step
+  and say so; the local files are still written.
+- Cursor and Codex have no publish step. If the user asked, tell them the report is only the local files.
+- Never upload the report, the ledger, the inventory or source code on your own.
 - Finish by printing the absolute path of both local files, with the home directory expanded, and the artifact
-  link when one was published (SKILL.md "Report").
+  link only when one was published (SKILL.md "Report").
 - When a published report is updated, rewrite both local files too, so they always match the artifact.
 - On a retest, keep the finding numbers, update Status per finding, bump the cover version and date of issue,
   and say in 1.1 what changed since the previous version. If the previous version was scored with CVSS 3.1,
@@ -289,8 +295,9 @@ in sections 1 to 5 still applies.
 
 ### Order of work
 
-- Build the report only from deep reviews. Review one repository in depth, merge it into the report, rewrite
-  both local files, publish (or update) the same artifact, then move to the next repository. Do not publish a combined report built from a quick
+- Build the report only from deep reviews. Review one repository in depth, merge it into the report, and rewrite
+  both local files before moving to the next repository. Publish or update an artifact only when the user
+  explicitly asked to publish. Do not publish a combined report built from a quick
   sweep across repositories.
 - Review in risk order: authentication and identity, money movement, card data, shared providers and gateways,
   then the rest.

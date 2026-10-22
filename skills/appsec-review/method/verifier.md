@@ -8,13 +8,12 @@ is the main defence against false positives and overstated severity.
 
 | Review mode (SKILL.md "Review modes") | Verifiers |
 |---|---|
-| `diff` | **Disproof pass** (below) for every candidate. One fresh verifier subagent only if a candidate is still `critical` after that pass; it gets all `critical` candidates in one batch. |
-| `standard` | **One** fresh verifier subagent gets every candidate (`critical`, `bug`, `warning` and `suggestion`) in one batch, on the session's model. |
-| `deep` | One fresh verifier subagent **per** `critical` or `bug` candidate, and one per category file for batched `warning` and `suggestion` candidates, in parallel, on the session's model. |
-| No subagent tool available | Disproof pass for everything. Say "self-verified; no independent verifier available" in the result and in report 2.3. |
+| `diff` | When parallel: **disproof pass** (below) for every candidate. One fresh verifier subagent only if a candidate is still `critical` after that pass; it gets all `critical` candidates in one batch. When sequential: disproof pass only. |
+| `standard` | When parallel: **one** fresh verifier subagent gets every candidate (`critical`, `bug`, `warning` and `suggestion`) in one batch, on the session's model. When sequential: disproof pass for every candidate. |
+| `deep` | When parallel: one fresh verifier subagent **per** `critical` or `bug` candidate, and one per category file for batched `warning` and `suggestion` candidates, in parallel, on the session's model. When sequential: disproof pass for every candidate. |
+| Sequential | `method/parallel_mode.py` printed `sequential`, or the host cannot spawn a fresh agent (`method/orchestration.md`). Disproof pass for everything. Say "self-verified; sequential fallback" and the reason, in the result and in report 2.3. A rejected `critical` or `bug` candidate is not recorded as `rejected` unless a second agent upholds it; otherwise it becomes `needs_confirmation` as `method/orchestration.md` describes. |
 
-Claude Code: use the Agent tool (`general-purpose`), with the `model` the table names; otherwise the session's
-model. A verifier must not be an agent that hunted, and must not see another verifier's conclusion (except the
+Spawn a verifier as `method/orchestration.md` describes for this host. A verifier must not be an agent that hunted, and must not see another verifier's conclusion (except the
 `disproof` line in a rejection review).
 
 ## Disproof pass
@@ -137,7 +136,10 @@ confirmed or needs_confirmation, with the severity the evidence supports.
 Its decision stands. An upheld rejection stays `rejected` with `rejection_reviewed: true` in the ledger; an
 overturned one is reported with the new decision. If the two disagree on the facts and the review can't settle
 them from source, report the candidate as `needs_confirmation` with both views. Rejected `warning` and
-`suggestion` candidates, and rejections from the disproof pass alone, skip this review.
+`suggestion` candidates, and rejections from the disproof pass alone, skip this review. In `standard` and
+`deep`, do not store a disproof-pass rejection of a `critical` or `bug` candidate as `rejected` unless that
+second agent ran: store `needs_confirmation` instead, as `method/orchestration.md` describes. `diff` has no
+ledger, so a disproof rejection there is only listed in the result.
 
 ## Chains
 

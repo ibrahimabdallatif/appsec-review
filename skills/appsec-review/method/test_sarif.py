@@ -64,6 +64,13 @@ class MessageTest(unittest.TestCase):
         self.assertEqual(sarif.message(item, "bug"),
                          "Card id not bound to caller (needs confirmation; bug if confirmed)")
 
+    def test_message_omits_attack_text(self):
+        item = finding(attack="Authorization: Bearer super-secret-token-value")
+        text = sarif.message(item, "warning")
+        self.assertNotIn("super-secret-token-value", text)
+        self.assertNotIn("Bearer", text)
+        self.assertNotIn("Authorization", text)
+
 
 class RuleTest(unittest.TestCase):
     def test_rule(self):

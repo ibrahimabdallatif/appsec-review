@@ -10,9 +10,9 @@ directions miss different things. Hunters run alongside the main assessment (SKI
 | Review mode (SKILL.md "Review modes") | How |
 |---|---|
 | `diff` | Run both lists **inline yourself**, limited to the changed files and the code they call. No subagents. |
-| `standard` | **One** hunter subagent gets both prompts below, one after the other, and returns one result. Start it in parallel with your own assessment, on the session's model. Claude Code: Agent tool, `general-purpose`. |
-| `deep` | **Two** hunter subagents in parallel, on the session's model: one gets the wildcard and obvious-things prompts one after the other, the other gets the sink-trace prompt with the inventory's `sinks` list. |
-| No subagent tool available | Run both lists inline and say so in the result (report 2.3). |
+| `standard` | When the step 0 decision is `parallel` and the host can spawn an agent (`method/orchestration.md`): **one** hunter subagent gets both prompts below, one after the other, and returns one result. Start it in parallel with your own assessment, on the session's model. |
+| `deep` | When parallel: **two** hunter subagents in parallel, on the session's model: one gets the wildcard and obvious-things prompts one after the other, the other gets the sink-trace prompt with the inventory's `sinks` list. |
+| Sequential | `method/parallel_mode.py` printed `sequential`, or the host cannot spawn an agent. Run the lists inline and say so in the result (report 2.3), including the reason. |
 
 Context block to put before each hunter prompt:
 

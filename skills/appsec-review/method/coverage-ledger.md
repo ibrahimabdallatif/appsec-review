@@ -143,7 +143,8 @@ review"); the validator enforces all of these. Keep rejected findings so later r
 2. **Close units** as you and the hunters work: write the paths read and one short line per check. Keep checks
    terse; the ledger is a record, not the write-up.
 3. **Link findings** after verification, and set each unit's status from the verdicts.
-4. **Gap pass.** Before writing the result, read the ledger once as a critic (yourself, no subagent): entry points in the stack file's
+4. **Gap pass.** Before writing the result, read the ledger once as a critic (yourself, no subagent). This is the
+   coverage-reviewer role in `method/orchestration.md`: entry points in the stack file's
    list with no unit, parallel paths to the same effect (batch, legacy, mobile, admin, retry) with no unit, units
    closed without real checks. Add what is missing and review it now.
 5. **Validate**: `python -I <skill folder>/method/ledger.py ~/.appsec-review/<repo>/coverage-ledger.json

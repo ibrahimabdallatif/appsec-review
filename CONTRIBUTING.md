@@ -26,7 +26,9 @@ Opening an issue does not guarantee that a contribution will be accepted. Small 
 | Regression checks for the skill | `evals/` | `rules/` |
 
 Step 4 of `SKILL.md` loads files from `rules/` as checklists, so anything that is not a checklist stays outside it.
-`disable-model-invocation: true` in `SKILL.md` keeps the skill manual; don't remove it.
+`disable-model-invocation: true` in `SKILL.md` keeps the skill manual on hosts that honour it; don't remove it.
+Discovery adapters under `.claude/skills/`, `.cursor/skills/` and `.agents/skills/` only point at this folder.
+Do not copy `rules/` or `SKILL.md`'s steps into them.
 
 ## Rules
 
@@ -63,6 +65,9 @@ python -I skills/appsec-review/method/test_accepted_risks.py # accepted_risks.py
 python -I skills/appsec-review/method/test_sarif.py          # sarif.py (--sarif export)
 python -I skills/appsec-review/method/test_threat_model.py   # threat_model.py (threat model, abuse paths, chains)
 python -I skills/appsec-review/method/test_run_stats.py      # run_stats.py
+python -I skills/appsec-review/method/test_parallel_mode.py  # parallel_mode.py
+python -I skills/appsec-review/method/test_install_links.py  # install_links.py
+python -I skills/appsec-review/method/test_layout.py         # one methodology, adapters, docs
 python -I skills/appsec-review/evals/test_benchmark.py       # benchmark.py
 python -I skills/appsec-review/report/test_cvss40.py         # cvss40.py
 python -I skills/appsec-review/report/cvss40.py --selftest   # cvss40.py against FIRST reference scores
@@ -102,7 +107,8 @@ After changing `rules/`, `method/` or the steps in `SKILL.md`, check that the sk
    it lists: add the real ones to `expected` and the false ones to `absent`.
 4. **Stability.** One run proves little, because runs vary. After a significant change, run the same mode three
    to five times on the benchmark commit, and keep the runs independent:
-   - start each run in a **new Claude Code session**, so it can't reuse what an earlier run found;
+   - start each run in a **new session** (a new Claude Code, Cursor or Codex session, matching the host you
+     are testing), so it can't reuse what an earlier run found;
    - before each run, empty `~/.appsec-review/<repo>/` of everything but `inventory.json`; after it, move the
      ledger to a folder outside it, such as `~/.appsec-review/benchmark-runs/<repo>/<mode>-<n>.json`. A run
      looks in its own folder, and a saved run or a moved-aside ledger there turns the next run into a copy.
