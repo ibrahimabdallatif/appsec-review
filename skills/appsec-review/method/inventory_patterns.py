@@ -24,6 +24,9 @@ JAVA_SPRING = {
                      r"(?:\((?P<label>[^)]*)\))?", None),
         ("websocket", r"@(?:MessageMapping|SubscribeMapping)\b(?:\((?P<label>[^)]*)\))?", None),
         ("job", r"@Scheduled\b(?:\((?P<label>[^)]*)\))?", None),
+        # Functional RouterFunction routes: route(GET("/x"), h), RouterFunctions.route().GET("/x", h), the Kotlin
+        # router DSL. Not after '@', so Retrofit and Feign client annotations (@GET("/x")) stay out.
+        ("route", r"(?<![@\w])(?:GET|POST|PUT|PATCH|DELETE)\s*\(\s*(?P<label>\"[^\"]*\")", None),
     ],
     "entry_files": [],
     "sinks": [
@@ -56,8 +59,13 @@ NODE_BACKEND = {
                                  '"next"', '"nuxt"', '"@remix-run/', '"@sveltejs/kit"', '"astro"'))],
     "extensions": (".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx"),
     "entry": [
-        ("route", r"\b(?:app|router|server|api|fastify|routes)\.(?:get|post|put|patch|delete|all|options|route)"
-                  r"\s*\(\s*(?P<label>['\"`][^'\"`]*['\"`])", None),
+        # Any router variable name: router, cardsRouter, admin_routes.
+        ("route", r"\b(?:app|server|api|fastify|\w*[Rr]outer|\w*[Rr]outes)\.(?:get|post|put|patch|delete|all|options|"
+                  r"route)\s*\(\s*(?P<label>['\"`][^'\"`]*['\"`])", None),
+        # Hapi and Fastify route objects: server.route({ method, path, handler }), also as an array. The label is
+        # the path when it is on the same line.
+        ("route", r"\b\w+\.route\s*\(\s*\[?\s*\{(?:[^}]*?\b(?:path|url)\s*:\s*(?P<label>['\"`][^'\"`]*['\"`]))?",
+         None),
         ("route", r"@(?:Get|Post|Put|Patch|Delete|All|Options)\s*\((?P<label>[^)]*)\)", None),
         ("consumer", r"@(?:MessagePattern|EventPattern|Process|OnEvent|SubscribeMessage)\s*\((?P<label>[^)]*)\)",
          None),
@@ -66,13 +74,32 @@ NODE_BACKEND = {
         ("resolver", r"^\s*@(?:Resolver|Query|Mutation|Subscription|ResolveField)\s*\((?P<label>(?:[^()]|\(\))*)"
                      r"(?:\)\s*$|$)", None),
         ("route", r"^\s*export\s+(?:async\s+)?(?:function|const)\s+(?P<label>GET|POST|PUT|PATCH|DELETE)\b", None),
+        # Next.js pages router data functions. getStaticProps also runs on the server when a page is revalidated.
+        ("route", r"^\s*export\s+(?:async\s+)?(?:function|const)\s+(?P<label>getServerSideProps|getStaticProps)\b",
+         None),
+        ("route", r"\.(?P<label>getInitialProps)\s*=(?!=)", None),
+        ("route", r"\bstatic\s+(?:async\s+)?(?P<label>getInitialProps)\s*\(", None),
+        # Remix and React Router route modules: loader and action run on the server for every request.
+        ("route", r"^\s*export\s+(?:async\s+)?(?:function|const|let)\s+(?P<label>loader|action)\b",
+         r"(?:^|/)app/(?:routes/|root\.[jt]sx?$)"),
+        # SvelteKit server load functions and form actions.
+        ("route", r"^\s*export\s+(?:async\s+)?(?:function|const|let)\s+(?P<label>load|actions)\b",
+         r"\+(?:page|layout)\.server\.[jt]s$"),
         ("server-action", r"^\s+['\"]use server['\"]", None),
     ],
     "entry_if": [
         ("server-action", r"^\s*export\s+(?:default\s+)?(?:async\s+function\s*\*?\s*|const\s+)(?P<label>\w+)",
          r"\A(?:\s|//[^\n]*|/\*[\s\S]*?\*/)*['\"]use server['\"]"),
     ],
+    # Routers kept under any variable name: const users = new Router() (Koa), const v1 = new Hono(),
+    # const admin = express.Router(). The first pattern finds the names in a file; the second, with {names}
+    # replaced by them, lists routes on those routers.
+    "router_objects": (r"\b(?:const|let|var)\s+(?P<name>\w+)\s*(?::[^=]*)?=\s*(?:new\s+)?(?:Router|KoaRouter|Hono|"
+                       r"OpenAPIHono|express\.Router)\s*(?:<[^>]*>)?\s*\(",
+                       r"\b(?:{names})\.(?:get|post|put|patch|delete|all|options|route)\s*\(\s*"
+                       r"(?P<label>['\"`][^'\"`]*['\"`])"),
     "entry_files": [("route-file", r"(?:^|/)pages/api/"),
+                    ("route-file", r"(?:^|/)server/(?:api|routes)/"),  # Nuxt and Nitro server routes
                     ("middleware", r"(?:^|/)(?:middleware|proxy)\.(?:js|mjs|ts)$")],
     "sinks": [
         ("command", "injection-input",

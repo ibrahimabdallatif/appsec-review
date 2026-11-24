@@ -23,6 +23,8 @@ SAMPLES = {
     "java-spring": [
         ('@GetMapping("/cards/{id}")', "entry", "route"),
         ('@KafkaListener(topics = "payments")', "entry", "consumer"),
+        ('    return route(GET("/cards/{id}"), handler::show)', "entry", "route"),
+        ('        .POST("/payments", handler::pay)', "entry", "route"),
         ('em.createNativeQuery("select * from t where id=" + id)', "sink", "sql"),
         ("new ProcessBuilder(cmd).start();", "sink", "command"),
         ("RestTemplate rest = new RestTemplate();", "sink", "outbound-http"),
@@ -30,6 +32,14 @@ SAMPLES = {
     ],
     "node-backend": [
         ("router.post('/login', handler)", "entry", "route"),
+        ("cardsRouter.get('/cards/:id', auth, show)", "entry", "route"),
+        ("server.route({ method: 'GET', path: '/cards/{id}', handler })", "entry", "route"),
+        ("fastify.route({", "entry", "route"),
+        ("export async function getServerSideProps(ctx) {", "entry", "route"),
+        ("export async function loader({ request }) {", "entry", "route", "app/routes/cards.$id.tsx"),
+        ("export const action = async ({ request }) => {", "entry", "route", "app/routes/cards.tsx"),
+        ("export const actions = {", "entry", "route", "src/routes/cards/+page.server.ts"),
+        ("export async function load({ params }) {", "entry", "route", "src/routes/+layout.server.js"),
         ("@Get(':id')", "entry", "route"),
         ("export async function POST(req) {", "entry", "route"),
         ("  'use server'", "entry", "server-action"),
@@ -385,6 +395,65 @@ class HitsTest(unittest.TestCase):
         hits = inventory.file_entries("pages/api/pay.js", "node-backend", patterns.NODE_BACKEND)
         self.assertEqual([h["kind"] for h in hits], ["route-file"])
         self.assertEqual(inventory.file_entries("lib/pay.js", "node-backend", patterns.NODE_BACKEND), [])
+
+    def test_nuxt_server_route_files(self):
+        for path in ("server/api/cards/[id].get.ts", "apps/web/server/routes/feed.xml.ts"):
+            hits = inventory.file_entries(path, "node-backend", patterns.NODE_BACKEND)
+            self.assertEqual([h["kind"] for h in hits], ["route-file"], path)
+        self.assertEqual(inventory.file_entries("server/utils/db.ts", "node-backend", patterns.NODE_BACKEND), [])
+
+    def test_named_routers_are_routes(self):
+        for line in ("cardsRouter.get('/cards', list)", "admin_routes.post('/refund', refund)",
+                     "this.router.delete('/cards/:id', remove)"):
+            kinds = {h["kind"] for h in inventory.entry_hits("a.ts", line, "node-backend", patterns.NODE_BACKEND)}
+            self.assertIn("route", kinds, line)
+        for line in ("cache.get('/cards')", "params.get('id')"):
+            self.assertEqual(inventory.entry_hits("a.ts", line, "node-backend", patterns.NODE_BACKEND), [], line)
+
+    def test_routers_under_any_name_are_routes(self):
+        spec = patterns.NODE_BACKEND
+        for declaration, route, label in (
+                ("const users = new Router({ prefix: '/users' })", "users.get('/:id', show)", "'/:id'"),
+                ("const v1 = new Hono<{ Bindings: Env }>()", "v1.post('/cards', create)", "'/cards'"),
+                ("const admin: Router = express.Router()", "admin.delete('/cards/:id', remove)", "'/cards/:id'")):
+            hits = inventory.entry_hits("a.ts", declaration + "\n" + route + "\n", "node-backend", spec)
+            self.assertEqual([(h["kind"], h["line"], h["label"]) for h in hits], [("route", 2, label)], route)
+
+    def test_other_objects_are_not_routers(self):
+        text = "const users = await db.find()\nusers.get('/cards')\nconst map = new Map()\nmap.get('/x')\n"
+        self.assertEqual(inventory.entry_hits("a.ts", text, "node-backend", patterns.NODE_BACKEND), [])
+        self.assertEqual(inventory.named_router_entries(text, patterns.PYTHON), [])
+
+    def test_next_pages_data_functions(self):
+        spec = patterns.NODE_BACKEND
+        for line in ("export async function getStaticProps({ params }) {",
+                     "export const getServerSideProps = async (ctx) => {",
+                     "CardPage.getInitialProps = async (ctx) => {",
+                     "  static async getInitialProps(ctx) {"):
+            hits = inventory.entry_hits("pages/cards.tsx", line, "node-backend", spec)
+            self.assertEqual([h["kind"] for h in hits], ["route"], line)
+        for line in ("const appProps = await App.getInitialProps(appContext)",
+                     "if (Page.getInitialProps === undefined) {"):
+            self.assertEqual(inventory.entry_hits("pages/_app.tsx", line, "node-backend", spec), [], line)
+
+    def test_route_object_label_is_its_path(self):
+        line = "server.route({ method: 'GET', path: '/cards/{id}', handler })"
+        hits = inventory.entry_hits("a.js", line, "node-backend", patterns.NODE_BACKEND)
+        self.assertEqual([h["label"] for h in hits], ["'/cards/{id}'"])
+
+    def test_loader_and_load_exports_need_route_modules(self):
+        spec = patterns.NODE_BACKEND
+        loader = "export async function loader() {}"
+        load = "export const load = async () => {}"
+        self.assertEqual(inventory.entry_hits("app/utils/data.ts", loader, "node-backend", spec), [])
+        self.assertEqual(len(inventory.entry_hits("app/routes/cards.tsx", loader, "node-backend", spec)), 1)
+        self.assertEqual(inventory.entry_hits("src/lib/cards.ts", load, "node-backend", spec), [])
+        self.assertEqual(inventory.entry_hits("src/routes/cards/+page.ts", load, "node-backend", spec), [])
+        self.assertEqual(len(inventory.entry_hits("src/routes/cards/+page.server.ts", load, "node-backend", spec)), 1)
+
+    def test_client_annotations_are_not_functional_routes(self):
+        for line in ('@GET("users/{id}")', '    @POST("payments")'):
+            self.assertEqual(inventory.entry_hits("Api.java", line, "java-spring", patterns.JAVA_SPRING), [], line)
 
     def test_next_middleware_and_proxy_files(self):
         for path in ("middleware.ts", "src/middleware.ts", "apps/web/proxy.ts"):
