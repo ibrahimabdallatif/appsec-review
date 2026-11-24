@@ -66,7 +66,7 @@ Pick the mode once, before step 4, and state it at the top of the result. **Neve
 
 | Mode | When | Subagents | Ledger |
 |---|---|---|---|
-| `diff` | Default when the user names nothing, or names a diff, branch, PR or files | None, except one verifier if a `critical` candidate survives the disproof pass | None |
+| `diff` | Default when the user names nothing, or names a diff, branch, PR or files | None, except one verifier if a `critical` candidate survives the disproof pass or is rejected by it | None |
 | `standard` | The user asks for a whole repository, an endpoint, or several repositories | One combined hunter and one verifier for all candidates in one batch, plus one rejection reviewer when a `critical` or `bug` candidate is rejected, all on the session's model | Module × category |
 | `deep` | **Only** when the user explicitly says "deep" (`/appsec-review deep`, "deep review", "deep mode") | Two hunters (wildcard and obvious-things, and a backward sink tracer) and one verifier per `critical`/`bug` candidate, on the session's model; adds the `rules/deep/` playbooks | Entry point × category |
 

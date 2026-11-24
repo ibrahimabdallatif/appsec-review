@@ -83,7 +83,7 @@ With no scope, the review is `diff`: the current branch against its base (`devel
 
 The default is parallel: `standard` and `deep` spawn the hunters and verifiers in `method/hunters.md` and
 `method/verifier.md` when the host can. `diff` stays inline except for one verifier when a `critical`
-candidate survives the disproof pass.
+candidate survives the disproof pass or is rejected by it.
 
 Sequential runs the same steps in the coordinator session. Choose it by saying so in the prompt, or set
 `APPSEC_REVIEW_PARALLEL=0` (also `false`, `off`, `no`, `sequential`) in the environment of the session. `1`,

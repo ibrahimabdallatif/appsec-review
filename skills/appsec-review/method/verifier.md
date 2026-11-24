@@ -8,7 +8,7 @@ is the main defence against false positives and overstated severity.
 
 | Review mode (SKILL.md "Review modes") | Verifiers |
 |---|---|
-| `diff` | When parallel: **disproof pass** (below) for every candidate. One fresh verifier subagent only if a candidate is still `critical` after that pass; it gets all `critical` candidates in one batch. When sequential: disproof pass only. |
+| `diff` | When parallel: **disproof pass** (below) for every candidate. One fresh verifier subagent only if a candidate is still `critical` after that pass, or a candidate proposed as `critical` was rejected by it; it gets all of them in one batch, with the rejection-review addition ("Rejection review") for the rejected ones. When sequential: disproof pass only, and a `critical` candidate it rejects is reported as `needs_confirmation`. |
 | `standard` | When parallel: **one** fresh verifier subagent gets every candidate (`critical`, `bug`, `warning` and `suggestion`) in one batch, on the session's model. When sequential: disproof pass for every candidate. |
 | `deep` | When parallel: one fresh verifier subagent **per** `critical` or `bug` candidate, and one per category file for batched `warning` and `suggestion` candidates, in parallel, on the session's model. When sequential: disproof pass for every candidate. |
 | Sequential | `method/parallel_mode.py` printed `sequential`, or the host cannot spawn a fresh agent (`method/orchestration.md`). Disproof pass for everything. Say "self-verified; sequential fallback" and the reason, in the result and in report 2.3. A rejected `critical` or `bug` candidate is not recorded as `rejected` unless a second agent upholds it; otherwise it becomes `needs_confirmation` as `method/orchestration.md` describes. |
@@ -136,10 +136,14 @@ confirmed or needs_confirmation, with the severity the evidence supports.
 Its decision stands. An upheld rejection stays `rejected` with `rejection_reviewed: true` in the ledger; an
 overturned one is reported with the new decision. If the two disagree on the facts and the review can't settle
 them from source, report the candidate as `needs_confirmation` with both views. Rejected `warning` and
-`suggestion` candidates, and rejections from the disproof pass alone, skip this review. In `standard` and
+`suggestion` candidates, and rejections from the disproof pass alone (except `critical` ones in `diff`,
+below), skip this review. In `standard` and
 `deep`, do not store a disproof-pass rejection of a `critical` or `bug` candidate as `rejected` unless that
 second agent ran: store `needs_confirmation` instead, as `method/orchestration.md` describes. `diff` has no
-ledger, so a disproof rejection there is only listed in the result.
+ledger: a disproof-pass rejection of a candidate proposed as `critical` goes to the `diff` critical verifier
+batch with the addition above, and stays `rejected` only if that verifier upholds it. When no agent can run,
+report it as `needs_confirmation` with the disproof line and "independent rejection review did not run".
+Other disproof rejections in `diff` are only listed in the result.
 
 ## Chains
 
