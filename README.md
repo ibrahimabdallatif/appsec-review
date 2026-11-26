@@ -237,7 +237,7 @@ as implemented rather than end-to-end tested. Details and exact boundaries are i
 
 | Mode | Use it for | Subagents | Coverage ledger |
 |---|---|---|---|
-| `diff` | A branch, PR or files (default) | None, except one verifier for a surviving `critical` | None |
+| `diff` | A branch, PR or files (default) | None, except one verifier for a `critical` the disproof pass keeps or rejects | None |
 | `standard` | A whole repository, an endpoint, or several repositories | One hunter, one batch verifier, one reviewer for rejected serious candidates | Module × category |
 | `deep` | High-stakes code, only when you say "deep" | Two hunters (incl. a backward sink tracer), one verifier per serious candidate | Entry point × category |
 
