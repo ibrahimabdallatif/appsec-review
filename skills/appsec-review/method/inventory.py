@@ -156,9 +156,18 @@ def entry_hit(path, number, stack, kind, match):
     return {"path": path, "line": number, "stack": stack, "kind": kind, "label": label_for(match)}
 
 
+def named_router_entries(text, spec):
+    """A route pattern for the routers this file keeps under any variable name (const users = new Router())."""
+    if "router_objects" not in spec:
+        return []
+    declaration, route = spec["router_objects"]
+    names = sorted(set(re.findall(declaration, text)))
+    return [("route", route.replace("{names}", "|".join(map(re.escape, names))), None)] if names else []
+
+
 def entry_hits(path, text, stack, spec):
     hits = []
-    for kind, regex, path_regex in spec["entry"]:
+    for kind, regex, path_regex in spec["entry"] + named_router_entries(text, spec):
         if path_regex and not re.search(path_regex, path):
             continue
         hits += [entry_hit(path, n, stack, kind, m) for n, _, m in matching_lines(text, regex, join=True)]
