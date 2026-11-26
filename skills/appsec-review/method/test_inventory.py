@@ -39,6 +39,8 @@ SAMPLES = {
         ("  @Mutation(() => Card)", "entry", "resolver"),
         ("  @ResolveField()", "entry", "resolver"),
         ("  @Query(() => Card, {", "entry", "resolver"),
+        ("router.get(\n  '/cards/:id',\n  requireAuth,\n  showCard,\n);", "entry", "route"),
+        ("  @Get(\n    ':id/refunds',\n  )", "entry", "route"),
         ("exec(`ls ${dir}`)", "sink", "command"),
         ("db.query(`select * from users where id = ${id}`)", "sink", "sql"),
         ("const r = await fetch(url)", "sink", "outbound-http"),
@@ -47,6 +49,7 @@ SAMPLES = {
     ],
     "python": [
         ('@app.get("/items/{item_id}")', "entry", "route"),
+        ('@router.post(\n    "/cards/{card_id}/refund",\n    response_model=RefundOut,\n)', "entry", "route"),
         ("class CardViewSet(viewsets.ModelViewSet):", "entry", "view"),
         ("subprocess.run(cmd, shell=True)", "sink", "command"),
         ('cursor.execute(f"select * from t where id={id}")', "sink", "sql"),
@@ -369,12 +372,45 @@ class LineHelpersTest(unittest.TestCase):
         text = "import subprocess\nsubprocess.run(x)\n"
         self.assertEqual([n for n, _, _ in inventory.matching_lines(text, r"subprocess")], [2])
 
+    def test_matching_lines_join_is_opt_in(self):
+        text = "router.get(\n  '/cards', list)\n"
+        regex = r"router\.get\(\s*'"
+        self.assertEqual([n for n, _, _ in inventory.matching_lines(text, regex)], [])
+        self.assertEqual([n for n, _, _ in inventory.matching_lines(text, regex, join=True)], [1])
+
 
 class HitsTest(unittest.TestCase):
     def test_entry_hits_label_and_line(self):
         hits = inventory.entry_hits("C.java", 'x\n@PostMapping("/pay")\n', "java-spring", patterns.JAVA_SPRING)
         self.assertEqual(hits, [{"path": "C.java", "line": 2, "stack": "java-spring", "kind": "route",
                                  "label": '"/pay"'}])
+
+    def test_wrapped_entry_reported_on_first_line(self):
+        text = 'x = 1\n@router.post(\n    "/cards/{card_id}/refund",\n    response_model=RefundOut,\n)\n'
+        hits = inventory.entry_hits("app/api/cards.py", text, "python", patterns.PYTHON)
+        self.assertEqual([(h["kind"], h["line"]) for h in hits], [("route", 2)])
+        self.assertTrue(hits[0]["label"].startswith('"/cards/{card_id}/refund"'))
+
+    def test_wrapped_entry_inside_another_call_reported_once(self):
+        text = "register(\n  app.get('/cards', list),\n)\n"
+        hits = inventory.entry_hits("a.ts", text, "node-backend", patterns.NODE_BACKEND)
+        self.assertEqual([(h["kind"], h["line"]) for h in hits], [("route", 2)])
+
+    def test_wrapped_nest_decorator_gets_its_path(self):
+        text = "  @Get(\n    ':id/refunds',\n  )\n  refunds() {}\n"
+        hits = inventory.entry_hits("cards.controller.ts", text, "node-backend", patterns.NODE_BACKEND)
+        self.assertEqual([(h["kind"], h["line"]) for h in hits], [("route", 1)])
+        self.assertIn("':id/refunds'", hits[0]["label"])
+
+    def test_wrapped_spring_annotation_gets_its_path(self):
+        text = '@GetMapping(\n    value = "/cards/{id}",\n    produces = "application/json"\n)\nCard show() {}\n'
+        hits = inventory.entry_hits("C.java", text, "java-spring", patterns.JAVA_SPRING)
+        self.assertEqual([(h["kind"], h["line"]) for h in hits], [("route", 1)])
+        self.assertTrue(hits[0]["label"].startswith('value = "/cards/{id}"'))
+
+    def test_join_stops_after_join_lines(self):
+        text = "router.get(\n" + "\n" * inventory.JOIN_LINES + "  '/cards', list)\n"
+        self.assertEqual(inventory.entry_hits("a.ts", text, "node-backend", patterns.NODE_BACKEND), [])
 
     def test_entry_path_filter(self):
         line = "path('cards/', views.cards)"
