@@ -90,7 +90,7 @@ Installed scanners add their hits too. Everything found at this stage is a **can
 
 | Mode | Hunters | Verifiers |
 |---|---|---|
-| `diff` | Both hunter lists run inline | Disproof pass; one verifier subagent only if a `critical` survives it |
+| `diff` | Both hunter lists run inline | Disproof pass; one verifier subagent only if a `critical` survives it or is rejected by it |
 | `standard` | One subagent with both hunter lists | One verifier subagent for all candidates |
 | `deep` | Two subagents: wildcard + obvious-things, and the sink tracer | One verifier per `critical`/`bug` candidate, plus one per category for the rest |
 

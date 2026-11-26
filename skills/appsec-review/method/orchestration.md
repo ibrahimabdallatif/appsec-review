@@ -35,7 +35,8 @@ non-zero exit stops the review; report the script error and do not guess.
 
 `parallel` means the mode tables in `method/hunters.md` and `method/verifier.md` may spawn subagents.
 `sequential` means those tables' inline path, even if the host can spawn agents. `diff` already keeps
-hunters inline; sequential also skips its optional critical verifier.
+hunters inline; sequential also skips its optional critical verifier, so a `critical` candidate the disproof
+pass rejects is reported as `needs_confirmation` ("Rejection review when no second agent is available").
 
 If `parallel` was selected but a spawn fails or the host has no delegation tool, finish that role inline
 and record `sequential` in the run summary with the host's reason. Keep candidates already returned. Do

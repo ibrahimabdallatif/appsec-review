@@ -25,6 +25,7 @@ import inventory_patterns as patterns  # noqa: E402
 MAX_BYTES = 1000000
 LABEL_CAP = 80
 TEXT_CAP = 160
+JOIN_LINES = 10  # lines read after an entry declaration that a formatter wrapped (an open parenthesis)
 SKIP_PATH = re.compile(patterns.SKIP_PATH)
 TEST_PATH = re.compile(patterns.TEST_PATH)
 IMPORT_LINE = re.compile(patterns.IMPORT_LINE)
@@ -113,13 +114,42 @@ def label_for(match):
     return clean(groups.get("label") or match.group(0), LABEL_CAP)
 
 
-def matching_lines(text, regex):
-    """(line number, line, match) for each code line the regex matches."""
+def open_parens(line):
+    """Opening minus closing parentheses: above zero, the call or decorator continues on the next lines."""
+    return line.count("(") - line.count(")")
+
+
+def joined_line(lines, index):
+    """The line at index followed by up to JOIN_LINES more lines, until its parentheses close."""
+    text, depth = lines[index], open_parens(lines[index])
+    for extra in lines[index + 1:index + 1 + JOIN_LINES]:
+        if depth <= 0:
+            break
+        text += " " + extra.strip()
+        depth += open_parens(extra)
+    return text
+
+
+def matching_lines(text, regex, join=False):
+    """(line number, line, match) for each code line the regex matches.
+
+    With join, a line that leaves a parenthesis open (a route, decorator or annotation that a formatter wrapped)
+    is matched together with the lines after it, so a pattern that needs the closing parenthesis matches and an
+    optional argument list gives its label. The match must start on that first line, so a declaration that
+    begins on a later line is reported on its own line, once.
+    """
     compiled = re.compile(regex)
-    for number, line in enumerate(text.splitlines(), 1):
-        match = compiled.search(line) if is_code_line(line) else None
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        if not is_code_line(line):
+            continue
+        match = compiled.search(line)
+        if join and open_parens(line) > 0:
+            joined = compiled.search(joined_line(lines, index))
+            if joined is not None and joined.start() < len(line):
+                match = joined
         if match:
-            yield number, line, match
+            yield index + 1, line, match
 
 
 def entry_hit(path, number, stack, kind, match):
@@ -140,7 +170,7 @@ def entry_hits(path, text, stack, spec):
     for kind, regex, path_regex in spec["entry"] + named_router_entries(text, spec):
         if path_regex and not re.search(path_regex, path):
             continue
-        hits += [entry_hit(path, n, stack, kind, m) for n, _, m in matching_lines(text, regex)]
+        hits += [entry_hit(path, n, stack, kind, m) for n, _, m in matching_lines(text, regex, join=True)]
     return hits + conditional_entry_hits(path, text, stack, spec)
 
 
@@ -149,7 +179,7 @@ def conditional_entry_hits(path, text, stack, spec):
     hits = []
     for kind, regex, text_regex in spec.get("entry_if", ()):
         if re.search(text_regex, text):
-            hits += [entry_hit(path, n, stack, kind, m) for n, _, m in matching_lines(text, regex)]
+            hits += [entry_hit(path, n, stack, kind, m) for n, _, m in matching_lines(text, regex, join=True)]
     return hits
 
 
